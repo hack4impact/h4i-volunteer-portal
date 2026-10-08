@@ -1,0 +1,20 @@
+#cloud-config
+# Paste into "User data" when creating the staging droplet (Ubuntu 24.04 LTS, 2 GB+).
+# Replace the ssh key below with the PUBLIC half of the CI deploy key (see docs: Step 1 runbook).
+users:
+  - name: deploy
+    groups: [docker]
+    shell: /bin/bash
+    sudo: "ALL=(ALL) NOPASSWD:/usr/bin/systemctl restart docker"
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAA_REPLACE_WITH_CI_DEPLOY_PUBLIC_KEY h4i-portal-ci
+
+package_update: true
+packages: [curl, ufw]
+
+runcmd:
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker deploy
+  - install -d -o deploy -g deploy /home/deploy/portal
+  - ufw allow OpenSSH
+  - ufw --force enable

@@ -1,0 +1,13 @@
+# Staging stack on the DigitalOcean droplet. CI copies this file to ~/portal/ and sets PORTAL_IMAGE.
+services:
+  portal:
+    image: ${PORTAL_IMAGE:?set by CI}
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SPRING_PROFILES_ACTIVE: staging
+    # Bound to localhost until a reverse proxy with TLS fronts it.
+    ports:
+      - "127.0.0.1:8080:8080"
