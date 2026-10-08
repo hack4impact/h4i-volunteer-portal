@@ -16,4 +16,4 @@ Gradle downloads JDK 25 automatically if it isn't installed.
 
 ## Deploy
 
-Every push to `main` runs CI, pushes `ghcr.io/<owner>/<repo>:<sha>`, and deploys it to the staging droplet (`deploy/staging/`). Required repo secrets are listed in the wiki's Step 1 runbook.
+Every push to `main` runs CI, pushes `ghcr.io/hack4impact/h4i-volunteer-portal:<sha>`, and deploys it to the staging droplet (`deploy/staging/`). Required repo secrets are listed in the wiki's Step 1 runbook.

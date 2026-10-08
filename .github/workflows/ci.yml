@@ -62,6 +62,8 @@ jobs:
   deploy-staging:
     name: Deploy to staging
     needs: image
+    # Skipped until the staging droplet exists and the STAGING_HOST repo variable is set.
+    if: vars.STAGING_HOST != ''
     runs-on: ubuntu-latest
     environment: staging
     concurrency: deploy-staging
@@ -69,7 +71,7 @@ jobs:
       contents: read
       packages: read
     env:
-      HOST: ${{ secrets.STAGING_HOST }}
+      HOST: ${{ vars.STAGING_HOST }}
       USER: ${{ secrets.STAGING_USER }}
     steps:
       - uses: actions/checkout@v7
