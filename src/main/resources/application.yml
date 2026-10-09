@@ -11,6 +11,9 @@ spring:
 portal:
   # Set by CI to the git SHA; "dev" locally.
   version: ${PORTAL_VERSION:dev}
+  # Public address of this deployment, for OAuth redirects, emails and links (wiki decision 31).
+  # Staging will probably be https://staging.portal.hack4impact.org; change it here or with PORTAL_BASE_URL only.
+  base-url: ${PORTAL_BASE_URL:http://localhost:8080}
   import:
     member-db:
       url: ${MEMBER_DB_URL:}

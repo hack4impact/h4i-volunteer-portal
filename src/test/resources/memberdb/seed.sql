@@ -36,7 +36,7 @@ INSERT INTO volunteers (id, first_name, last_name, preferred_name, email, org_em
 	('50000000-0000-0000-0000-000000000004', 'Hal', 'Hiatus', NULL, 'hal@personal.test', NULL, '20000000-0000-0000-0000-000000000002', 'hiatus', 'student', false, NULL),
 	-- suspended -> removed
 	('50000000-0000-0000-0000-000000000005', 'Sam', 'Suspended', NULL, 'sam@personal.test', NULL, '20000000-0000-0000-0000-000000000002', 'suspended', 'student', false, NULL),
-	-- community -> active, kind community
+	-- community -> alumni for now (wiki decision 40), kind community
 	('50000000-0000-0000-0000-000000000006', 'Cora', 'Community', NULL, 'cora@personal.test', NULL, '20000000-0000-0000-0000-000000000002', 'active', 'community', false, NULL),
 	-- soft-deleted: not imported
 	('50000000-0000-0000-0000-000000000007', 'Del', 'Deleted', NULL, 'del@personal.test', NULL, '20000000-0000-0000-0000-000000000001', 'active', 'student', false, '2025-01-01'),

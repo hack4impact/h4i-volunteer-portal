@@ -458,10 +458,9 @@ class MemberDbImporter(private val dsl: DSLContext) {
 	}
 
 	private fun personStatus(status: String, type: String) = when {
-		type == "alumni" -> "alumni"
 		status == "suspended" -> "removed"
-		status == "active" -> "active"
-		else -> "alumni" // inactive, hiatus: wiki open question Q17
+		status == "active" && type == "student" -> "active"
+		else -> "alumni" // type alumni or community, status inactive or hiatus: alumni until decided (wiki decision 40)
 	}
 
 	private fun slugify(name: String) =

@@ -1,5 +1,6 @@
-# Staging stack on the DigitalOcean droplet. CI copies this file to ~/portal/ and sets PORTAL_IMAGE.
-# ~/portal/.env must define PORTAL_DB_PASSWORD (and later the tool credentials); chmod 600.
+# Staging stack. Runs on a developer's computer (wiki decision 29); start it with ./up.sh.
+# deploy/staging/.env (gitignored, chmod 600) must define PORTAL_DB_PASSWORD. Build it from the vault with
+# ../fetch-secrets.sh "portal staging" .env
 services:
   db:
     image: postgres:17
@@ -7,7 +8,7 @@ services:
     environment:
       POSTGRES_DB: portal
       POSTGRES_USER: portal
-      POSTGRES_PASSWORD: ${PORTAL_DB_PASSWORD:?set PORTAL_DB_PASSWORD in ~/portal/.env}
+      POSTGRES_PASSWORD: ${PORTAL_DB_PASSWORD:?set PORTAL_DB_PASSWORD in deploy/staging/.env}
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
@@ -16,7 +17,7 @@ services:
       retries: 10
 
   portal:
-    image: ${PORTAL_IMAGE:?set by CI}
+    image: ${PORTAL_IMAGE:-ghcr.io/hack4impact/h4i-volunteer-portal:main}
     restart: unless-stopped
     depends_on:
       db:
@@ -28,10 +29,11 @@ services:
       SPRING_PROFILES_ACTIVE: staging
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/portal
       SPRING_DATASOURCE_USERNAME: portal
-      SPRING_DATASOURCE_PASSWORD: ${PORTAL_DB_PASSWORD:?set PORTAL_DB_PASSWORD in ~/portal/.env}
-    # Bound to localhost until a reverse proxy with TLS fronts it.
+      SPRING_DATASOURCE_PASSWORD: ${PORTAL_DB_PASSWORD:?set PORTAL_DB_PASSWORD in deploy/staging/.env}
+      PORTAL_BASE_URL: ${PORTAL_BASE_URL:-http://localhost:8081}
+    # 8081 so staging and `./gradlew bootRun` (8080) can run side by side. Localhost only.
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${STAGING_PORT:-8081}:8080"
 
 volumes:
   db-data:

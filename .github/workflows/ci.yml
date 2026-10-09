@@ -43,8 +43,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    outputs:
-      image: ${{ steps.ref.outputs.image }}
     steps:
       # The hack4impact org allows only GitHub-owned actions, so Docker steps use the CLI directly.
       - uses: actions/checkout@v7
@@ -66,43 +64,3 @@ jobs:
             -t ${{ steps.ref.outputs.image }}:main .
       - name: Push image
         run: docker push --all-tags ${{ steps.ref.outputs.image }}
-
-  deploy-staging:
-    name: Deploy to staging
-    needs: image
-    # Skipped until the staging droplet exists and the STAGING_HOST repo variable is set.
-    if: vars.STAGING_HOST != ''
-    runs-on: ubuntu-latest
-    environment: staging
-    concurrency: deploy-staging
-    permissions:
-      contents: read
-      packages: read
-    env:
-      HOST: ${{ vars.STAGING_HOST }}
-      USER: ${{ secrets.STAGING_USER }}
-    steps:
-      - uses: actions/checkout@v7
-      - name: Configure SSH
-        run: |
-          install -m 700 -d ~/.ssh
-          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/staging
-          chmod 600 ~/.ssh/staging
-          echo "${{ secrets.STAGING_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-      - name: Copy compose file
-        run: scp -i ~/.ssh/staging deploy/staging/compose.yml "$USER@$HOST:~/portal/compose.yml"
-      - name: Log droplet in to GHCR
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | ssh -i ~/.ssh/staging "$USER@$HOST" \
-            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
-      - name: Pull and restart
-        run: |
-          ssh -i ~/.ssh/staging "$USER@$HOST" \
-            "cd ~/portal \
-             && export PORTAL_IMAGE='${{ needs.image.outputs.image }}:${{ github.sha }}' \
-             && docker compose pull && docker compose up -d --wait; \
-             status=\$?; docker logout ghcr.io; exit \$status"
-      - name: Smoke test
-        run: |
-          ssh -i ~/.ssh/staging "$USER@$HOST" "curl -sf http://127.0.0.1:8080/api/status" \
-            | grep -q '"version":"${{ github.sha }}"'

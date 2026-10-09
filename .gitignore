@@ -41,5 +41,6 @@ out/
 
 ### Local secrets ###
 .env
+*.env
 *.pem
 *.json.key

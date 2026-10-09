@@ -66,7 +66,7 @@ class MemberDbImporterTests(
 		assertEquals("alumni", person(3)!!.status) // inactive
 		assertEquals("alumni", person(4)!!.status) // hiatus
 		assertEquals("removed", person(5)!!.status) // suspended
-		assertEquals("active", person(6)!!.status)
+		assertEquals("alumni", person(6)!!.status) // community, until Q17 is decided
 		assertEquals("community", person(6)!!.kind)
 		assertEquals("inactive/student", person(3)!!.sourceStatus)
 	}
