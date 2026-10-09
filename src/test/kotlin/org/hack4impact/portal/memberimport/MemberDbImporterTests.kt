@@ -110,13 +110,15 @@ class MemberDbImporterTests(
 
 		val accounts = dsl.selectFrom(TOOL_ACCOUNT).fetch()
 		val github = accounts.filter { it.tool == "github" }
-		assertEquals(setOf("1234567"), github.mapNotNull { it.externalId }.toSet())
-		assertEquals(setOf("alan-dev"), github.mapNotNull { it.externalLogin }.toSet())
+		assertEquals(setOf("1234567", "7654321"), github.mapNotNull { it.externalId }.toSet()) // two accounts, both kept
+		assertEquals(setOf("alan-dev", "grace-gh"), github.mapNotNull { it.externalLogin }.toSet()) // URLs reduced to usernames
 		assertEquals("cora@hack4impact.org", accounts.single { it.tool == "google" }.externalLogin)
 		assertEquals(1, accounts.count { it.externalId == "U0ADA" })
+		val ada = person(1)!!.id
+		assertEquals(setOf("U0ADA", "U0ADA2"), accounts.filter { it.personId == ada && it.tool == "slack" }.map { it.externalId }.toSet())
 		assertTrue(accounts.all { it.state == "unverified" })
 		assertTrue(report.issues.any { "U0ADA" in it.message && "also linked" in it.message })
-		assertTrue(report.issues.any { "already has a github account" in it.message })
+		assertTrue(report.issues.any { "isn't a GitHub profile" in it.message })
 		assertTrue(report.issues.any { it.kind == "not imported" && "linkedin" in it.message })
 	}
 

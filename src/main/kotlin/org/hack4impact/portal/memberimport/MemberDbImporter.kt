@@ -226,7 +226,6 @@ class MemberDbImporter(private val dsl: DSLContext) {
 		val counts = report.counts("tool_account")
 		val seenRows = mutableSetOf<Triple<UUID, String, String>>()
 		val ownerOf = mutableMapOf<Pair<String, String>, UUID>()
-		val toolsOf = mutableMapOf<UUID, MutableSet<String>>()
 		val unmanaged = mutableMapOf<String, Int>()
 
 		source.sql("SELECT id, volunteer_id, provider, external_id FROM volunteer_accounts ORDER BY id, volunteer_id").query { rs, _ ->
@@ -234,7 +233,9 @@ class MemberDbImporter(private val dsl: DSLContext) {
 			val id = rs.uuid("id")
 			val volunteer = rs.uuid("volunteer_id")
 			val tool = rs.getString("provider")
-			val value = rs.getString("external_id").trim()
+			val raw = rs.getString("external_id").trim()
+			val github = if (tool == "github") GitHubValue.parse(raw) else null
+			val value = github?.value ?: raw
 			val person = people[volunteer]
 			when {
 				!seenRows.add(Triple(id, tool, value)) -> counts.skipped++ // exact duplicate row; the table has no primary key
@@ -243,14 +244,15 @@ class MemberDbImporter(private val dsl: DSLContext) {
 					unmanaged.merge(tool, 1, Int::plus)
 				}
 				person == null -> counts.skipped++ // volunteer was soft-deleted or not imported
-				ownerOf[tool to value].let { it != null && it != volunteer } ->
+				github?.problem != null -> skip(report, "tool_account", id, "GitHub value '$raw' ${github.problem}")
+				ownerOf[tool to value] == volunteer -> counts.skipped++ // same link stored twice under different row IDs
+				ownerOf[tool to value] != null ->
 					skip(report, "tool_account", id, "$tool account '$value' is also linked to volunteer ${ownerOf[tool to value]}")
-				!toolsOf.getOrPut(volunteer) { mutableSetOf() }.add(tool) ->
-					skip(report, "tool_account", id, "volunteer $volunteer already has a $tool account; '$value' not imported")
 				else -> {
 					ownerOf[tool to value] = volunteer
-					// A stable ID is numeric for GitHub; anything with '@' is an email, which is a login, not an ID.
-					val isId = if (tool == "github") value.all { it.isDigit() } else '@' !in value
+					// A person may have several accounts per tool (e.g. Slack IDs in two workspaces); all are kept.
+					// GitHub: a bare number is a user ID, a username is only a login. Elsewhere '@' means an email (a login).
+					val isId = github?.isId ?: ('@' !in value)
 					upsert(
 						report, "tool_account", TOOL_ACCOUNT, id,
 						mapOf(
@@ -468,6 +470,28 @@ class MemberDbImporter(private val dsl: DSLContext) {
 
 	private fun uniqueSlug(base: String, taken: Set<String>) =
 		generateSequence(2) { it + 1 }.map { "$base-$it" }.let { sequenceOf(base) + it }.first { it !in taken }
+}
+
+/**
+ * A member-DB GitHub value: a bare number (user ID), a username, or a URL. Real data has profile URLs
+ * (`https://github.com/name`, sometimes with a repo path) and usernames with `https://` stuck in front.
+ */
+internal data class GitHubValue(val value: String, val isId: Boolean, val problem: String? = null) {
+	companion object {
+		private val username = Regex("^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$")
+
+		fun parse(raw: String): GitHubValue {
+			if (raw.all { it.isDigit() } && raw.isNotEmpty()) return GitHubValue(raw, isId = true)
+			val rest = raw.replaceFirst(Regex("^https?://", RegexOption.IGNORE_CASE), "")
+				.replaceFirst(Regex("^(www\\.)?github\\.com/?", RegexOption.IGNORE_CASE), "")
+			val first = rest.substringBefore('/').substringBefore('?').substringBefore('#')
+			return when {
+				first.contains('.') -> GitHubValue(raw, isId = false, problem = "isn't a GitHub profile")
+				!username.matches(first) -> GitHubValue(raw, isId = false, problem = "has no valid GitHub username")
+				else -> GitHubValue(first, isId = false)
+			}
+		}
+	}
 }
 
 private fun ResultSet.uuid(column: String): UUID = getObject(column, UUID::class.java)

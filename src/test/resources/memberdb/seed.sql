@@ -62,18 +62,24 @@ INSERT INTO volunteer_accounts (id, volunteer_id, provider, external_id) VALUES
 	('70000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'github', '1234567'),
 	-- exact duplicate row of the one above: counted once
 	('70000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', 'github', '1234567'),
-	-- GitHub username -> external_login, unverified
-	('70000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000002', 'github', 'alan-dev'),
+	-- GitHub profile URL (the usual shape in real data) -> username as external_login, unverified
+	('70000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000002', 'github', 'https://github.com/alan-dev/'),
 	('70000000-0000-0000-0000-000000000003', '50000000-0000-0000-0000-000000000001', 'slack', 'U0ADA'),
 	-- same Slack ID claimed by another person: skipped, reported
 	('70000000-0000-0000-0000-000000000004', '50000000-0000-0000-0000-000000000003', 'slack', 'U0ADA'),
 	-- provider the portal doesn't manage: skipped, counted
 	('70000000-0000-0000-0000-000000000005', '50000000-0000-0000-0000-000000000001', 'linkedin', 'https://www.linkedin.com/in/ada'),
-	-- second GitHub account for the same person: skipped, reported
+	-- second GitHub account for the same person: kept (wiki decision 45)
 	('70000000-0000-0000-0000-000000000006', '50000000-0000-0000-0000-000000000001', 'github', '7654321'),
 	-- belongs to a soft-deleted volunteer: skipped
 	('70000000-0000-0000-0000-000000000007', '50000000-0000-0000-0000-000000000007', 'google', 'del@hack4impact.org'),
-	('70000000-0000-0000-0000-000000000008', '50000000-0000-0000-0000-000000000006', 'google', 'cora@hack4impact.org');
+	('70000000-0000-0000-0000-000000000008', '50000000-0000-0000-0000-000000000006', 'google', 'cora@hack4impact.org'),
+	-- username with https:// stuck in front (46 of these in real data) -> username
+	('70000000-0000-0000-0000-000000000009', '50000000-0000-0000-0000-000000000003', 'github', 'https://grace-gh'),
+	-- not a GitHub profile at all: skipped, reported
+	('70000000-0000-0000-0000-000000000010', '50000000-0000-0000-0000-000000000004', 'github', 'https://www.linkedin.com/in/hal'),
+	-- second Slack ID for the same person (another workspace): kept
+	('70000000-0000-0000-0000-000000000011', '50000000-0000-0000-0000-000000000001', 'slack', 'U0ADA2');
 
 INSERT INTO project_roles (id, name, is_lead) VALUES
 	('80000000-0000-0000-0000-000000000001', 'Engineer', false),
