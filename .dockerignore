@@ -1,9 +1,3 @@
-.git
-.gradle
-.kotlin
-.idea
-.vscode
-build
-out
-*.md
-.env
+# Only the built jar goes into the image.
+*
+!build/libs/*.jar

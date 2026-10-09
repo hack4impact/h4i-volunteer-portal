@@ -20,7 +20,14 @@ jobs:
           distribution: temurin
           java-version: 25
           cache: gradle
+      # Tests and jOOQ codegen start Postgres with Testcontainers; the runner has Docker.
       - run: ./gradlew build
+      - name: Upload jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: jar
+          path: build/libs/portal-*.jar
+          retention-days: 7
       - name: Upload test reports
         if: failure()
         uses: actions/upload-artifact@v7
@@ -41,6 +48,11 @@ jobs:
     steps:
       # The hack4impact org allows only GitHub-owned actions, so Docker steps use the CLI directly.
       - uses: actions/checkout@v7
+      - name: Download jar
+        uses: actions/download-artifact@v8
+        with:
+          name: jar
+          path: build/libs
       - id: ref
         run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
       - name: Log in to GHCR

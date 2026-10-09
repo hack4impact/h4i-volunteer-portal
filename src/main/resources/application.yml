@@ -1,10 +1,21 @@
 spring:
   application:
     name: portal
+  flyway:
+    schemas: portal
+  jooq:
+    sql-dialect: postgres
+  # Locally, `./gradlew bootRun` starts compose.yaml and connects to it. Elsewhere set
+  # SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME and SPRING_DATASOURCE_PASSWORD.
 
 portal:
   # Set by CI to the git SHA; "dev" locally.
   version: ${PORTAL_VERSION:dev}
+  import:
+    member-db:
+      url: ${MEMBER_DB_URL:}
+      username: ${MEMBER_DB_USERNAME:}
+      password: ${MEMBER_DB_PASSWORD:}
 
 server:
   shutdown: graceful

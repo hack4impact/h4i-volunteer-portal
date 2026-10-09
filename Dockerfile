@@ -1,23 +1,21 @@
 # syntax=docker/dockerfile:1
+# Packages a jar built beforehand with `./gradlew bootJar` (the build needs Docker for jOOQ codegen
+# and tests, so it runs on the host or in CI, not inside this image).
 
-# --- Build: compile and package the Spring Boot jar ---
-FROM eclipse-temurin:25-jdk AS build
+# --- Split the jar into layers so dependencies are cached separately from app code ---
+FROM eclipse-temurin:25-jre AS extract
 WORKDIR /workspace
-COPY gradlew settings.gradle.kts build.gradle.kts ./
-COPY gradle gradle
-RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon dependencies > /dev/null
-COPY src src
-RUN --mount=type=cache,target=/root/.gradle ./gradlew --no-daemon bootJar -x test \
- && java -Djarmode=tools -jar build/libs/portal-*-SNAPSHOT.jar extract --layers --launcher --destination extracted
+COPY build/libs/portal-*-SNAPSHOT.jar app.jar
+RUN java -Djarmode=tools -jar app.jar extract --layers --launcher --destination extracted
 
-# --- Run: small JRE image, dependencies layered separately from app code ---
+# --- Run ---
 FROM eclipse-temurin:25-jre
 RUN groupadd --system portal && useradd --system --gid portal portal
 WORKDIR /app
-COPY --from=build /workspace/extracted/dependencies/ ./
-COPY --from=build /workspace/extracted/spring-boot-loader/ ./
-COPY --from=build /workspace/extracted/snapshot-dependencies/ ./
-COPY --from=build /workspace/extracted/application/ ./
+COPY --from=extract /workspace/extracted/dependencies/ ./
+COPY --from=extract /workspace/extracted/spring-boot-loader/ ./
+COPY --from=extract /workspace/extracted/snapshot-dependencies/ ./
+COPY --from=extract /workspace/extracted/application/ ./
 USER portal
 EXPOSE 8080
 # The droplet is shared with Vaultwarden and Documenso, so the heap is capped (PRD: Hosting).
