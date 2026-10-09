@@ -32,6 +32,7 @@ dependencies {
 	implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
+	implementation("com.google.auth:google-auth-library-oauth2-http:1.54.0")
 	developmentOnly("org.springframework.boot:spring-boot-docker-compose")
 	runtimeOnly("org.postgresql:postgresql")
 	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
@@ -45,6 +46,7 @@ dependencies {
 	testImplementation("org.testcontainers:testcontainers-postgresql")
 	testImplementation("net.jqwik:jqwik:1.10.1")
 	testImplementation("net.jqwik:jqwik-kotlin:1.10.1")
+	testImplementation("org.wiremock:wiremock-standalone:3.13.2")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
 	"codegenImplementation"("org.jooq:jooq-codegen")
@@ -122,4 +124,15 @@ val coverageCheck = tasks.named<JacocoCoverageVerification>("jacocoTestCoverageV
 
 tasks.named("check") {
 	dependsOn(coverageCheck)
+}
+
+// `./gradlew bootRun -PenvFile=<file>` loads NAME="value" lines, the format deploy/fetch-secrets.sh writes
+// (JSON-quoted, so multi-line keys survive), into the app's environment.
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+	providers.gradleProperty("envFile").orNull?.let { path ->
+		file(path).readLines().filter { '=' in it && !it.trimStart().startsWith("#") }.forEach { line ->
+			val (name, raw) = line.split("=", limit = 2)
+			environment(name.trim(), if (raw.startsWith("\"")) groovy.json.JsonSlurper().parseText(raw) as String else raw)
+		}
+	}
 }

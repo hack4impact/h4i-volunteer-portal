@@ -1,0 +1,9 @@
+# Read-only check of every enabled tool adapter (build plan step 4 finish line):
+#   ./gradlew bootRun -PenvFile=deploy/staging/.env --args='--spring.profiles.active=adapter-check'
+spring:
+  main:
+    web-application-type: none
+
+portal:
+  adapters:
+    check: true
