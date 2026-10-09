@@ -3,6 +3,7 @@ plugins {
 	kotlin("plugin.spring") version "2.3.21"
 	id("org.springframework.boot") version "4.1.1"
 	id("io.spring.dependency-management") version "1.1.7"
+	jacoco
 }
 
 group = "org.hack4impact"
@@ -42,6 +43,8 @@ dependencies {
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
 	testImplementation("org.testcontainers:testcontainers-junit-jupiter")
 	testImplementation("org.testcontainers:testcontainers-postgresql")
+	testImplementation("net.jqwik:jqwik:1.10.1")
+	testImplementation("net.jqwik:jqwik-kotlin:1.10.1")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
 	"codegenImplementation"("org.jooq:jooq-codegen")
@@ -86,4 +89,37 @@ tasks.withType<Test> {
 // Only the executable Spring Boot jar is needed; the Dockerfile packages it.
 tasks.named<Jar>("jar") {
 	enabled = false
+}
+
+jacoco {
+	toolVersion = "0.8.15"
+}
+
+tasks.named<Test>("test") {
+	finalizedBy(tasks.named("jacocoTestReport"))
+}
+
+tasks.named<JacocoReport>("jacocoTestReport") {
+	reports {
+		xml.required = true
+		html.required = true
+	}
+}
+
+// The resolver decides who gets access to what, so every branch must be tested (build plan step 3).
+val coverageCheck = tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
+	violationRules {
+		rule {
+			element = "PACKAGE"
+			includes = listOf("org.hack4impact.portal.resolver")
+			limit {
+				counter = "BRANCH"
+				minimum = "1.0".toBigDecimal()
+			}
+		}
+	}
+}
+
+tasks.named("check") {
+	dependsOn(coverageCheck)
 }

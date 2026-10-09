@@ -44,3 +44,6 @@ out/
 *.env
 *.pem
 *.json.key
+
+### jqwik (local failure replay) ###
+.jqwik-database
