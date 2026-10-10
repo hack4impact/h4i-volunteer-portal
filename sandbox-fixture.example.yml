@@ -1,0 +1,33 @@
+# Copy to sandbox-fixture.yml (gitignored) and fill in YOUR sandbox's logins and resource names.
+# Used by scripts/sandbox-check.sh (build plan step 6 finish line).
+# Accounts match a tool login, email or ID; resources match a name or external ID in the tool.
+chapter: { code: sandbox, name: H4I Portal Sandbox }
+
+people:
+  - name: Lena Lead
+    role: lead                      # chapter role (optional)
+    accounts: { github: lena-gh, slack: lena, google: lena@hack4impact.org, vaultwarden: lena@example.org }
+  - name: Alan Alumnus
+    status: alumni
+    accounts: { slack: alan }
+
+resources:
+  - { key: repo-team, tool: github, match: Team 1 }
+  - { key: general, tool: slack, match: general }
+
+projects:
+  - name: Sandbox Project
+    members:
+      - { person: Lena Lead, role: lead }           # role: member (default) or lead
+      - { person: Alan Alumnus, signed: false }     # signed defaults to true
+    resources:
+      - { resource: repo-team, audience: team, access: write, requiresAgreement: true }
+
+chapterResources:
+  - { resource: general, audience: members, access: write }
+
+# Exactly what the dry run should plan: kind add | change | remove | drift | unmatched_account | missing_resource.
+# person is omitted for unmatched_account and missing_resource.
+expect:
+  - { kind: add, person: Lena Lead, resource: repo-team }
+  - { kind: drift, person: Alan Alumnus, resource: general }

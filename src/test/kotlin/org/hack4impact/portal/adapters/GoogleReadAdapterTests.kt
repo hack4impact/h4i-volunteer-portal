@@ -6,6 +6,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.get
 import org.hack4impact.portal.adapters.google.GoogleReadAdapter
 import org.hack4impact.portal.resolver.Access
 import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class GoogleReadAdapterTests : WireMockContract() {
@@ -47,6 +48,15 @@ class GoogleReadAdapterTests : WireMockContract() {
 			val next = if (i < pages.lastIndex) ""","nextPageToken":"t${i + 2}"""" else ""
 			json(url, """{"$field":${page.joinToString(",", "[", "]")}$next}""")
 		}
+	}
+
+	@Test
+	fun `a group scope hides other groups and refuses to read them`() {
+		val scoped = GoogleReadAdapter(server.baseUrl(), "my_customer", ou, { token }, pageSize = 2, groupScope = Regex("rise", RegexOption.IGNORE_CASE))
+		stub(sandbox)
+		assertEquals(listOf("umd-rise-dc@hack4impact.org"), scoped.resources().map { it.externalId })
+		assertFailsWith<Rejected> { scoped.members("umd-members@hack4impact.org") }
+		assertEquals(2, scoped.members("umd-rise-dc@hack4impact.org").size)
 	}
 
 	@Test

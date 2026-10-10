@@ -43,6 +43,12 @@ class ChapterController(
 		return chapters.members(chapter.id)
 	}
 
+	@GetMapping("/chapters/{code}/sync")
+	fun sync(@AuthenticationPrincipal user: OidcUser, @PathVariable code: String): ChapterSync {
+		val (_, chapter) = authorize(user, code)
+		return chapters.sync(chapter.id)
+	}
+
 	/** 404 for an unknown chapter, 403 for one the viewer has no role in. */
 	private fun authorize(user: OidcUser, code: String) =
 		viewers.of(user).let { viewer ->

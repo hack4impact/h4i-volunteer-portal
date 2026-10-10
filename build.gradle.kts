@@ -20,6 +20,13 @@ repositories {
 	mavenCentral()
 }
 
+// Spring Modulith (event outbox, wiki decision 33) isn't managed by Spring Boot's BOM.
+dependencyManagement {
+	imports {
+		mavenBom("org.springframework.modulith:spring-modulith-bom:2.1.1")
+	}
+}
+
 // Generates jOOQ classes from the Flyway migrations: starts Postgres in Testcontainers, migrates, reads the schema.
 val codegen = sourceSets.create("codegen")
 
@@ -36,6 +43,7 @@ dependencies {
 	implementation("tools.jackson.module:jackson-module-kotlin")
 	implementation("com.google.auth:google-auth-library-oauth2-http:1.54.0")
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:3.1.1")
+	implementation("org.springframework.modulith:spring-modulith-starter-jdbc")
 	developmentOnly("org.springframework.boot:spring-boot-docker-compose")
 	runtimeOnly("org.postgresql:postgresql")
 	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")

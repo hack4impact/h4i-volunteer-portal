@@ -51,3 +51,32 @@ data class MemberRow(
 
 /** One tool account: [state] is unverified, invited, accepted, confirmed, suspended or removed. */
 data class AccountSummary(val tool: String, val state: String)
+
+/** The latest sync run per tool, limited to this chapter's resources (build plan step 6: dry runs only). */
+data class ChapterSync(val tools: List<ToolSync>, val changes: List<PlannedChange>)
+
+data class ToolSync(
+	val tool: String,
+	/** completed, paused (a real run would stop: blast radius or kill switch), or failed. */
+	val status: String,
+	val mode: String,
+	val ranAt: java.time.OffsetDateTime,
+	val error: String?,
+	val adds: Int,
+	val changes: Int,
+	val removals: Int,
+	val drift: Int,
+	val unmatchedAccounts: Int,
+	val missingResources: Int,
+)
+
+/** [kind] is add, change, remove, drift, unmatched_account or missing_resource. */
+data class PlannedChange(
+	val kind: String,
+	val tool: String,
+	val resource: String,
+	val person: String?,
+	val accountId: String?,
+	val fromAccess: String?,
+	val toAccess: String?,
+)

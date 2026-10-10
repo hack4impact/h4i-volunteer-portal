@@ -1,6 +1,7 @@
 package org.hack4impact.portal.memberimport
 
 import org.hack4impact.portal.TestcontainersConfiguration
+import org.hack4impact.portal.emptyPortalTables
 import org.hack4impact.portal.db.tables.references.AUDIT_EVENT
 import org.hack4impact.portal.db.tables.references.CHAPTER
 import org.hack4impact.portal.db.tables.references.CHAPTER_MEMBERSHIP
@@ -48,11 +49,7 @@ class MemberDbImporterTests(
 	private fun person(volunteer: Int) = dsl.selectFrom(PERSON).where(PERSON.SOURCE_ID.eq(volunteer(volunteer))).fetchOne()
 
 	@BeforeEach
-	fun emptyPortal() {
-		val keep = setOf("tool_setting", "flyway_schema_history")
-		val tables = dsl.fetch("SELECT tablename FROM pg_tables WHERE schemaname = 'portal'").map { it.get(0, String::class.java) } - keep
-		dsl.execute("TRUNCATE " + tables.joinToString { "portal.\"$it\"" } + " CASCADE")
-	}
+	fun emptyPortal() = dsl.emptyPortalTables()
 
 	@Test
 	fun `imports people with mapped statuses and skips soft-deleted ones`() {

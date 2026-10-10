@@ -4,6 +4,7 @@ import type { components, paths } from './schema'
 export type Me = components['schemas']['Me']
 export type ChapterOverview = components['schemas']['ChapterOverview']
 export type MemberRow = components['schemas']['MemberRow']
+export type ChapterSync = components['schemas']['ChapterSync']
 
 /** Typed client for the portal API; types come from web/openapi.json (`npm run gen:api`). */
 export const api = createClient<paths>({

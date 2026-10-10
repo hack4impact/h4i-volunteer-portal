@@ -145,6 +145,34 @@ class PortalSecurityTests(
 	}
 
 	@Test
+	fun `sync status is scoped to the chapter's own resources`() {
+		val runId = dsl.insertInto(org.hack4impact.portal.db.tables.references.SYNC_RUN).set(org.hack4impact.portal.db.tables.references.SYNC_RUN.TOOL, "slack")
+			.set(org.hack4impact.portal.db.tables.references.SYNC_RUN.MODE, "dry_run").set(org.hack4impact.portal.db.tables.references.SYNC_RUN.TRIGGER, "manual")
+			.set(org.hack4impact.portal.db.tables.references.SYNC_RUN.STATUS, "completed")
+			.returningResult(org.hack4impact.portal.db.tables.references.SYNC_RUN.ID).fetchSingle().value1()!!
+		fun channel(chapter: UUID, name: String) = dsl.insertInto(org.hack4impact.portal.db.tables.references.RESOURCE)
+			.set(org.hack4impact.portal.db.tables.references.RESOURCE.TOOL, "slack").set(org.hack4impact.portal.db.tables.references.RESOURCE.NAME, name)
+			.set(org.hack4impact.portal.db.tables.references.RESOURCE.CHAPTER_ID, chapter)
+			.returningResult(org.hack4impact.portal.db.tables.references.RESOURCE.ID).fetchSingle().value1()!!
+		val ada = dsl.select(PERSON.ID).from(PERSON).where(PERSON.FIRST_NAME.eq("Ada")).fetchSingle().value1()!!
+		for ((resource, kind) in listOf(channel(umd, "#umd-general") to "add", channel(gt, "#gt-general") to "drift")) {
+			dsl.insertInto(org.hack4impact.portal.db.tables.references.SYNC_CHANGE).set(org.hack4impact.portal.db.tables.references.SYNC_CHANGE.RUN_ID, runId)
+				.set(org.hack4impact.portal.db.tables.references.SYNC_CHANGE.KIND, kind).set(org.hack4impact.portal.db.tables.references.SYNC_CHANGE.RESOURCE_ID, resource)
+				.set(org.hack4impact.portal.db.tables.references.SYNC_CHANGE.PERSON_ID, ada).set(org.hack4impact.portal.db.tables.references.SYNC_CHANGE.TO_ACCESS, "write").execute()
+		}
+		mvc.get("/api/chapters/umd/sync") { with(signedIn("lena@hack4impact.org")) }.andExpect {
+			status { isOk() }
+			jsonPath("$.tools[0].tool") { value("slack") }
+			jsonPath("$.tools[0].adds") { value(1) }
+			jsonPath("$.tools[0].drift") { value(0) } // the drift belongs to Georgia Tech
+			jsonPath("$.changes.length()") { value(1) }
+			jsonPath("$.changes[0].resource") { value("#umd-general") }
+			jsonPath("$.changes[0].person") { value("Ada Test") }
+		}
+		mvc.get("/api/chapters/gt/sync") { with(signedIn("lena@hack4impact.org")) }.andExpect { status { isForbidden() } }
+	}
+
+	@Test
 	fun `an unknown chapter is 404`() {
 		mvc.get("/api/chapters/nope") { with(signedIn("nora@hack4impact.org")) }.andExpect { status { isNotFound() } }
 	}

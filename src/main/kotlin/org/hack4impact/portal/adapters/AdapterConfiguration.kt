@@ -51,6 +51,8 @@ data class AdapterProperties(
 		val orgUnitPath: String = "",
 		val adminSubject: String = "",
 		val serviceAccountKey: String = "",
+		/** Regex: only matching groups (email or name) are read or, from step 9, written. Empty = every group (production). */
+		val groupScope: String = "",
 	)
 
 	data class Vaultwarden(
@@ -85,7 +87,10 @@ class AdapterConfiguration {
 	@Bean
 	@ConditionalOnBooleanProperty("portal.adapters.google.enabled")
 	fun googleReadAdapter(p: AdapterProperties): ReadAdapter = with(p.google) {
-		GoogleReadAdapter(baseUrl, customer, orgUnitPath, GoogleServiceAccountToken(inlineOrFile(serviceAccountKey), required("google.admin-subject", adminSubject)))
+		GoogleReadAdapter(
+			baseUrl, customer, orgUnitPath, GoogleServiceAccountToken(inlineOrFile(serviceAccountKey), required("google.admin-subject", adminSubject)),
+			groupScope = groupScope.takeIf { it.isNotBlank() }?.let { Regex(it, RegexOption.IGNORE_CASE) },
+		)
 	}
 
 	@Bean

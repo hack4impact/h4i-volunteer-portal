@@ -50,3 +50,6 @@ out/
 
 ### Local credential files (sandbox keys) ###
 secrets/
+
+### Sandbox check fixture (specific to your sandboxes) ###
+sandbox-fixture.yml

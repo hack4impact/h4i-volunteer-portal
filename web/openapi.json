@@ -67,6 +67,32 @@
         }
       }
     },
+    "/api/chapters/{code}/sync" : {
+      "get" : {
+        "tags" : [ "chapter-controller" ],
+        "operationId" : "sync",
+        "parameters" : [ {
+          "name" : "code",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ChapterSync"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chapters/{code}/members" : {
       "get" : {
         "tags" : [ "chapter-controller" ],
@@ -195,6 +221,94 @@
             "format" : "int32"
           },
           "leads" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "ChapterSync" : {
+        "type" : "object",
+        "properties" : {
+          "tools" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ToolSync"
+            }
+          },
+          "changes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PlannedChange"
+            }
+          }
+        }
+      },
+      "PlannedChange" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "tool" : {
+            "type" : "string"
+          },
+          "resource" : {
+            "type" : "string"
+          },
+          "person" : {
+            "type" : [ "string", "null" ]
+          },
+          "accountId" : {
+            "type" : [ "string", "null" ]
+          },
+          "fromAccess" : {
+            "type" : [ "string", "null" ]
+          },
+          "toAccess" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "ToolSync" : {
+        "type" : "object",
+        "properties" : {
+          "tool" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "mode" : {
+            "type" : "string"
+          },
+          "ranAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "adds" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "changes" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "removals" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "drift" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "unmatchedAccounts" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "missingResources" : {
             "type" : "integer",
             "format" : "int32"
           }

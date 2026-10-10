@@ -5,6 +5,15 @@ spring:
     schemas: portal
   jooq:
     sql-dialect: postgres
+  modulith:
+    events:
+      jdbc:
+        # The outbox table lives in the portal schema and is created by Flyway (V3), not by Modulith.
+        schema: portal
+        schema-initialization:
+          enabled: false
+      # Retry event listeners that didn't finish (e.g. the app stopped mid-sync) when the app starts.
+      republish-outstanding-events-on-restart: true
   security:
     oauth2:
       client:

@@ -52,6 +52,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chapters/{code}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["sync"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chapters/{code}/members": {
         parameters: {
             query?: never;
@@ -110,6 +126,39 @@ export interface components {
             liveProjects: number;
             /** Format: int32 */
             leads: number;
+        };
+        ChapterSync: {
+            tools: components["schemas"]["ToolSync"][];
+            changes: components["schemas"]["PlannedChange"][];
+        };
+        PlannedChange: {
+            kind: string;
+            tool: string;
+            resource: string;
+            person: string | null;
+            accountId: string | null;
+            fromAccess: string | null;
+            toAccess: string | null;
+        };
+        ToolSync: {
+            tool: string;
+            status: string;
+            mode: string;
+            /** Format: date-time */
+            ranAt: string;
+            error: string | null;
+            /** Format: int32 */
+            adds: number;
+            /** Format: int32 */
+            changes: number;
+            /** Format: int32 */
+            removals: number;
+            /** Format: int32 */
+            drift: number;
+            /** Format: int32 */
+            unmatchedAccounts: number;
+            /** Format: int32 */
+            missingResources: number;
         };
         AccountSummary: {
             tool: string;
@@ -195,6 +244,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ChapterOverview"];
+                };
+            };
+        };
+    };
+    sync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ChapterSync"];
                 };
             };
         };

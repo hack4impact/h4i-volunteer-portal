@@ -7,6 +7,9 @@ import org.hack4impact.portal.db.tables.references.CHAPTER_ROLE
 import org.hack4impact.portal.db.tables.references.PERSON
 import org.hack4impact.portal.db.tables.references.PROJECT
 import org.hack4impact.portal.db.tables.references.PROJECT_MEMBER
+import org.hack4impact.portal.db.tables.references.RESOURCE
+import org.hack4impact.portal.db.tables.references.SYNC_CHANGE
+import org.hack4impact.portal.db.tables.references.SYNC_RUN
 import org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT
 import org.jooq.DSLContext
 import org.springframework.stereotype.Component
@@ -46,6 +49,35 @@ class ChapterQueries(private val dsl: DSLContext) {
 				CHAPTER_ROLE,
 				CHAPTER_ROLE.CHAPTER_ID.eq(chapterId).and(CHAPTER_ROLE.ROLE.`in`("lead", "co_lead")).and(CHAPTER_ROLE.ENDS_AT.isNull),
 			),
+		)
+	}
+
+	/** Each tool's latest run, with counts and up to [limit] planned changes for this chapter's resources. */
+	fun sync(chapterId: UUID, limit: Int = 200): ChapterSync {
+		val latest = dsl.selectFrom(SYNC_RUN).orderBy(SYNC_RUN.STARTED_AT.desc()).limit(500).fetch()
+			.distinctBy { it.tool }.filter { it.tool != null }
+		val runIds = latest.map { it.id!! }
+		val rows = dsl.select(SYNC_CHANGE.RUN_ID, SYNC_CHANGE.KIND, RESOURCE.TOOL, RESOURCE.NAME, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME,
+			SYNC_CHANGE.ACCOUNT_ID, SYNC_CHANGE.FROM_ACCESS, SYNC_CHANGE.TO_ACCESS)
+			.from(SYNC_CHANGE)
+			.join(RESOURCE).on(RESOURCE.ID.eq(SYNC_CHANGE.RESOURCE_ID))
+			.leftJoin(PERSON).on(PERSON.ID.eq(SYNC_CHANGE.PERSON_ID))
+			.where(SYNC_CHANGE.RUN_ID.`in`(runIds), RESOURCE.CHAPTER_ID.eq(chapterId))
+			.orderBy(RESOURCE.TOOL, RESOURCE.NAME, SYNC_CHANGE.KIND)
+			.fetch()
+		val counts = rows.groupBy { it.value1()!! }.mapValues { (_, r) -> r.groupingBy { it.value2()!! }.eachCount() }
+		return ChapterSync(
+			tools = latest.map { run ->
+				val c = counts[run.id].orEmpty()
+				ToolSync(
+					run.tool!!, run.status!!, run.mode!!, run.startedAt!!, run.error,
+					c["add"] ?: 0, c["change"] ?: 0, c["remove"] ?: 0, c["drift"] ?: 0, c["unmatched_account"] ?: 0, c["missing_resource"] ?: 0,
+				)
+			}.sortedBy { it.tool },
+			changes = rows.take(limit).map {
+				val first = it.value7()?.takeIf { p -> p.isNotBlank() } ?: it.value5()
+				PlannedChange(it.value2()!!, it.value3()!!, it.value4()!!, first?.let { f -> "$f ${it.value6()}" }, it.value8(), it.value9(), it.value10())
+			},
 		)
 	}
 

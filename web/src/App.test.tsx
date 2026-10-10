@@ -44,6 +44,13 @@ describe('App', () => {
     api({
       '/api/me': [200, me([umd])],
       '/api/chapters/umd': [200, { id: 'c1', code: 'umd', name: 'Hack4Impact UMD', status: 'active', role: 'lead', stats: { activeMembers: 2, alumni: 1, liveProjects: 1, leads: 1 }, registrationLink: 'https://join.hack4impact.org/umd' }],
+      '/api/chapters/umd/sync': [200, {
+        tools: [{ tool: 'slack', status: 'paused', mode: 'dry_run', ranAt: '2026-10-10T12:00:00Z', error: null, adds: 1, changes: 0, removals: 0, drift: 1, unmatchedAccounts: 0, missingResources: 0 }],
+        changes: [
+          { kind: 'add', tool: 'slack', resource: '#umd-general', person: 'Lena Lead', accountId: 'U1', fromAccess: null, toAccess: 'write' },
+          { kind: 'drift', tool: 'slack', resource: '#umd-general', person: 'Alan Alumnus', accountId: 'U2', fromAccess: 'write', toAccess: null },
+        ],
+      }],
       '/api/chapters/umd/members': [200, [
         { personId: 'p1', name: 'Lena Lead', email: 'lena@hack4impact.org', status: 'active', kind: 'student', chapterRole: 'lead', title: null, projects: [], accounts: [{ tool: 'google', state: 'confirmed' }], claimed: true },
         { personId: 'p2', name: 'Alan Alumnus', email: null, status: 'alumni', kind: 'student', chapterRole: null, title: null, projects: ['RISE DC Portal'], accounts: [], claimed: false },
@@ -52,6 +59,10 @@ describe('App', () => {
     render(<App />)
     expect(await screen.findByRole('heading', { name: 'Hack4Impact UMD' })).toBeInTheDocument()
     expect(screen.getByText('Registration link')).toHaveAttribute('href', 'https://join.hack4impact.org/umd')
+    const sync = await screen.findByRole('region', { name: 'Sync (dry run)' })
+    expect(within(sync).getByText('Paused')).toBeInTheDocument() // a paused tool says so in words
+    expect(within(sync).getByText(/1 to add, 1 drift/)).toBeInTheDocument()
+    expect(within(sync).getByText('Not granted by the portal')).toBeInTheDocument()
 
     await userEvent.click(within(screen.getByRole('navigation', { name: 'Chapter sections' })).getByRole('link', { name: /Members/ }))
     const table = await screen.findByRole('table', { name: 'Members' })
