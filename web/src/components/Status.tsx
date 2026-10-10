@@ -34,3 +34,24 @@ export const TOOL_NAME: Record<string, string> = {
   vaultwarden: 'Vaultwarden',
   documenso: 'Documenso',
 }
+
+/** Planned sync changes, in words. */
+export const CHANGE_LABEL: Record<string, string> = {
+  add: 'Add',
+  change: 'Change access',
+  remove: 'Remove',
+  drift: 'Not granted by the portal',
+  unmatched_account: 'Account not linked to anyone',
+  missing_resource: 'Missing in the tool',
+  create_resource: 'Create in the tool',
+}
+
+export const PROJECT_STATUS: Record<string, [string, 'ok' | 'warn' | 'off' | 'danger']> = {
+  draft: ['Draft', 'warn'],
+  active: ['Active', 'ok'],
+  paused: ['Paused', 'off'],
+  closed: ['Closed', 'off'],
+}
+
+/** A resource's name as people see it in the tool: Slack channels with #. */
+export const resourceName = (tool: string, name: string) => (tool === 'slack' ? `#${name}` : name)

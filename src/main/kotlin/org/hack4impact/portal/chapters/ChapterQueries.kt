@@ -71,7 +71,7 @@ class ChapterQueries(private val dsl: DSLContext) {
 				val c = counts[run.id].orEmpty()
 				ToolSync(
 					run.tool!!, run.status!!, run.mode!!, run.startedAt!!, run.error,
-					c["add"] ?: 0, c["change"] ?: 0, c["remove"] ?: 0, c["drift"] ?: 0, c["unmatched_account"] ?: 0, c["missing_resource"] ?: 0,
+					c["add"] ?: 0, c["change"] ?: 0, c["remove"] ?: 0, c["drift"] ?: 0, c["unmatched_account"] ?: 0, c["missing_resource"] ?: 0, c["create_resource"] ?: 0,
 				)
 			}.sortedBy { it.tool },
 			changes = rows.take(limit).map {

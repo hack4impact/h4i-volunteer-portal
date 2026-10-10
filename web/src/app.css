@@ -46,3 +46,15 @@ body { margin: 0; }
 .plain-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .plain-table th { text-align: left; font-weight: 600; color: var(--h4i-fg-muted); padding: 6px 8px; border-bottom: 1px solid var(--h4i-border); }
 .plain-table td { padding: 6px 8px; border-bottom: 1px solid var(--h4i-border-muted); }
+
+/* Forms inside a box: one field per row, labels above inputs. */
+.form-grid { display: grid; gap: 12px; grid-template-columns: minmax(0, 640px); }
+.form-grid label { display: grid; gap: 4px; font-weight: 600; }
+.form-grid label .muted, .form-grid label .status { font-weight: 400; }
+.inline-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 8px; }
+
+.project-title { font-size: 22px; line-height: 30px; font-weight: 700; color: var(--h4i-fg-strong); margin: 2px 0 0; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 12px; }
+.facts dt { color: var(--h4i-fg-muted); font-size: 13px; }
+.facts dd { margin: 0; }
+.check { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; }

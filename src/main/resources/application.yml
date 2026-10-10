@@ -5,6 +5,10 @@ spring:
     schemas: portal
   jooq:
     sql-dialect: postgres
+  mvc:
+    # Errors as RFC 9457 problem details, so the app can show the reason ("already on this project").
+    problemdetails:
+      enabled: true
   modulith:
     events:
       jdbc:

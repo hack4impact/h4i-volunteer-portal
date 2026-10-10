@@ -5,6 +5,15 @@ export type Me = components['schemas']['Me']
 export type ChapterOverview = components['schemas']['ChapterOverview']
 export type MemberRow = components['schemas']['MemberRow']
 export type ChapterSync = components['schemas']['ChapterSync']
+export type ProjectSummary = components['schemas']['ProjectSummary']
+export type ProjectDetail = components['schemas']['ProjectDetail']
+export type ProjectResourceRow = components['schemas']['ProjectResourceRow']
+export type ProjectRoleOption = components['schemas']['ProjectRoleOption']
+export type TermOption = components['schemas']['TermOption']
+export type ChapterResourceOption = components['schemas']['ChapterResourceOption']
+export type NotionSettingsView = components['schemas']['NotionSettingsView']
+export type NotionPageRef = components['schemas']['NotionPageRef']
+export type PlannedChange = components['schemas']['PlannedChange']
 export type AdoptionReport = components['schemas']['AdoptionReport']
 export type AdoptionResource = components['schemas']['AdoptionResource']
 export type AdoptionPerson = components['schemas']['AdoptionPerson']
@@ -28,6 +37,14 @@ api.use({
     return request
   },
 })
+
+/** The server's reason for refusing a request (problem details), or a plain fallback. */
+export function reason(error: unknown, response: Response, fallback = 'That didn\'t work.') {
+  const detail = error && typeof error === 'object' && 'detail' in error ? (error as { detail?: unknown }).detail : undefined
+  if (typeof detail === 'string' && detail) return detail
+  if (response.status === 403) return 'Only chapter leads and co-leads can change this.'
+  return `${fallback} (HTTP ${response.status})`
+}
 
 /** Starts Google sign-in (a full-page redirect through Spring Security). */
 export const signIn = () => window.location.assign('/oauth2/authorization/google')

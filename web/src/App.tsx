@@ -26,7 +26,10 @@ export function App() {
             <Routes>
               <Route path="/chapters/:code" element={<ChapterPage me={session.me} tab="overview" />} />
               <Route path="/chapters/:code/members" element={<ChapterPage me={session.me} tab="members" />} />
+              <Route path="/chapters/:code/projects" element={<ChapterPage me={session.me} tab="projects" />} />
+              <Route path="/chapters/:code/projects/:slug" element={<ChapterPage me={session.me} tab="projects" />} />
               <Route path="/chapters/:code/adoption" element={<ChapterPage me={session.me} tab="adoption" />} />
+              <Route path="/chapters/:code/settings" element={<ChapterPage me={session.me} tab="settings" />} />
               <Route
                 path="*"
                 element={session.me.chapters.length > 0 ? <Navigate to={`/chapters/${session.me.chapters[0]!.code}`} replace /> : <NoAccess me={session.me} />}

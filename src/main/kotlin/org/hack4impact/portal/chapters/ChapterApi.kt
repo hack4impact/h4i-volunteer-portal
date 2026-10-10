@@ -26,6 +26,8 @@ data class ChapterOverview(
 	val role: String,
 	val stats: ChapterStats,
 	val registrationLink: String,
+	/** Notion route pages the integration couldn't reach at the last check (PRD: flagged on the dashboard). */
+	val notionProblems: Int,
 )
 
 data class ChapterStats(val activeMembers: Int, val alumni: Int, val liveProjects: Int, val leads: Int)
@@ -68,9 +70,10 @@ data class ToolSync(
 	val drift: Int,
 	val unmatchedAccounts: Int,
 	val missingResources: Int,
+	val creates: Int,
 )
 
-/** [kind] is add, change, remove, drift, unmatched_account or missing_resource. */
+/** [kind] is add, change, remove, drift, unmatched_account, missing_resource or create_resource. */
 data class PlannedChange(
 	val kind: String,
 	val tool: String,

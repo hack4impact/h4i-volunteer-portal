@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.hack4impact.portal.notion.NotionClient
 import org.hack4impact.portal.resolver.Tool
 import java.io.File
 import java.net.http.HttpClient
@@ -32,6 +33,7 @@ data class AdapterProperties(
 	val slack: Slack = Slack(),
 	val google: Google = Google(),
 	val vaultwarden: Vaultwarden = Vaultwarden(),
+	val notion: Notion = Notion(),
 ) {
 	data class GitHub(
 		val enabled: Boolean = false,
@@ -55,6 +57,9 @@ data class AdapterProperties(
 		/** Regex: only matching groups (email or name) are read or, from step 9, written. Empty = every group (production). */
 		val groupScope: String = "",
 	)
+
+	/** An internal Notion integration's secret, shared with the chapters' parent pages (Notion routes, step 8). */
+	data class Notion(val enabled: Boolean = false, val baseUrl: String = "https://api.notion.com/v1", val token: String = "")
 
 	data class Vaultwarden(
 		val enabled: Boolean = false,
@@ -105,6 +110,10 @@ class AdapterConfiguration {
 			http,
 		)
 	}
+
+	@Bean
+	@ConditionalOnBooleanProperty("portal.adapters.notion.enabled")
+	fun notionClient(p: AdapterProperties) = NotionClient(p.notion.baseUrl.trimEnd('/'), required("notion.token", p.notion.token))
 
 	/** An HTTP client that trusts only the CA certificate at [pemPath]. */
 	private fun trusting(pemPath: String): HttpClient {

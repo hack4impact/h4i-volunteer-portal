@@ -1,7 +1,7 @@
-import { Link as PrimerLink } from '@primer/react'
+import { Banner, Link as PrimerLink } from '@primer/react'
 import { Link } from 'react-router'
 import { type ChapterOverview, type ChapterSync, type MemberRow } from '../api/client'
-import { ROLE_LABEL, Status, TOOL_NAME } from '../components/Status'
+import { CHANGE_LABEL, ROLE_LABEL, Status, TOOL_NAME } from '../components/Status'
 
 const TOOLS = ['google', 'github', 'slack', 'notion', 'vaultwarden']
 
@@ -12,6 +12,13 @@ export function Overview({ chapter, members, sync }: { chapter: ChapterOverview;
   return (
     <div className="page-body">
       <main style={{ display: 'grid', gap: 24, alignContent: 'start' }}>
+        {chapter.notionProblems > 0 && (
+          <Banner
+            title="Notion routes need attention"
+            description={<>{chapter.notionProblems} Notion {chapter.notionProblems === 1 ? 'page is' : 'pages are'} out of the portal's reach, so new projects can't get pages there. <Link to={`/chapters/${chapter.code}/settings`}>Check the Notion routes</Link>.</>}
+            variant="warning"
+          />
+        )}
         <section className="box" aria-labelledby="leads">
           <div className="box-head" id="leads">Leads and viewers</div>
           {leads.length === 0 ? (
@@ -71,15 +78,6 @@ export function Overview({ chapter, members, sync }: { chapter: ChapterOverview;
       </aside>
     </div>
   )
-}
-
-const CHANGE_LABEL: Record<string, string> = {
-  add: 'Add',
-  change: 'Change access',
-  remove: 'Remove',
-  drift: 'Not granted by the portal',
-  unmatched_account: 'Account not linked to anyone',
-  missing_resource: 'Missing in the tool',
 }
 
 /** The latest dry run per tool. Nothing is applied yet: these are the changes a real run would make. */

@@ -4,6 +4,9 @@ import org.hack4impact.portal.adapters.AdapterException
 import org.hack4impact.portal.adapters.NotFound
 import org.hack4impact.portal.adapters.ReadAdapter
 import org.hack4impact.portal.db.tables.references.AUDIT_EVENT
+import org.hack4impact.portal.db.tables.references.CHAPTER_RESOURCE
+import org.hack4impact.portal.db.tables.references.PROJECT
+import org.hack4impact.portal.db.tables.references.PROJECT_RESOURCE
 import org.hack4impact.portal.db.tables.references.RESOURCE
 import org.hack4impact.portal.db.tables.references.SYNC_CHANGE
 import org.hack4impact.portal.db.tables.references.SYNC_RECORD
@@ -20,6 +23,7 @@ import org.hack4impact.portal.resolver.Resolver
 import org.hack4impact.portal.resolver.Tool
 import org.jooq.DSLContext
 import org.jooq.JSONB
+import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionTemplate
@@ -38,6 +42,8 @@ data class ToolRunReport(
 	val drift: Int = 0,
 	val unmatchedAccounts: Int = 0,
 	val missingResources: Int = 0,
+	/** Resources that exist only in the portal so far, which a real run would create first. */
+	val creates: Int = 0,
 	/** Why a real (writing) run would stop for national's confirmation: the blast-radius limit. */
 	val wouldPause: String? = null,
 	val error: String? = null,
@@ -60,7 +66,7 @@ class SyncEngine(
 
 	private data class ManagedResource(val id: UUID, val externalId: String)
 
-	private data class Actual(val memberships: List<Membership>, val unmatched: List<Pair<UUID, String>>, val missing: List<UUID>)
+	private data class Actual(val memberships: List<Membership>, val unmatched: List<Pair<UUID, String>>, val missing: List<UUID>, val toCreate: List<UUID>)
 
 	fun dryRun(trigger: String, tools: Set<Tool>? = null): List<ToolRunReport> {
 		val loaded = worlds.load()
@@ -100,7 +106,7 @@ class SyncEngine(
 		val runId = transactions.execute { record(tool, trigger, plan, actual, desired, wouldPause) }!!
 		return ToolRunReport(
 			tool, runId, if (wouldPause == null) "completed" else "paused",
-			plan.adds.size, plan.changes.size, plan.removals.size, plan.drift.size, actual.unmatched.size, actual.missing.size, wouldPause,
+			plan.adds.size, plan.changes.size, plan.removals.size, plan.drift.size, actual.unmatched.size, actual.missing.size, actual.toCreate.size, wouldPause,
 		)
 	}
 
@@ -130,7 +136,16 @@ class SyncEngine(
 				if (person == null) unmatched += resource.id to member.accountId else memberships += Membership(person, resource.id, member.access)
 			}
 		}
-		return Actual(memberships, unmatched, missing)
+		// Portal-made resources not created in the tool yet, if a live project or the chapter uses them.
+		val toCreate = dsl.select(RESOURCE.ID).from(RESOURCE)
+			.where(
+				RESOURCE.TOOL.eq(tool), RESOURCE.EXTERNAL_ID.isNull, RESOURCE.ARCHIVED_AT.isNull, RESOURCE.MANAGED.eq("portal"),
+				DSL.exists(DSL.selectOne().from(PROJECT_RESOURCE).join(PROJECT).on(PROJECT.ID.eq(PROJECT_RESOURCE.PROJECT_ID))
+					.where(PROJECT_RESOURCE.RESOURCE_ID.eq(RESOURCE.ID), PROJECT.STATUS.`in`("active", "paused")))
+					.or(DSL.exists(DSL.selectOne().from(CHAPTER_RESOURCE).where(CHAPTER_RESOURCE.RESOURCE_ID.eq(RESOURCE.ID)))),
+			)
+			.fetch(RESOURCE.ID).filterNotNull()
+		return Actual(memberships, unmatched, missing, toCreate)
 	}
 
 	/** Why a writing run would pause for national: too many removals overall, or too large a share of one resource. */
@@ -157,6 +172,7 @@ class SyncEngine(
 			plan.drift.forEach { add(change("drift", it.personId, it.resourceId, from = it.access)) }
 			actual.unmatched.forEach { (resource, account) -> add(change("unmatched_account", null, resource, account = account)) }
 			actual.missing.forEach { add(change("missing_resource", null, it)) }
+			actual.toCreate.forEach { add(change("create_resource", null, it)) }
 		}
 		dsl.batch(queries).execute()
 

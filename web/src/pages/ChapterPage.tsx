@@ -7,10 +7,15 @@ import { TopBar } from '../components/TopBar'
 import { Adoption } from './Adoption'
 import { MembersTable } from './MembersTable'
 import { Overview } from './Overview'
+import { ProjectPage } from './ProjectPage'
+import { Projects } from './Projects'
+import { Settings } from './Settings'
 
-/** One chapter: page header, tabs, and the tab's content. Everything here is read-only in step 5. */
-export function ChapterPage({ me, tab }: { me: Me; tab: 'overview' | 'members' | 'adoption' }) {
-  const { code = '' } = useParams()
+export type ChapterTab = 'overview' | 'members' | 'projects' | 'adoption' | 'settings'
+
+/** One chapter: page header, tabs, and the tab's content. A project's page sits under the Projects tab. */
+export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
+  const { code = '', slug } = useParams()
   const { pathname } = useLocation()
   const [chapter, setChapter] = useState<ChapterOverview | null>(null)
   const [members, setMembers] = useState<MemberRow[] | null>(null)
@@ -33,7 +38,9 @@ export function ChapterPage({ me, tab }: { me: Me; tab: 'overview' | 'members' |
   const tabs = [
     { key: 'overview', label: 'Overview', to: `/chapters/${code}` },
     { key: 'members', label: 'Members', to: `/chapters/${code}/members`, count: members?.length },
+    { key: 'projects', label: 'Projects', to: `/chapters/${code}/projects` },
     { key: 'adoption', label: 'Adoption', to: `/chapters/${code}/adoption` },
+    { key: 'settings', label: 'Settings', to: `/chapters/${code}/settings` },
   ]
 
   return (
@@ -67,6 +74,12 @@ export function ChapterPage({ me, tab }: { me: Me; tab: 'overview' | 'members' |
             <Overview chapter={chapter} members={members} sync={sync} />
           ) : tab === 'members' ? (
             <MembersTable members={members} />
+          ) : tab === 'projects' && slug ? (
+            <ProjectPage code={chapter.code} slug={slug} members={members} />
+          ) : tab === 'projects' ? (
+            <Projects code={chapter.code} canEdit={['lead', 'co_lead', 'national'].includes(chapter.role)} />
+          ) : tab === 'settings' ? (
+            <Settings code={chapter.code} />
           ) : (
             <Adoption code={chapter.code} />
           )}

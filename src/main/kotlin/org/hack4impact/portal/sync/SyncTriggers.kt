@@ -63,7 +63,7 @@ class SyncDryRunOnce(private val engine: SyncEngine, private val context: Config
 			reports.forEach { r ->
 				appendLine("== ${r.tool}: ${r.status}${r.error?.let { " ($it)" } ?: ""}")
 				if (r.error == null) {
-					appendLine("   add ${r.adds} · change ${r.changes} · remove ${r.removals} · drift ${r.drift} · unmatched accounts ${r.unmatchedAccounts} · missing resources ${r.missingResources}")
+					appendLine("   add ${r.adds} · change ${r.changes} · remove ${r.removals} · drift ${r.drift} · unmatched accounts ${r.unmatchedAccounts} · missing resources ${r.missingResources} · create ${r.creates}")
 					r.wouldPause?.let { appendLine("   a real run would pause: $it") }
 					appendLine("   details: sync_change where run_id = ${r.runId}")
 				}

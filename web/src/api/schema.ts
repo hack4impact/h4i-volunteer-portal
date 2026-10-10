@@ -4,6 +4,166 @@
  */
 
 export interface paths {
+    "/api/chapters/{code}/projects/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get"];
+        put: operations["update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/resources/{resourceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateResource"];
+        post?: never;
+        delete: operations["detach"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/members/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["setRole"];
+        post?: never;
+        delete: operations["removeMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/notion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_1"];
+        put: operations["put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/sync/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["runDryRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list"];
+        put?: never;
+        post: operations["create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["status"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["attach"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["addMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/notion/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chapters/{code}/adoption/resources/{id}": {
         parameters: {
             query?: never;
@@ -27,7 +187,23 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["status"];
+        get: operations["status_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/project-roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["roles"];
         put?: never;
         post?: never;
         delete?: never;
@@ -68,6 +244,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chapters/{code}/terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["terms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chapters/{code}/sync": {
         parameters: {
             query?: never;
@@ -76,6 +268,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["sync"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["resources"];
         put?: never;
         post?: never;
         delete?: never;
@@ -136,6 +344,173 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ProjectInput: {
+            name: string;
+            slug: string | null;
+            type: string | null;
+            tags: string[];
+            /** Format: uuid */
+            termId: string | null;
+            partner: string | null;
+            /** Format: date */
+            startsOn: string | null;
+            /** Format: date */
+            endsOn: string | null;
+        };
+        AccessPreview: {
+            /** Format: int32 */
+            people: number;
+            /** Format: int32 */
+            grants: number;
+            /** Format: int32 */
+            awaitingAgreement: number;
+            asIfActive: boolean;
+        };
+        ActivityRow: {
+            /** Format: date-time */
+            at: string;
+            actor: string | null;
+            action: string;
+            detail: string | null;
+        };
+        NotionPlan: {
+            status: string;
+            title: string;
+            pageId: string | null;
+            parentPageId: string | null;
+            parentPath: string | null;
+            matchedBy: string | null;
+        };
+        PlannedChange: {
+            kind: string;
+            tool: string;
+            resource: string;
+            person: string | null;
+            accountId: string | null;
+            fromAccess: string | null;
+            toAccess: string | null;
+        };
+        ProjectDetail: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            status: string;
+            type: string | null;
+            tags: string[];
+            /** Format: uuid */
+            termId: string | null;
+            term: string | null;
+            partner: string | null;
+            /** Format: date */
+            startsOn: string | null;
+            /** Format: date */
+            endsOn: string | null;
+            members: components["schemas"]["ProjectMemberRow"][];
+            resources: components["schemas"]["ProjectResourceRow"][];
+            /** Format: int32 */
+            agreementsSigned: number;
+            notion: components["schemas"]["NotionPlan"];
+            preview: components["schemas"]["AccessPreview"];
+            planned: components["schemas"]["PlannedChange"][];
+            /** Format: date-time */
+            lastDryRunAt: string | null;
+            plannedOutOfDate: boolean;
+            activity: components["schemas"]["ActivityRow"][];
+            canEdit: boolean;
+        };
+        ProjectMemberRow: {
+            /** Format: uuid */
+            personId: string;
+            name: string;
+            email: string | null;
+            status: string;
+            /** Format: uuid */
+            roleId: string | null;
+            role: string | null;
+            agreementStatus: string;
+            lead: boolean;
+        };
+        ProjectResourceRow: {
+            /** Format: uuid */
+            resourceId: string;
+            tool: string;
+            name: string;
+            state: string;
+            audience: string;
+            /** Format: uuid */
+            roleId: string | null;
+            role: string | null;
+            access: string;
+            requiresAgreement: boolean;
+            tags: string[];
+            sharedWith: string[];
+            existsInTool: boolean;
+            /** Format: int32 */
+            getting: number;
+            /** Format: int32 */
+            awaitingAgreement: number;
+        };
+        ResourceInput: {
+            /** Format: uuid */
+            resourceId: string | null;
+            tool: string | null;
+            name: string | null;
+            audience: string;
+            /** Format: uuid */
+            roleId: string | null;
+            access: string;
+            requiresAgreement: boolean;
+            tags: string[];
+        };
+        MemberRoleInput: {
+            /** Format: uuid */
+            roleId: string | null;
+        };
+        NotionRouteInput: {
+            kind: string;
+            value: string;
+            parent: string;
+        };
+        NotionSettingsInput: {
+            teamspaceId: string | null;
+            defaultParent: string | null;
+            template: string | null;
+            titlePattern: string;
+            routes: components["schemas"]["NotionRouteInput"][];
+        };
+        NotionPageRef: {
+            pageId: string;
+            path: string | null;
+            error: string | null;
+            /** Format: date-time */
+            checkedAt: string | null;
+        };
+        NotionRouteView: {
+            kind: string;
+            value: string;
+            parent: components["schemas"]["NotionPageRef"];
+        };
+        NotionSettingsView: {
+            configured: boolean;
+            teamspaceId: string | null;
+            defaultParent: components["schemas"]["NotionPageRef"] | null;
+            template: components["schemas"]["NotionPageRef"] | null;
+            titlePattern: string;
+            routes: components["schemas"]["NotionRouteView"][];
+            /** Format: int32 */
+            problems: number;
+            canEdit: boolean;
+        };
+        StatusChange: {
+            status: string;
+        };
+        MemberInput: {
+            /** Format: uuid */
+            personId: string;
+            /** Format: uuid */
+            roleId: string | null;
+        };
         AdoptionDecision: {
             action: string;
             target: string | null;
@@ -196,6 +571,12 @@ export interface components {
             service: string;
             version: string;
         };
+        ProjectRoleOption: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            lead: boolean;
+        };
         ChapterRef: {
             /** Format: uuid */
             id: string;
@@ -220,6 +601,8 @@ export interface components {
             role: string;
             stats: components["schemas"]["ChapterStats"];
             registrationLink: string;
+            /** Format: int32 */
+            notionProblems: number;
         };
         ChapterStats: {
             /** Format: int32 */
@@ -231,18 +614,14 @@ export interface components {
             /** Format: int32 */
             leads: number;
         };
+        TermOption: {
+            /** Format: uuid */
+            id: string;
+            label: string;
+        };
         ChapterSync: {
             tools: components["schemas"]["ToolSync"][];
             changes: components["schemas"]["PlannedChange"][];
-        };
-        PlannedChange: {
-            kind: string;
-            tool: string;
-            resource: string;
-            person: string | null;
-            accountId: string | null;
-            fromAccess: string | null;
-            toAccess: string | null;
         };
         ToolSync: {
             tool: string;
@@ -263,6 +642,33 @@ export interface components {
             unmatchedAccounts: number;
             /** Format: int32 */
             missingResources: number;
+            /** Format: int32 */
+            creates: number;
+        };
+        ChapterResourceOption: {
+            /** Format: uuid */
+            id: string;
+            tool: string;
+            name: string;
+            state: string;
+            projects: string[];
+        };
+        ProjectSummary: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            status: string;
+            type: string | null;
+            tags: string[];
+            term: string | null;
+            partner: string | null;
+            /** Format: int32 */
+            members: number;
+            /** Format: int32 */
+            resources: number;
+            /** Format: date-time */
+            updatedAt: string;
         };
         AccountSummary: {
             tool: string;
@@ -306,6 +712,379 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    updateResource: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResourceInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    detach: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    setRole: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberRoleInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    removeMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    get_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["NotionSettingsView"];
+                };
+            };
+        };
+    };
+    put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotionSettingsInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["NotionSettingsView"];
+                };
+            };
+        };
+    };
+    runDryRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectSummary"][];
+                };
+            };
+        };
+    };
+    create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    attach: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResourceInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    addMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    check: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["NotionSettingsView"];
+                };
+            };
+        };
+    };
     people: {
         parameters: {
             query?: never;
@@ -356,7 +1135,7 @@ export interface operations {
             };
         };
     };
-    status: {
+    status_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -372,6 +1151,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["StatusResponse"];
+                };
+            };
+        };
+    };
+    roles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectRoleOption"][];
                 };
             };
         };
@@ -418,6 +1217,28 @@ export interface operations {
             };
         };
     };
+    terms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TermOption"][];
+                };
+            };
+        };
+    };
     sync: {
         parameters: {
             query?: never;
@@ -436,6 +1257,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ChapterSync"];
+                };
+            };
+        };
+    };
+    resources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ChapterResourceOption"][];
                 };
             };
         };

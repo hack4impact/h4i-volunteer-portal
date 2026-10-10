@@ -2,6 +2,7 @@ package org.hack4impact.portal.chapters
 
 import org.hack4impact.portal.auth.Viewers
 import org.hack4impact.portal.auth.requireChapter
+import org.hack4impact.portal.notion.NotionSettings
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -18,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException
 class ChapterController(
 	private val viewers: Viewers,
 	private val chapters: ChapterQueries,
+	private val notion: NotionSettings,
 	@Value("\${portal.join-base-url}") private val joinBaseUrl: String,
 ) {
 	@GetMapping("/me")
@@ -34,6 +36,7 @@ class ChapterController(
 			role = viewer.chapterRoles[chapter.id] ?: "national",
 			stats = chapters.stats(chapter.id),
 			registrationLink = "${joinBaseUrl.trimEnd('/')}/${chapter.code}",
+			notionProblems = notion.view(chapter.id, false).problems,
 		)
 	}
 
