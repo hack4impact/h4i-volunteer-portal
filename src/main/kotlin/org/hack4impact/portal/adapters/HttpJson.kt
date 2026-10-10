@@ -58,9 +58,15 @@ class HttpJson(
 			status == 401 || status == 403 -> throw AuthFailed(tool, "$path: HTTP $status")
 			status == 404 -> throw NotFound(tool, path)
 			status >= 500 -> throw Unavailable(tool, "$path: HTTP $status")
-			status >= 400 -> throw Rejected(tool, "$path: HTTP $status")
+			status >= 400 -> throw Rejected(tool, "$path: HTTP $status${errorMessage(body)?.let { " ($it)" } ?: ""}")
 		}
 		return Response(status, response.headers(), body)
+	}
+
+	/** The tool's own explanation, when it gives one (Google: error.message; Slack and OAuth: error). */
+	private fun errorMessage(body: JsonNode): String? {
+		val error = body.path("error")
+		return (error.text("message") ?: error.takeIf { it.isString }?.asString() ?: body.text("message"))?.take(200)
 	}
 
 	// GitHub signals exhausted rate limits with 403 and x-ratelimit-remaining: 0; Google with a rateLimitExceeded reason.

@@ -1,9 +1,11 @@
 package org.hack4impact.portal.adapters.vaultwarden
 
 import org.hack4impact.portal.adapters.AccountState
+import org.hack4impact.portal.adapters.AuthFailed
 import org.hack4impact.portal.adapters.HttpJson
 import org.hack4impact.portal.adapters.NotFound
 import org.hack4impact.portal.adapters.ReadAdapter
+import org.hack4impact.portal.adapters.Rejected
 import org.hack4impact.portal.adapters.ResourceMember
 import org.hack4impact.portal.adapters.ToolAccount
 import org.hack4impact.portal.adapters.ToolResource
@@ -81,7 +83,15 @@ class VaultwardenApiKeyToken(
 	@Synchronized
 	override fun invoke(): String {
 		cached?.let { (token, expires) -> if (clock.instant().isBefore(expires.minusSeconds(60))) return token }
-		val body = http.postForm("$baseUrl/identity/connect/token", mapOf(
+		// A wrong client ID or secret is HTTP 400 invalid_client here, not 401: report it as bad credentials.
+		val body = try { requestToken() } catch (e: Rejected) { throw AuthFailed(Tool.VAULTWARDEN, "API key rejected (${e.message})") }
+		val token = body.text("access_token")!!
+		cached = token to clock.instant().plusSeconds(body.path("expires_in").asLong(3600))
+		return token
+	}
+
+	private fun requestToken() =
+		http.postForm("$baseUrl/identity/connect/token", mapOf(
 			"grant_type" to "client_credentials",
 			"scope" to "api",
 			"client_id" to clientId,
@@ -90,8 +100,4 @@ class VaultwardenApiKeyToken(
 			"device_name" to "h4i-portal",
 			"device_type" to "21",
 		)).body
-		val token = body.text("access_token")!!
-		cached = token to clock.instant().plusSeconds(body.path("expires_in").asLong(3600))
-		return token
-	}
 }

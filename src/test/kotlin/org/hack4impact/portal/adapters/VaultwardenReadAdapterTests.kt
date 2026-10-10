@@ -66,6 +66,13 @@ class VaultwardenReadAdapterTests : WireMockContract() {
 	}
 
 	@Test
+	fun `a rejected API key (400 invalid_client) is AuthFailed`() {
+		server.stubFor(post(urlEqualTo("/identity/connect/token")).willReturn(aResponse().withStatus(400).withBody("""{"error":"invalid_client"}""")))
+		val tokens = VaultwardenApiKeyToken(server.baseUrl(), "user.abc", "wrong", "device-1")
+		kotlin.test.assertFailsWith<AuthFailed> { tokens() }
+	}
+
+	@Test
 	fun `the API key token sends Vaultwarden's required fields and is reused until it expires`() {
 		server.stubFor(post(urlEqualTo("/identity/connect/token")).willReturn(aResponse().withBody("""{"access_token":"vw-token","expires_in":3600,"token_type":"Bearer"}""")))
 		val clock = Clock.fixed(Instant.parse("2026-10-09T12:00:00Z"), ZoneOffset.UTC)

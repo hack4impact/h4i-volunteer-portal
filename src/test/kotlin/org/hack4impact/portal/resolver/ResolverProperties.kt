@@ -121,8 +121,12 @@ class ResolverProperties {
 	fun `people pending removal keep at least what they'd have as active members`(@ForAll("worlds") world: World): Boolean {
 		val flagged = world.people.filter { it.status == PersonStatus.REMOVAL_REQUESTED }.map { it.id }.toSet()
 		val asActive = world.copy(people = world.people.map { if (it.id in flagged) it.copy(status = PersonStatus.ACTIVE) else it })
-		fun pairs(r: Resolution) = r.grants.filter { it.personId in flagged }.map { Triple(it.personId, it.resourceId, it.access) }.toSet()
-		return pairs(Resolver.resolve(world)).containsAll(pairs(Resolver.resolve(asActive)))
+		// "At least": same resources, equal or stronger access. A rule can target pending removal specifically
+		// with stronger access than active members get, so exact equality would be wrong.
+		val pending = Resolver.resolve(world).grants.filter { it.personId in flagged }.associate { (it.personId to it.resourceId) to it.access }
+		return Resolver.resolve(asActive).grants.filter { it.personId in flagged }.all { g ->
+			pending[g.personId to g.resourceId]?.let { it >= g.access } == true
+		}
 	}
 
 	@Property

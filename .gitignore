@@ -47,3 +47,6 @@ out/
 
 ### jqwik (local failure replay) ###
 .jqwik-database
+
+### Local credential files (sandbox keys) ###
+secrets/

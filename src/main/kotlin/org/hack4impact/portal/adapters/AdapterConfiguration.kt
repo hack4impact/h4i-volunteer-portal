@@ -12,7 +12,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.hack4impact.portal.resolver.Tool
 import java.io.File
+import java.net.http.HttpClient
+import java.security.KeyStore
+import java.security.cert.CertificateFactory
+import java.time.Duration
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManagerFactory
 
 /**
  * Tool credentials. As environment variables (from the vault, wiki decision 30) the names drop the dashes, e.g.
@@ -53,6 +60,8 @@ data class AdapterProperties(
 		val clientId: String = "",
 		val clientSecret: String = "",
 		val deviceId: String = "h4i-portal",
+		/** Staging only: a CA certificate (PEM path) to trust instead of the JDK's, e.g. the localhost-only staging CA. */
+		val trustedCertificate: String = "",
 	)
 }
 
@@ -83,7 +92,24 @@ class AdapterConfiguration {
 	@ConditionalOnBooleanProperty("portal.adapters.vaultwarden.enabled")
 	fun vaultwardenReadAdapter(p: AdapterProperties): ReadAdapter = with(p.vaultwarden) {
 		val url = required("vaultwarden.base-url", baseUrl).trimEnd('/')
-		VaultwardenReadAdapter(url, required("vaultwarden.organization-id", organizationId), VaultwardenApiKeyToken(url, required("vaultwarden.client-id", clientId), required("vaultwarden.client-secret", clientSecret), deviceId))
+		val http = if (trustedCertificate.isBlank()) HttpJson(Tool.VAULTWARDEN) else HttpJson(Tool.VAULTWARDEN, client = trusting(trustedCertificate))
+		VaultwardenReadAdapter(
+			url, required("vaultwarden.organization-id", organizationId),
+			VaultwardenApiKeyToken(url, required("vaultwarden.client-id", clientId), required("vaultwarden.client-secret", clientSecret), deviceId, http),
+			http,
+		)
+	}
+
+	/** An HTTP client that trusts only the CA certificate at [pemPath]. */
+	private fun trusting(pemPath: String): HttpClient {
+		val certificate = File(pemPath).inputStream().use { CertificateFactory.getInstance("X.509").generateCertificate(it) }
+		val store = KeyStore.getInstance(KeyStore.getDefaultType()).apply {
+			load(null)
+			setCertificateEntry("trusted", certificate)
+		}
+		val trust = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(store) }
+		val tls = SSLContext.getInstance("TLS").apply { init(null, trust.trustManagers, null) }
+		return HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(10)).sslContext(tls).build()
 	}
 
 	private fun required(name: String, value: String) = value.ifBlank { error("portal.adapters.$name must be set when the adapter is enabled") }

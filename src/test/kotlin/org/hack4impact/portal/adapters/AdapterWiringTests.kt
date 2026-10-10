@@ -46,6 +46,16 @@ class AdapterWiringTests {
 	}
 
 	@Test
+	fun `Vaultwarden can trust a staging CA certificate`() {
+		env(
+			"PORTAL_ADAPTERS_VAULTWARDEN_ENABLED" to "true", "PORTAL_ADAPTERS_VAULTWARDEN_BASEURL" to "https://localhost:8443",
+			"PORTAL_ADAPTERS_VAULTWARDEN_ORGANIZATIONID" to "org-1", "PORTAL_ADAPTERS_VAULTWARDEN_CLIENTID" to "user.abc",
+			"PORTAL_ADAPTERS_VAULTWARDEN_CLIENTSECRET" to "secret",
+			"PORTAL_ADAPTERS_VAULTWARDEN_TRUSTEDCERTIFICATE" to "src/test/resources/tls/test-ca.crt",
+		).run { ctx -> assertEquals(Tool.VAULTWARDEN, ctx.getBean(ReadAdapter::class.java).tool) }
+	}
+
+	@Test
 	fun `an enabled adapter without credentials fails at startup, naming the missing setting`() {
 		env("PORTAL_ADAPTERS_SLACK_ENABLED" to "true").run { ctx ->
 			assertContains(ctx.startupFailure.toString(), "portal.adapters.slack.bot-token must be set")
