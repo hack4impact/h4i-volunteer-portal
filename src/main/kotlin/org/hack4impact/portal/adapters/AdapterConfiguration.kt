@@ -36,6 +36,7 @@ data class AdapterProperties(
 	data class GitHub(
 		val enabled: Boolean = false,
 		val baseUrl: String = "https://api.github.com",
+		/** The national organization (wiki decision 78); chapter organizations are imported later. */
 		val org: String = "",
 		val appId: String = "",
 		val installationId: String = "",

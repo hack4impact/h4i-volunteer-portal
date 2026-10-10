@@ -27,9 +27,9 @@ class GitHubReadAdapterTests : WireMockContract() {
 		),
 		mapOf(
 			ToolResource("umd-rise-dc", "umd-rise-dc") to listOf(
-				ResourceMember("1001", Access.ADMIN), ResourceMember("1002", Access.WRITE), ResourceMember("1003", Access.WRITE),
+				ResourceMember("1001", Access.ADMIN, "ada"), ResourceMember("1002", Access.WRITE, "alan"), ResourceMember("1003", Access.WRITE, "grace"),
 			),
-			ToolResource("umd-rise-dc-leads", "UMD RISE DC leads") to listOf(ResourceMember("1001", Access.ADMIN)),
+			ToolResource("umd-rise-dc-leads", "UMD RISE DC leads") to listOf(ResourceMember("1001", Access.ADMIN, "ada")),
 		),
 	)
 
@@ -38,7 +38,7 @@ class GitHubReadAdapterTests : WireMockContract() {
 		paged("/orgs/$org/invitations", sandbox.accounts.filter { it.externalId == null }.map { """{"id":9,"login":${str(it.login)},"email":${str(it.email)}}""" })
 		paged("/orgs/$org/teams", sandbox.resources.keys.map { """{"id":1,"slug":"${it.externalId}","name":"${it.name}"}""" })
 		for ((team, members) in sandbox.resources) {
-			paged("/orgs/$org/teams/${team.externalId}/members?role=all", members.map { """{"login":"x","id":${it.accountId}}""" })
+			paged("/orgs/$org/teams/${team.externalId}/members?role=all", members.map { """{"login":${str(it.login)},"id":${it.accountId}}""" })
 			paged("/orgs/$org/teams/${team.externalId}/members?role=maintainer", members.filter { it.access == Access.ADMIN }.map { """{"login":"x","id":${it.accountId}}""" })
 		}
 		return GitHubReadAdapter(server.baseUrl(), org, { token }, pageSize = 2)

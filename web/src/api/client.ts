@@ -5,6 +5,10 @@ export type Me = components['schemas']['Me']
 export type ChapterOverview = components['schemas']['ChapterOverview']
 export type MemberRow = components['schemas']['MemberRow']
 export type ChapterSync = components['schemas']['ChapterSync']
+export type AdoptionReport = components['schemas']['AdoptionReport']
+export type AdoptionResource = components['schemas']['AdoptionResource']
+export type AdoptionPerson = components['schemas']['AdoptionPerson']
+export type UnmatchedResource = components['schemas']['UnmatchedResource']
 
 /** Typed client for the portal API; types come from web/openapi.json (`npm run gen:api`). */
 export const api = createClient<paths>({

@@ -4,11 +4,12 @@ import { Link, useLocation, useParams } from 'react-router'
 import { api, type ChapterOverview, type ChapterSync, type Me, type MemberRow } from '../api/client'
 import { ROLE_LABEL } from '../components/Status'
 import { TopBar } from '../components/TopBar'
+import { Adoption } from './Adoption'
 import { MembersTable } from './MembersTable'
 import { Overview } from './Overview'
 
 /** One chapter: page header, tabs, and the tab's content. Everything here is read-only in step 5. */
-export function ChapterPage({ me, tab }: { me: Me; tab: 'overview' | 'members' }) {
+export function ChapterPage({ me, tab }: { me: Me; tab: 'overview' | 'members' | 'adoption' }) {
   const { code = '' } = useParams()
   const { pathname } = useLocation()
   const [chapter, setChapter] = useState<ChapterOverview | null>(null)
@@ -32,6 +33,7 @@ export function ChapterPage({ me, tab }: { me: Me; tab: 'overview' | 'members' }
   const tabs = [
     { key: 'overview', label: 'Overview', to: `/chapters/${code}` },
     { key: 'members', label: 'Members', to: `/chapters/${code}/members`, count: members?.length },
+    { key: 'adoption', label: 'Adoption', to: `/chapters/${code}/adoption` },
   ]
 
   return (
@@ -61,7 +63,13 @@ export function ChapterPage({ me, tab }: { me: Me; tab: 'overview' | 'members' }
               </UnderlineNav>
             </div>
           </div>
-          {tab === 'overview' ? <Overview chapter={chapter} members={members} sync={sync} /> : <MembersTable members={members} />}
+          {tab === 'overview' ? (
+            <Overview chapter={chapter} members={members} sync={sync} />
+          ) : tab === 'members' ? (
+            <MembersTable members={members} />
+          ) : (
+            <Adoption code={chapter.code} />
+          )}
         </>
       )}
     </>

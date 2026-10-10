@@ -33,8 +33,8 @@ class GitHubReadAdapter(
 
 	override fun members(resourceId: String): List<ResourceMember> {
 		val maintainers = pages("/orgs/$org/teams/$resourceId/members?role=maintainer").mapNotNull { it.text("id") }.toSet()
-		return pages("/orgs/$org/teams/$resourceId/members?role=all").mapNotNull { it.text("id") }
-			.map { ResourceMember(it, if (it in maintainers) Access.ADMIN else Access.WRITE) }
+		return pages("/orgs/$org/teams/$resourceId/members?role=all").filter { it.text("id") != null }
+			.map { val id = it.text("id")!!; ResourceMember(id, if (id in maintainers) Access.ADMIN else Access.WRITE, it.text("login")) }
 	}
 
 	/** Follows GitHub's Link header until there's no next page. */

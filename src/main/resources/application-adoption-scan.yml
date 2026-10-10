@@ -1,0 +1,11 @@
+# Build plan step 7: one read-only adoption scan, counts printed, then exit. Details are in the portal's Adoption tab.
+#   ./gradlew bootRun -PenvFile=production-read.env --args='--spring.profiles.active=adoption-scan --portal.adoption.chapters=umd'
+# Optional: --portal.adoption.prefixes.umd=terps   (other prefixes the chapter's channels, teams and groups use)
+#           --portal.adoption.grandfather-until.umd=2026-12-20   (when grandfathered access ends)
+spring:
+  main:
+    web-application-type: none
+
+portal:
+  adoption:
+    scan-once: true

@@ -73,4 +73,44 @@ describe('App', () => {
     await waitFor(() => expect(within(table).queryByText('Alan Alumnus')).not.toBeInTheDocument())
     expect(screen.getByText('1 of 2')).toBeInTheDocument()
   })
+
+  it('shows the adoption report, the people behind a resource, and lets a lead link an unmatched channel', async () => {
+    window.history.pushState({}, '', '/chapters/umd/adoption')
+    const report = (state: string) => ({
+      grandfatheredUntil: null,
+      canEdit: true,
+      projects: [{ id: 'pr1', name: 'RISE DC', slug: 'rise-dc', status: 'active' }],
+      scans: [{ tool: 'slack', status: 'completed', ranAt: '2026-10-10T12:00:00Z', error: null, resourcesFound: 6, coversChapter: true }],
+      resources: [
+        { id: 'r1', tool: 'slack', name: 'umd-food-bank', state: 'matched', target: null, projectId: null, projectName: null, suggestedSlug: 'food-bank', matchMethod: 'convention', archived: false, gone: false, snapshotAt: '2026-10-10T12:00:00Z', expected: 0, grandfathered: 1, unknownAccounts: 0, wouldAdd: 0 },
+        ...(state === 'linked' ? [{ id: 'r2', tool: 'slack', name: 'random', state: 'linked', target: 'chapter_members', projectId: null, projectName: null, suggestedSlug: null, matchMethod: 'manual', archived: false, gone: false, snapshotAt: null, expected: 0, grandfathered: 0, unknownAccounts: 0, wouldAdd: null }] : []),
+      ],
+    })
+    api({
+      '/api/me': [200, me([umd])],
+      '/api/chapters/umd': [200, { id: 'c1', code: 'umd', name: 'Hack4Impact UMD', status: 'active', role: 'lead', stats: { activeMembers: 2, alumni: 1, liveProjects: 1, leads: 1 }, registrationLink: 'https://join.hack4impact.org/umd' }],
+      '/api/chapters/umd/members': [200, []],
+      '/api/chapters/umd/sync': [200, { tools: [], changes: [] }],
+      '/api/chapters/umd/adoption': [200, report('matched')],
+      '/api/chapters/umd/adoption/resources/r1': [200, [{ personId: 'p1', name: 'Lena Lead', login: 'lena', verdict: 'grandfathered', matchedBy: 'id', access: 'write' }]],
+      '/api/adoption/unmatched': [200, [{ id: 'r2', tool: 'slack', name: 'random', archived: false }]],
+      '/api/chapters/umd/adoption/resources/r2': [200, report('linked')],
+    })
+    render(<App />)
+    expect(await screen.findByText('#umd-food-bank')).toBeInTheDocument()
+    expect(screen.getByText(/Needs a decision · no project "food-bank" yet/)).toBeInTheDocument() // status in words
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show people' }))
+    const people = await screen.findByRole('table', { name: 'People' })
+    expect(within(people).getByText('Grandfathered')).toBeInTheDocument()
+
+    const unmatched = screen.getByRole('region', { name: 'Not matched to any chapter' })
+    await userEvent.click(within(unmatched).getByRole('button', { name: 'Link to this chapter' }))
+    await userEvent.click(within(unmatched).getByRole('button', { name: 'Link' }))
+    const post = vi.mocked(fetch).mock.calls.map(([r]) => r as Request).find((r) => r.method === 'POST')!
+    expect(new URL(post.url).pathname).toBe('/api/chapters/umd/adoption/resources/r2')
+    expect(await post.clone().json()).toEqual({ action: 'link', target: 'chapter_members', projectId: null })
+    expect(await screen.findByText('#random')).toBeInTheDocument()
+    expect(screen.getByText(/Linked by hand · chapter members/)).toBeInTheDocument()
+  })
 })

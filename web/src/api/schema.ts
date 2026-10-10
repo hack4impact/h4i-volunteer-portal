@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/api/chapters/{code}/adoption/resources/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["people"];
+        put?: never;
+        post: operations["decide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/status": {
         parameters: {
             query?: never;
@@ -84,10 +100,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chapters/{code}/adoption": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/adoption/unmatched": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["unmatched"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AdoptionDecision: {
+            action: string;
+            target: string | null;
+            /** Format: uuid */
+            projectId: string | null;
+        };
+        AdoptionReport: {
+            /** Format: date */
+            grandfatheredUntil: string | null;
+            scans: components["schemas"]["ScanStatus"][];
+            resources: components["schemas"]["AdoptionResource"][];
+            projects: components["schemas"]["ProjectOption"][];
+            canEdit: boolean;
+        };
+        AdoptionResource: {
+            /** Format: uuid */
+            id: string;
+            tool: string;
+            name: string;
+            state: string;
+            target: string | null;
+            /** Format: uuid */
+            projectId: string | null;
+            projectName: string | null;
+            suggestedSlug: string | null;
+            matchMethod: string | null;
+            archived: boolean;
+            gone: boolean;
+            /** Format: date-time */
+            snapshotAt: string | null;
+            /** Format: int32 */
+            expected: number;
+            /** Format: int32 */
+            grandfathered: number;
+            /** Format: int32 */
+            unknownAccounts: number;
+            /** Format: int32 */
+            wouldAdd: number | null;
+        };
+        ProjectOption: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            status: string;
+        };
+        ScanStatus: {
+            tool: string;
+            status: string;
+            /** Format: date-time */
+            ranAt: string;
+            error: string | null;
+            /** Format: int32 */
+            resourcesFound: number;
+            coversChapter: boolean;
+        };
         StatusResponse: {
             service: string;
             version: string;
@@ -177,6 +281,22 @@ export interface components {
             accounts: components["schemas"]["AccountSummary"][];
             claimed: boolean;
         };
+        AdoptionPerson: {
+            /** Format: uuid */
+            personId: string | null;
+            name: string | null;
+            login: string | null;
+            verdict: string;
+            matchedBy: string | null;
+            access: string | null;
+        };
+        UnmatchedResource: {
+            /** Format: uuid */
+            id: string;
+            tool: string;
+            name: string;
+            archived: boolean;
+        };
     };
     responses: never;
     parameters: never;
@@ -186,6 +306,56 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    people: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdoptionPerson"][];
+                };
+            };
+        };
+    };
+    decide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdoptionDecision"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdoptionReport"];
+                };
+            };
+        };
+    };
     status: {
         parameters: {
             query?: never;
@@ -288,6 +458,48 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["MemberRow"][];
+                };
+            };
+        };
+    };
+    report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdoptionReport"];
+                };
+            };
+        };
+    };
+    unmatched: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["UnmatchedResource"][];
                 };
             };
         };

@@ -1,7 +1,7 @@
 import { Link as PrimerLink } from '@primer/react'
 import { Link } from 'react-router'
 import { type ChapterOverview, type ChapterSync, type MemberRow } from '../api/client'
-import { ROLE_LABEL, Status } from '../components/Status'
+import { ROLE_LABEL, Status, TOOL_NAME } from '../components/Status'
 
 const TOOLS = ['google', 'github', 'slack', 'notion', 'vaultwarden']
 
@@ -34,7 +34,7 @@ export function Overview({ chapter, members, sync }: { chapter: ChapterOverview;
             const linked = active.filter((m) => m.accounts.some((a) => a.tool === tool)).length
             return (
               <div className="box-row" key={tool} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ textTransform: 'capitalize' }}>{tool}</span>
+                <span>{TOOL_NAME[tool] ?? tool}</span>
                 <Status tone={linked === active.length && active.length > 0 ? 'ok' : linked > 0 ? 'warn' : 'off'}>
                   {linked} of {active.length} linked
                 </Status>
@@ -96,7 +96,7 @@ function SyncBox({ sync }: { sync: ChapterSync | null }) {
         <>
           {sync.tools.map((t) => (
             <div className="box-row" key={t.tool} style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-              <span style={{ textTransform: 'capitalize' }}>{t.tool}</span>
+              <span>{TOOL_NAME[t.tool] ?? t.tool}</span>
               <span>
                 <Status tone={t.status === 'completed' ? 'ok' : t.status === 'paused' ? 'warn' : 'danger'}>
                   {t.status === 'completed' ? 'Dry run' : t.status === 'paused' ? 'Paused' : 'Failed'}

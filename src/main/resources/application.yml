@@ -37,6 +37,9 @@ portal:
   # Public address of this deployment, for OAuth redirects, emails and links (wiki decision 31).
   # Staging will probably be https://staging.portal.hack4impact.org; change it here or with PORTAL_BASE_URL only.
   base-url: ${PORTAL_BASE_URL:http://localhost:8080}
+  adoption:
+    # When grandfathered access ends for chapters without their own date (wiki decision 80: end of May for now).
+    default-grandfather-until: ${PORTAL_ADOPTION_DEFAULTGRANDFATHERUNTIL:2027-05-31}
   import:
     member-db:
       url: ${MEMBER_DB_URL:}

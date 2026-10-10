@@ -23,6 +23,9 @@ data class Viewer(
 	val chapterRoles: Map<UUID, String>,
 ) {
 	fun canSee(chapterId: UUID) = nationalAdmin || chapterId in chapterRoles
+
+	/** Leads and co-leads change their chapter's setup; viewers only read (Q9). */
+	fun canManage(chapterId: UUID) = nationalAdmin || chapterRoles[chapterId] in setOf("lead", "co_lead")
 }
 
 /**

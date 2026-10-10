@@ -5,6 +5,85 @@
     "version" : "v0"
   },
   "paths" : {
+    "/api/chapters/{code}/adoption/resources/{id}" : {
+      "get" : {
+        "tags" : [ "adoption-controller" ],
+        "operationId" : "people",
+        "parameters" : [ {
+          "name" : "code",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/AdoptionPerson"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "adoption-controller" ],
+        "operationId" : "decide",
+        "parameters" : [ {
+          "name" : "code",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AdoptionDecision"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdoptionReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/status" : {
       "get" : {
         "tags" : [ "status-controller" ],
@@ -121,10 +200,205 @@
           }
         }
       }
+    },
+    "/api/chapters/{code}/adoption" : {
+      "get" : {
+        "tags" : [ "adoption-controller" ],
+        "operationId" : "report",
+        "parameters" : [ {
+          "name" : "code",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdoptionReport"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/adoption/unmatched" : {
+      "get" : {
+        "tags" : [ "adoption-controller" ],
+        "operationId" : "unmatched",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/UnmatchedResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components" : {
     "schemas" : {
+      "AdoptionDecision" : {
+        "type" : "object",
+        "properties" : {
+          "action" : {
+            "type" : "string"
+          },
+          "target" : {
+            "type" : [ "string", "null" ]
+          },
+          "projectId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          }
+        }
+      },
+      "AdoptionReport" : {
+        "type" : "object",
+        "properties" : {
+          "grandfatheredUntil" : {
+            "type" : [ "string", "null" ],
+            "format" : "date"
+          },
+          "scans" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ScanStatus"
+            }
+          },
+          "resources" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AdoptionResource"
+            }
+          },
+          "projects" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ProjectOption"
+            }
+          },
+          "canEdit" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "AdoptionResource" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "tool" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "target" : {
+            "type" : [ "string", "null" ]
+          },
+          "projectId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "projectName" : {
+            "type" : [ "string", "null" ]
+          },
+          "suggestedSlug" : {
+            "type" : [ "string", "null" ]
+          },
+          "matchMethod" : {
+            "type" : [ "string", "null" ]
+          },
+          "archived" : {
+            "type" : "boolean"
+          },
+          "gone" : {
+            "type" : "boolean"
+          },
+          "snapshotAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          },
+          "expected" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "grandfathered" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "unknownAccounts" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "wouldAdd" : {
+            "type" : [ "integer", "null" ],
+            "format" : "int32"
+          }
+        }
+      },
+      "ProjectOption" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ScanStatus" : {
+        "type" : "object",
+        "properties" : {
+          "tool" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "ranAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "resourcesFound" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "coversChapter" : {
+            "type" : "boolean"
+          }
+        }
+      },
       "StatusResponse" : {
         "type" : "object",
         "properties" : {
@@ -363,6 +637,48 @@
             }
           },
           "claimed" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "AdoptionPerson" : {
+        "type" : "object",
+        "properties" : {
+          "personId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : [ "string", "null" ]
+          },
+          "login" : {
+            "type" : [ "string", "null" ]
+          },
+          "verdict" : {
+            "type" : "string"
+          },
+          "matchedBy" : {
+            "type" : [ "string", "null" ]
+          },
+          "access" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "UnmatchedResource" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "tool" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "archived" : {
             "type" : "boolean"
           }
         }

@@ -41,3 +41,8 @@ body { margin: 0; }
 .muted { color: var(--h4i-fg-muted); font-size: 13px; font-weight: 400; }
 .center { max-width: 520px; margin: 96px auto; padding: 0 16px; text-align: center; }
 .initials { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--h4i-avatar-bg); color: var(--h4i-avatar-fg); font-weight: 600; font-size: 13px; }
+
+/* Small tables inside a box row (adoption people). */
+.plain-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.plain-table th { text-align: left; font-weight: 600; color: var(--h4i-fg-muted); padding: 6px 8px; border-bottom: 1px solid var(--h4i-border); }
+.plain-table td { padding: 6px 8px; border-bottom: 1px solid var(--h4i-border-muted); }

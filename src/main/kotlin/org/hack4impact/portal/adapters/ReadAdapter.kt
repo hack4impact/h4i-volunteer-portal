@@ -39,7 +39,8 @@ enum class AccountState { ACTIVE, INVITED, ACCEPTED, SUSPENDED }
 /** A resource as the tool reports it. [externalId] is what the portal stores (channel ID, team slug, group email, collection ID). */
 data class ToolResource(val externalId: String, val name: String, val archived: Boolean = false)
 
-data class ResourceMember(val accountId: String, val access: Access)
+/** [login] is the login or email the tool shows for the member, when it shows one (GitHub, Google); it helps match people. */
+data class ResourceMember(val accountId: String, val access: Access, val login: String? = null)
 
 /** Failures every adapter reports the same way, so the sync engine can retry, pause or alert without knowing the tool. */
 sealed class AdapterException(val tool: Tool, message: String, cause: Throwable? = null) : RuntimeException("$tool: $message", cause) {

@@ -19,8 +19,10 @@ class GoogleReadAdapterTests : WireMockContract() {
 			ToolAccount("103", "gone@hack4impact.org", "gone@hack4impact.org", "Gone", AccountState.SUSPENDED),
 		),
 		mapOf(
-			ToolResource("umd-rise-dc@hack4impact.org", "UMD RISE DC") to listOf(ResourceMember("101", Access.ADMIN), ResourceMember("102", Access.WRITE)),
-			ToolResource("umd-members@hack4impact.org", "UMD members") to listOf(ResourceMember("101", Access.WRITE), ResourceMember("102", Access.WRITE), ResourceMember("103", Access.WRITE)),
+			ToolResource("umd-rise-dc@hack4impact.org", "UMD RISE DC") to listOf(ResourceMember("101", Access.ADMIN, "ada@hack4impact.org"), ResourceMember("102", Access.WRITE, "alan@hack4impact.org")),
+			ToolResource("umd-members@hack4impact.org", "UMD members") to listOf(
+				ResourceMember("101", Access.WRITE, "ada@hack4impact.org"), ResourceMember("102", Access.WRITE, "alan@hack4impact.org"), ResourceMember("103", Access.WRITE, "gone@hack4impact.org"),
+			),
 		),
 	)
 
@@ -33,7 +35,7 @@ class GoogleReadAdapterTests : WireMockContract() {
 		for ((group, members) in sandbox.resources) {
 			// A nested group is a member too; the adapter leaves it out.
 			paged("$dir/groups/${HttpJson.encode(group.externalId)}/members", "members", members.map {
-				"""{"id":"${it.accountId}","type":"USER","role":"${if (it.access == Access.ADMIN) "MANAGER" else "MEMBER"}"}"""
+				"""{"id":"${it.accountId}","email":${str(it.login)},"type":"USER","role":"${if (it.access == Access.ADMIN) "MANAGER" else "MEMBER"}"}"""
 			} + """{"id":"999","type":"GROUP","role":"MEMBER"}""")
 		}
 		return GoogleReadAdapter(server.baseUrl(), "my_customer", ou, { token }, pageSize = 2)

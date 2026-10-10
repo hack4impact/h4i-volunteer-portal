@@ -25,3 +25,12 @@ export const ROLE_LABEL: Record<string, string> = {
   viewer: 'Viewer',
   national: 'National admin',
 }
+
+export const TOOL_NAME: Record<string, string> = {
+  google: 'Google',
+  github: 'GitHub',
+  slack: 'Slack',
+  notion: 'Notion',
+  vaultwarden: 'Vaultwarden',
+  documenso: 'Documenso',
+}

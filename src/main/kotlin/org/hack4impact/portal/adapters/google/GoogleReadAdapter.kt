@@ -52,7 +52,7 @@ class GoogleReadAdapter(
 		if (!inScope(resourceId, null)) throw Rejected(tool, "group $resourceId is outside portal.adapters.google.group-scope")
 		return pages("$directory/groups/${HttpJson.encode(resourceId)}/members", "members")
 			.filter { it.text("type") == "USER" }
-			.map { ResourceMember(it.text("id")!!, if (it.text("role") in setOf("OWNER", "MANAGER")) Access.ADMIN else Access.WRITE) }
+			.map { ResourceMember(it.text("id")!!, if (it.text("role") in setOf("OWNER", "MANAGER")) Access.ADMIN else Access.WRITE, it.text("email")) }
 	}
 
 	private fun inScope(email: String, name: String?) = groupScope == null || groupScope.containsMatchIn(email) || (name != null && groupScope.containsMatchIn(name))
