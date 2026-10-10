@@ -1,0 +1,101 @@
+package org.hack4impact.portal.auth
+
+import org.hack4impact.portal.db.tables.references.CHAPTER
+import org.hack4impact.portal.db.tables.references.CHAPTER_ROLE
+import org.hack4impact.portal.db.tables.references.NATIONAL_ADMIN
+import org.hack4impact.portal.db.tables.references.PERSON
+import org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT
+import org.jooq.DSLContext
+import org.jooq.impl.DSL
+import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.oauth2.core.oidc.user.OidcUser
+import org.springframework.stereotype.Component
+import java.time.OffsetDateTime
+import java.util.UUID
+
+/** The signed-in person and what they may see. Chapter roles come from the portal's own tables (decisions 35, 41). */
+data class Viewer(
+	val personId: UUID?,
+	val email: String,
+	val name: String?,
+	val nationalAdmin: Boolean,
+	/** Chapter ID → role: "lead", "co_lead" or "viewer". */
+	val chapterRoles: Map<UUID, String>,
+) {
+	fun canSee(chapterId: UUID) = nationalAdmin || chapterId in chapterRoles
+}
+
+/**
+ * Finds the portal person behind a Google sign-in: first by the Google user ID linked on an earlier sign-in,
+ * then by their @hack4impact.org address (org email, or a Google account imported from the member DB).
+ */
+@Component
+class Viewers(private val dsl: DSLContext) {
+
+	fun of(user: OidcUser): Viewer {
+		val email = user.email.orEmpty().lowercase()
+		val personId = user.subject?.let(::byGoogleId) ?: email.takeIf { it.isNotEmpty() }?.let(::byEmail)
+		if (personId == null) return Viewer(null, email, user.fullName, nationalAdmin = false, chapterRoles = emptyMap())
+		val nationalAdmin = dsl.fetchExists(NATIONAL_ADMIN, NATIONAL_ADMIN.PERSON_ID.eq(personId))
+		val roles = dsl.select(CHAPTER_ROLE.CHAPTER_ID, CHAPTER_ROLE.ROLE)
+			.from(CHAPTER_ROLE).join(CHAPTER).on(CHAPTER.ID.eq(CHAPTER_ROLE.CHAPTER_ID))
+			.where(CHAPTER_ROLE.PERSON_ID.eq(personId), CHAPTER_ROLE.ENDS_AT.isNull, CHAPTER.DELETED_AT.isNull)
+			.fetch()
+			// A person with two roles in one chapter gets the stronger one.
+			.groupBy({ it.value1()!! }, { it.value2()!! })
+			.mapValues { (_, roles) -> ROLE_ORDER.first { it in roles } }
+		return Viewer(personId, email, user.fullName, nationalAdmin, roles)
+	}
+
+	/** Remembers the Google user ID for a matched person, so later sign-ins don't depend on the email. */
+	fun linkGoogleAccount(user: OidcUser) {
+		val email = user.email?.lowercase() ?: return
+		val subject = user.subject ?: return
+		if (byGoogleId(subject) != null) return
+		val personId = byEmail(email) ?: return
+		val now = OffsetDateTime.now()
+		val updated = dsl.update(TOOL_ACCOUNT)
+			.set(TOOL_ACCOUNT.EXTERNAL_ID, subject)
+			.set(TOOL_ACCOUNT.STATE, "confirmed")
+			.set(TOOL_ACCOUNT.VERIFIED_AT, now)
+			.where(TOOL_ACCOUNT.PERSON_ID.eq(personId), TOOL_ACCOUNT.TOOL.eq("google"), DSL.lower(TOOL_ACCOUNT.EXTERNAL_LOGIN).eq(email))
+			.execute()
+		if (updated == 0) {
+			dsl.insertInto(TOOL_ACCOUNT)
+				.set(TOOL_ACCOUNT.PERSON_ID, personId).set(TOOL_ACCOUNT.TOOL, "google")
+				.set(TOOL_ACCOUNT.EXTERNAL_ID, subject).set(TOOL_ACCOUNT.EXTERNAL_LOGIN, email)
+				.set(TOOL_ACCOUNT.STATE, "confirmed").set(TOOL_ACCOUNT.VERIFIED_AT, now)
+				.execute()
+		}
+	}
+
+	private fun byGoogleId(subject: String): UUID? =
+		dsl.select(TOOL_ACCOUNT.PERSON_ID).from(TOOL_ACCOUNT)
+			.where(TOOL_ACCOUNT.TOOL.eq("google"), TOOL_ACCOUNT.EXTERNAL_ID.eq(subject))
+			.fetchOne(TOOL_ACCOUNT.PERSON_ID)
+
+	private fun byEmail(email: String): UUID? =
+		dsl.select(PERSON.ID).from(PERSON)
+			.where(PERSON.DELETED_AT.isNull)
+			.and(
+				DSL.lower(PERSON.ORG_EMAIL).eq(email).or(
+					DSL.exists(
+						DSL.selectOne().from(TOOL_ACCOUNT).where(
+							TOOL_ACCOUNT.PERSON_ID.eq(PERSON.ID), TOOL_ACCOUNT.TOOL.eq("google"), DSL.lower(TOOL_ACCOUNT.EXTERNAL_LOGIN).eq(email),
+						),
+					),
+				),
+			)
+			.orderBy(PERSON.CREATED_AT)
+			.limit(1)
+			.fetchOne(PERSON.ID)
+
+	companion object {
+		private val ROLE_ORDER = listOf("lead", "co_lead", "viewer")
+	}
+}
+
+/** Thrown into a 403 when a viewer asks for a chapter they have no role in. */
+fun Viewer.requireChapter(chapterId: UUID) {
+	if (!canSee(chapterId)) throw AccessDeniedException("No role in this chapter")
+}

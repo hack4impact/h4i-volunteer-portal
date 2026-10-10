@@ -1,0 +1,43 @@
+/* Layout and the few H4I-specific patterns. Colors only through tokens (h4i-theme.css). */
+body { margin: 0; }
+.app { min-height: 100vh; font-size: 14px; line-height: 21px; }
+
+.topbar { display: flex; align-items: center; gap: 16px; padding: 12px 32px; border-bottom: 1px solid var(--h4i-border); }
+.topbar a.wordmark { font-weight: 700; font-size: 18px; color: var(--h4i-fg-strong); letter-spacing: -0.2px; text-decoration: none; }
+.topbar a.wordmark span { color: var(--h4i-link); }
+.topbar .divider { width: 1px; height: 24px; background: var(--h4i-border); }
+.topbar .spacer { flex: 1; }
+
+.page-head { background: var(--h4i-bg-subtle); border-bottom: 1px solid var(--h4i-border); padding: 24px 32px 0; }
+.page-head .inner, .page-body { max-width: 1280px; margin: 0 auto; }
+.eyebrow { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--h4i-fg-muted); }
+.page-title { font-size: 28px; line-height: 36px; font-weight: 700; color: var(--h4i-fg-strong); margin: 4px 0 16px; }
+.page-body { box-sizing: content-box; padding: 24px 32px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; }
+@media (max-width: 900px) { .page-body { grid-template-columns: 1fr; } }
+
+.box { border: 1px solid var(--h4i-border); border-radius: 6px; background: var(--h4i-bg); }
+.box-head { padding: 12px 16px; background: var(--h4i-bg-subtle); border-bottom: 1px solid var(--h4i-border); font-weight: 700; display: flex; align-items: center; gap: 8px; border-radius: 6px 6px 0 0; }
+.box-row { padding: 10px 16px; border-top: 1px solid var(--h4i-border-muted); }
+.box-row:first-of-type { border-top: 0; }
+
+.pane-section { padding: 16px 0; border-bottom: 1px solid var(--h4i-border-muted); }
+.pane-label { font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--h4i-fg-muted); margin-bottom: 8px; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat-value { font-size: 20px; line-height: 28px; font-weight: 700; color: var(--h4i-fg-strong); }
+.stat-label { font-size: 13px; color: var(--h4i-fg-muted); }
+.dots { height: 72px; margin-top: 16px; background-image: radial-gradient(var(--h4i-dots) 2px, transparent 2.5px); background-size: 14px 14px; }
+
+/* Status: a dot plus words; words stay in body color (design system finding D5). */
+.status { display: inline-flex; align-items: center; gap: 6px; }
+.status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); flex: none; }
+.status.ok { --dot: var(--h4i-ok); }
+.status.warn { --dot: var(--h4i-warn); }
+.status.off { --dot: var(--h4i-off); }
+.status.danger { --dot: var(--h4i-danger); }
+
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--h4i-border); }
+.filters .count { margin-left: auto; color: var(--h4i-fg-muted); font-size: 13px; }
+.table-scroll { overflow-x: auto; }
+.muted { color: var(--h4i-fg-muted); font-size: 13px; font-weight: 400; }
+.center { max-width: 520px; margin: 96px auto; padding: 0 16px; text-align: center; }
+.initials { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--h4i-avatar-bg); color: var(--h4i-avatar-fg); font-weight: 600; font-size: 13px; }

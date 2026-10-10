@@ -1,0 +1,258 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
+  },
+  "paths" : {
+    "/api/status" : {
+      "get" : {
+        "tags" : [ "status-controller" ],
+        "operationId" : "status",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me" : {
+      "get" : {
+        "tags" : [ "chapter-controller" ],
+        "operationId" : "me",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Me"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chapters/{code}" : {
+      "get" : {
+        "tags" : [ "chapter-controller" ],
+        "operationId" : "chapter",
+        "parameters" : [ {
+          "name" : "code",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ChapterOverview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chapters/{code}/members" : {
+      "get" : {
+        "tags" : [ "chapter-controller" ],
+        "operationId" : "members",
+        "parameters" : [ {
+          "name" : "code",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/MemberRow"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "StatusResponse" : {
+        "type" : "object",
+        "properties" : {
+          "service" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ChapterRef" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Me" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : [ "string", "null" ]
+          },
+          "personId" : {
+            "type" : [ "string", "null" ],
+            "format" : "uuid"
+          },
+          "nationalAdmin" : {
+            "type" : "boolean"
+          },
+          "chapters" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ChapterRef"
+            }
+          }
+        }
+      },
+      "ChapterOverview" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "stats" : {
+            "$ref" : "#/components/schemas/ChapterStats"
+          },
+          "registrationLink" : {
+            "type" : "string"
+          }
+        }
+      },
+      "ChapterStats" : {
+        "type" : "object",
+        "properties" : {
+          "activeMembers" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "alumni" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "liveProjects" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "leads" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "AccountSummary" : {
+        "type" : "object",
+        "properties" : {
+          "tool" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          }
+        }
+      },
+      "MemberRow" : {
+        "type" : "object",
+        "properties" : {
+          "personId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "chapterRole" : {
+            "type" : [ "string", "null" ]
+          },
+          "title" : {
+            "type" : [ "string", "null" ]
+          },
+          "projects" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "accounts" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AccountSummary"
+            }
+          },
+          "claimed" : {
+            "type" : "boolean"
+          }
+        }
+      }
+    }
+  }
+}

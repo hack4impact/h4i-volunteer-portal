@@ -27,17 +27,22 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-jooq")
+	implementation("org.springframework.boot:spring-boot-starter-security")
+	implementation("org.springframework.boot:spring-boot-starter-security-oauth2-client")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.flywaydb:flyway-database-postgresql")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("tools.jackson.module:jackson-module-kotlin")
 	implementation("com.google.auth:google-auth-library-oauth2-http:1.54.0")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:3.1.1")
 	developmentOnly("org.springframework.boot:spring-boot-docker-compose")
 	runtimeOnly("org.postgresql:postgresql")
 	testImplementation("org.springframework.boot:spring-boot-starter-actuator-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-jooq-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-security-test")
+	testImplementation("org.springframework.boot:spring-boot-starter-security-oauth2-client-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testImplementation("org.springframework.boot:spring-boot-testcontainers")
@@ -86,6 +91,8 @@ tasks.named("compileKotlin") {
 
 tasks.withType<Test> {
 	useJUnitPlatform()
+	// -PupdateApiSpec rewrites web/openapi.json from the live API (see OpenApiSpecTests).
+	systemProperty("updateApiSpec", providers.gradleProperty("updateApiSpec").isPresent.toString())
 }
 
 // Only the executable Spring Boot jar is needed; the Dockerfile packages it.
@@ -135,4 +142,45 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
 			environment(name.trim(), if (raw.startsWith("\"")) groovy.json.JsonSlurper().parseText(raw) as String else raw)
 		}
 	}
+}
+
+// The React app in web/ is built with npm and packed into the jar as static files (build plan step 5).
+val web = layout.projectDirectory.dir("web")
+
+val npmInstall = tasks.register<Exec>("npmInstall") {
+	group = "web"
+	workingDir = web.asFile
+	commandLine("npm", "ci", "--no-fund", "--no-audit")
+	inputs.file(web.file("package-lock.json"))
+	outputs.file(web.file("node_modules/.package-lock.json"))
+}
+
+val buildWeb = tasks.register<Exec>("buildWeb") {
+	group = "web"
+	description = "Type-checks and builds the web app into web/dist."
+	dependsOn(npmInstall)
+	workingDir = web.asFile
+	commandLine("npm", "run", "build")
+	inputs.dir(web.dir("src"))
+	inputs.files(web.file("index.html"), web.file("vite.config.ts"), web.file("tsconfig.json"), web.file("package.json"), web.file("package-lock.json"))
+	outputs.dir(web.dir("dist"))
+}
+
+val testWeb = tasks.register<Exec>("testWeb") {
+	group = "verification"
+	description = "Runs the web app's tests (Vitest)."
+	dependsOn(npmInstall)
+	workingDir = web.asFile
+	commandLine("npm", "test")
+	inputs.dir(web.dir("src"))
+	inputs.files(web.file("vite.config.ts"), web.file("package-lock.json"))
+	outputs.upToDateWhen { true }
+}
+
+tasks.named<ProcessResources>("processResources") {
+	from(buildWeb) { into("static") }
+}
+
+tasks.named("check") {
+	dependsOn(testWeb)
 }

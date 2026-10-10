@@ -5,12 +5,26 @@ spring:
     schemas: portal
   jooq:
     sql-dialect: postgres
+  security:
+    oauth2:
+      client:
+        registration:
+          # Portal sign-in (step 5). Create the client in the h4i-portal Google Cloud project; see wiki step 5.
+          google:
+            client-id: ${PORTAL_GOOGLE_CLIENT_ID:not-configured}
+            client-secret: ${PORTAL_GOOGLE_CLIENT_SECRET:not-configured}
+            scope: openid, email, profile
   # Locally, `./gradlew bootRun` starts compose.yaml and connects to it. Elsewhere set
   # SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME and SPRING_DATASOURCE_PASSWORD.
 
 portal:
   # Set by CI to the git SHA; "dev" locally.
   version: ${PORTAL_VERSION:dev}
+  auth:
+    # Only Google accounts from this Workspace domain can sign in (checked on the server, not just hinted).
+    allowed-domain: ${PORTAL_AUTH_ALLOWED_DOMAIN:hack4impact.org}
+  # Chapter registration links are <join-base-url>/<chapter code>, e.g. join.hack4impact.org/umd.
+  join-base-url: ${PORTAL_JOIN_BASE_URL:https://join.hack4impact.org}
   # Public address of this deployment, for OAuth redirects, emails and links (wiki decision 31).
   # Staging will probably be https://staging.portal.hack4impact.org; change it here or with PORTAL_BASE_URL only.
   base-url: ${PORTAL_BASE_URL:http://localhost:8080}
@@ -32,3 +46,8 @@ management:
     health:
       probes:
         enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  paths-to-match: /api/**
