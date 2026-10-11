@@ -1,6 +1,7 @@
 package org.hack4impact.portal.adapters
 
 import org.hack4impact.portal.resolver.Tool
+import org.slf4j.LoggerFactory
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import java.io.IOException
@@ -14,6 +15,20 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 
+/**
+ * How long a call waits out a tool's rate limit before giving up with [RateLimited]: at most [maxWaits] waits,
+ * none longer than [maxWait], [maxTotal] in all. Each wait is what the tool asked for (Retry-After) plus a second.
+ */
+data class RateLimitPolicy(val maxWaits: Int, val maxWait: Duration, val maxTotal: Duration) {
+	companion object {
+		/** Fail at once (tests, and anything interactive). */
+		val NONE = RateLimitPolicy(0, Duration.ZERO, Duration.ZERO)
+
+		/** Scans and syncs: Slack's list methods allow about 20 calls a minute, so a large workspace has to wait. */
+		val PATIENT = RateLimitPolicy(maxWaits = 20, maxWait = Duration.ofMinutes(2), maxTotal = Duration.ofMinutes(15))
+	}
+}
+
 /** A JSON over HTTP call that maps failures to [AdapterException]s the same way for every tool. */
 class HttpJson(
 	private val tool: Tool,
@@ -22,7 +37,11 @@ class HttpJson(
 		.version(HttpClient.Version.HTTP_1_1)
 		.connectTimeout(Duration.ofSeconds(10))
 		.build(),
+	private val rateLimits: RateLimitPolicy = RateLimitPolicy.NONE,
+	private val sleep: (Duration) -> Unit = { Thread.sleep(it.toMillis()) },
 ) {
+	private val log = LoggerFactory.getLogger(javaClass)
+
 	data class Response(val status: Int, val headers: HttpHeaders, val body: JsonNode)
 
 	fun get(url: String, headers: Map<String, String> = emptyMap()): Response =
@@ -35,6 +54,33 @@ class HttpJson(
 				.build(),
 		)
 
+	/** POSTs [body] as JSON. */
+	fun postJson(url: String, body: Any, headers: Map<String, String> = emptyMap()): Response =
+		send(
+			request(url, headers + ("Content-Type" to "application/json; charset=utf-8"))
+				.POST(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(body)))
+				.build(),
+		)
+
+	/** PUTs [body] as JSON. */
+	fun putJson(url: String, body: Any, headers: Map<String, String> = emptyMap()): Response =
+		send(
+			request(url, headers + ("Content-Type" to "application/json; charset=utf-8"))
+				.PUT(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(body)))
+				.build(),
+		)
+
+	/** PATCHes [body] as JSON. */
+	fun patchJson(url: String, body: Any, headers: Map<String, String> = emptyMap()): Response =
+		send(
+			request(url, headers + ("Content-Type" to "application/json; charset=utf-8"))
+				.method("PATCH", HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(body)))
+				.build(),
+		)
+
+	fun delete(url: String, headers: Map<String, String> = emptyMap()): Response =
+		send(request(url, headers).DELETE().build())
+
 	fun post(url: String, headers: Map<String, String> = emptyMap()): Response =
 		send(request(url, headers).POST(HttpRequest.BodyPublishers.noBody()).build())
 
@@ -42,7 +88,25 @@ class HttpJson(
 		HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(30)).header("Accept", "application/json")
 			.apply { headers.forEach { (k, v) -> header(k, v) } }
 
+	/** Sends [request], waiting out rate limits as [rateLimits] allows. Only the rate-limited page is repeated. */
 	private fun send(request: HttpRequest): Response {
+		var waits = 0
+		var waited = Duration.ZERO
+		while (true) {
+			try {
+				return attempt(request)
+			} catch (e: RateLimited) {
+				val wait = e.retryAfter.plusSeconds(1)
+				if (waits >= rateLimits.maxWaits || wait > rateLimits.maxWait || waited + wait > rateLimits.maxTotal) throw e
+				log.info("{} rate limited on {}; waiting {}s ({} of {})", tool, request.uri().path, wait.seconds, waits + 1, rateLimits.maxWaits)
+				sleep(wait)
+				waits++
+				waited += wait
+			}
+		}
+	}
+
+	private fun attempt(request: HttpRequest): Response {
 		val response = try {
 			client.send(request, HttpResponse.BodyHandlers.ofString())
 		} catch (e: IOException) {
@@ -58,7 +122,7 @@ class HttpJson(
 			status == 401 || status == 403 -> throw AuthFailed(tool, "$path: HTTP $status")
 			status == 404 -> throw NotFound(tool, path)
 			status >= 500 -> throw Unavailable(tool, "$path: HTTP $status")
-			status >= 400 -> throw Rejected(tool, "$path: HTTP $status${errorMessage(body)?.let { " ($it)" } ?: ""}")
+			status >= 400 -> throw Rejected(tool, "$path: HTTP $status${errorMessage(body)?.let { " ($it)" } ?: ""}", status)
 		}
 		return Response(status, response.headers(), body)
 	}

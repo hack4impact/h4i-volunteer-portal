@@ -4,6 +4,22 @@
  */
 
 export interface paths {
+    "/api/national/tools/{tool}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["setTool"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chapters/{code}/projects/{slug}": {
         parameters: {
             query?: never;
@@ -62,6 +78,54 @@ export interface paths {
         get: operations["get_1"];
         put: operations["put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/sync/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/queue/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["decide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/dead-letters/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["retry"];
         delete?: never;
         options?: never;
         head?: never;
@@ -173,7 +237,7 @@ export interface paths {
         };
         get: operations["people"];
         put?: never;
-        post: operations["decide"];
+        post: operations["decide_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -204,6 +268,54 @@ export interface paths {
             cookie?: never;
         };
         get: operations["roles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["tools"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["queue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/dead-letters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["deadLetters"];
         put?: never;
         post?: never;
         delete?: never;
@@ -344,6 +456,32 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ToolChange: {
+            enabled: boolean;
+            dryRun: boolean;
+            reason: string | null;
+        };
+        LastRun: {
+            status: string;
+            mode: string;
+            /** Format: date-time */
+            ranAt: string;
+            /** Format: int32 */
+            applied: number;
+            /** Format: int32 */
+            removed: number;
+            error: string | null;
+        };
+        ToolStatus: {
+            tool: string;
+            enabled: boolean;
+            dryRun: boolean;
+            writable: boolean;
+            pauseReason: string | null;
+            /** Format: int32 */
+            maxRemovals: number;
+            lastRun: components["schemas"]["LastRun"] | null;
+        };
         ProjectInput: {
             name: string;
             slug: string | null;
@@ -501,6 +639,43 @@ export interface components {
             /** Format: int32 */
             problems: number;
             canEdit: boolean;
+        };
+        TaskDecision: {
+            action: string;
+            reason: string | null;
+        };
+        QueueTask: {
+            /** Format: uuid */
+            id: string;
+            tool: string;
+            action: string;
+            description: string;
+            /** Format: date-time */
+            createdAt: string;
+            status: string;
+            doneBy: string | null;
+            /** Format: date-time */
+            doneAt: string | null;
+        };
+        DeadLetterRef: {
+            /** Format: uuid */
+            personId: string;
+            /** Format: uuid */
+            resourceId: string;
+        };
+        DeadLetter: {
+            /** Format: uuid */
+            personId: string;
+            person: string;
+            /** Format: uuid */
+            resourceId: string;
+            tool: string;
+            resource: string;
+            /** Format: int32 */
+            attempts: number;
+            lastError: string | null;
+            /** Format: date-time */
+            lastAttemptAt: string | null;
         };
         StatusChange: {
             status: string;
@@ -712,6 +887,32 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    setTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tool: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToolChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ToolStatus"][];
+                };
+            };
+        };
+    };
     get: {
         parameters: {
             query?: never;
@@ -914,6 +1115,74 @@ export interface operations {
             };
         };
     };
+    run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    decide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskDecision"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["QueueTask"][];
+                };
+            };
+        };
+    };
+    retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DeadLetterRef"][];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DeadLetter"][];
+                };
+            };
+        };
+    };
     runDryRun: {
         parameters: {
             query?: never;
@@ -1108,7 +1377,7 @@ export interface operations {
             };
         };
     };
-    decide: {
+    decide_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -1171,6 +1440,66 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ProjectRoleOption"][];
+                };
+            };
+        };
+    };
+    tools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ToolStatus"][];
+                };
+            };
+        };
+    };
+    queue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["QueueTask"][];
+                };
+            };
+        };
+    };
+    deadLetters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DeadLetter"][];
                 };
             };
         };

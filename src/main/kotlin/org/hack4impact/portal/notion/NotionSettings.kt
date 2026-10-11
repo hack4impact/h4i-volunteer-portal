@@ -7,6 +7,8 @@ import org.hack4impact.portal.auth.Viewer
 import org.hack4impact.portal.chapters.ChapterAccess
 import org.hack4impact.portal.db.tables.references.AUDIT_EVENT
 import org.hack4impact.portal.db.tables.references.CHAPTER
+import org.hack4impact.portal.db.tables.references.CHAPTER_RESOURCE
+import org.hack4impact.portal.db.tables.references.RESOURCE
 import org.hack4impact.portal.db.tables.references.NOTION_PAGE_CHECK
 import org.hack4impact.portal.db.tables.references.NOTION_ROUTE
 import org.jooq.DSLContext
@@ -104,6 +106,7 @@ class NotionSettings(private val dsl: DSLContext, private val client: ObjectProv
 			.set(CHAPTER.NOTION_TEMPLATE_PAGE_ID, id(input.template, "The template page"))
 			.set(CHAPTER.NOTION_TITLE_PATTERN, input.titlePattern.trim())
 			.where(CHAPTER.ID.eq(chapterId)).execute()
+		teamspaceResource(chapterId, input.teamspaceId?.trim()?.takeIf { it.isNotEmpty() })
 		dsl.deleteFrom(NOTION_ROUTE).where(NOTION_ROUTE.CHAPTER_ID.eq(chapterId)).execute()
 		routes.forEachIndexed { i, r ->
 			dsl.insertInto(NOTION_ROUTE).set(NOTION_ROUTE.CHAPTER_ID, chapterId).set(NOTION_ROUTE.POSITION, i + 1)
@@ -114,6 +117,33 @@ class NotionSettings(private val dsl: DSLContext, private val client: ObjectProv
 			.set(AUDIT_EVENT.ACTION, "chapter.notion_routes").set(AUDIT_EVENT.TARGET_TYPE, "chapter").set(AUDIT_EVENT.TARGET_ID, chapterId)
 			.set(AUDIT_EVENT.CHAPTER_ID, chapterId).set(AUDIT_EVENT.AFTER, JSONB.valueOf("""{"routes":${routes.size}}"""))
 			.execute()
+	}
+
+	/**
+	 * The chapter's teamspace as a chapter resource for its members, so the sync queues "add to the teamspace" tasks
+	 * (PRD: access is per chapter teamspace). Changing the ID retargets it; clearing it archives it.
+	 */
+	private fun teamspaceResource(chapterId: UUID, teamspaceId: String?) {
+		val existing = dsl.select(RESOURCE.ID).from(RESOURCE)
+			.where(RESOURCE.CHAPTER_ID.eq(chapterId), RESOURCE.TOOL.eq("notion"), RESOURCE.TAGS.contains(arrayOf("teamspace")), RESOURCE.ARCHIVED_AT.isNull)
+			.fetchOne()?.value1()
+		if (teamspaceId == null) {
+			existing?.let {
+				dsl.deleteFrom(CHAPTER_RESOURCE).where(CHAPTER_RESOURCE.RESOURCE_ID.eq(it)).execute()
+				dsl.update(RESOURCE).set(RESOURCE.ARCHIVED_AT, OffsetDateTime.now()).where(RESOURCE.ID.eq(it)).execute()
+			}
+			return
+		}
+		val name = dsl.select(CHAPTER.NAME).from(CHAPTER).where(CHAPTER.ID.eq(chapterId)).fetchSingle().value1()!!
+		if (existing != null) {
+			dsl.update(RESOURCE).set(RESOURCE.EXTERNAL_ID, teamspaceId).set(RESOURCE.NAME, name).where(RESOURCE.ID.eq(existing)).execute()
+			return
+		}
+		val id = dsl.insertInto(RESOURCE).set(RESOURCE.TOOL, "notion").set(RESOURCE.EXTERNAL_ID, teamspaceId).set(RESOURCE.NAME, name)
+			.set(RESOURCE.CHAPTER_ID, chapterId).set(RESOURCE.TAGS, arrayOf("teamspace")).set(RESOURCE.MANAGED, "portal")
+			.returningResult(RESOURCE.ID).fetchSingle().value1()!!
+		dsl.insertInto(CHAPTER_RESOURCE).set(CHAPTER_RESOURCE.CHAPTER_ID, chapterId).set(CHAPTER_RESOURCE.RESOURCE_ID, id)
+			.set(CHAPTER_RESOURCE.AUDIENCE, "members").set(CHAPTER_RESOURCE.ACCESS_LEVEL, "write").execute()
 	}
 
 	/** Checks every page the chapter's settings point at, if a Notion integration is set up. */

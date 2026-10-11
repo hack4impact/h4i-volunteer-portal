@@ -1,6 +1,7 @@
 package org.hack4impact.portal.adapters.slack
 
 import org.hack4impact.portal.adapters.AccountState
+import org.hack4impact.portal.adapters.AdapterException
 import org.hack4impact.portal.adapters.AuthFailed
 import org.hack4impact.portal.adapters.HttpJson
 import org.hack4impact.portal.adapters.NotFound
@@ -55,18 +56,21 @@ class SlackReadAdapter(
 		do {
 			val url = "$baseUrl/$method${if ('?' in method) "&" else "?"}limit=$pageSize" + (if (cursor.isEmpty()) "" else "&cursor=${HttpJson.encode(cursor)}")
 			val body = http.get(url, mapOf("Authorization" to "Bearer ${token()}")).body
-			if (!body.path("ok").asBoolean()) throw error(method, body.text("error") ?: "unknown_error")
+			if (!body.path("ok").asBoolean()) throw slackError(tool, method, body.text("error") ?: "unknown_error")
 			body.path(field).forEach { items.add(it) }
 			cursor = body.path("response_metadata").text("next_cursor").orEmpty()
 		} while (cursor.isNotEmpty())
 		return items
 	}
 
-	private fun error(method: String, code: String) = when (code) {
-		"invalid_auth", "not_authed", "account_inactive", "token_revoked", "token_expired", "missing_scope", "no_permission" ->
-			AuthFailed(tool, "$method: $code")
-		"ratelimited" -> RateLimited(tool, Duration.ofSeconds(60))
-		"channel_not_found" -> NotFound(tool, method)
-		else -> Rejected(tool, "$method: $code")
-	}
+}
+
+/** Slack answers most errors with HTTP 200 and ok=false; this maps its codes onto the adapters' errors. */
+internal fun slackError(tool: Tool, method: String, code: String): AdapterException = when (code) {
+	"invalid_auth", "not_authed", "account_inactive", "token_revoked", "token_expired", "missing_scope", "no_permission" ->
+		AuthFailed(tool, "$method: $code")
+	"ratelimited" -> RateLimited(tool, Duration.ofSeconds(60))
+	"channel_not_found" -> NotFound(tool, method)
+	"name_taken" -> Rejected(tool, "$method: name_taken (probably an existing channel the portal can't see, often a private one: invite the portal's Slack app to it and adopt it)")
+	else -> Rejected(tool, "$method: $code")
 }

@@ -98,21 +98,22 @@ describe('App', () => {
       '/api/chapters/umd/adoption/resources/r2': [200, report('linked')],
     })
     render(<App />)
-    expect(await screen.findByText('#umd-food-bank')).toBeInTheDocument()
-    expect(screen.getByText(/Needs a decision · no project "food-bank" yet/)).toBeInTheDocument() // status in words
+    const list = await screen.findByRole('list', { name: 'Resources' })
+    expect(screen.getByRole('button', { name: /Needs a decision\s*1/ })).toBeInTheDocument() // state in words, as a tab with its count
 
-    await userEvent.click(screen.getByRole('button', { name: 'Show people' }))
+    await userEvent.click(within(list).getByRole('button', { name: 'umd-food-bank' }))
     const people = await screen.findByRole('table', { name: 'People' })
     expect(within(people).getByText('Grandfathered')).toBeInTheDocument()
 
-    const unmatched = screen.getByRole('region', { name: 'Not matched to any chapter' })
+    const unmatched = screen.getByRole('region', { name: /^Not matched to any chapter/ })
+    await userEvent.click(within(unmatched).getByRole('button', { name: 'Show' })) // collapsed until asked for
     await userEvent.click(within(unmatched).getByRole('button', { name: 'Link to this chapter' }))
-    await userEvent.click(within(unmatched).getByRole('button', { name: 'Link' }))
+    await userEvent.click(await screen.findByRole('menuitemradio', { name: 'Chapter members' }))
     const post = vi.mocked(fetch).mock.calls.map(([r]) => r as Request).find((r) => r.method === 'POST')!
     expect(new URL(post.url).pathname).toBe('/api/chapters/umd/adoption/resources/r2')
     expect(await post.clone().json()).toEqual({ action: 'link', target: 'chapter_members', projectId: null })
-    expect(await screen.findByText('#random')).toBeInTheDocument()
-    expect(screen.getByText(/Linked by hand · chapter members/)).toBeInTheDocument()
+    expect(await within(list).findByText('random')).toBeInTheDocument()
+    expect(within(list).getByText(/For chapter members · linked by hand/)).toBeInTheDocument()
   })
 
   it('lets a lead create a project and shows its resources, team and planned changes', async () => {
@@ -201,5 +202,37 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save and check' }))
     const put = vi.mocked(fetch).mock.calls.map(([r]) => r as Request).find((r) => r.method === 'PUT')!
     expect((await put.clone().json()).routes).toEqual([{ kind: 'type', value: 'new-build', parent: 'cccc' }, { kind: 'tag', value: 'lts', parent: 'bbbb' }])
+  })
+
+  it('lets national change a tool only after confirming, act on the queue, and retry dead letters', async () => {
+    window.history.pushState({}, '', '/national')
+    const tool = (name: string, over: object = {}) => ({ tool: name, enabled: true, dryRun: true, writable: true, pauseReason: null, maxRemovals: 25, lastRun: null, ...over })
+    api({
+      '/api/me': [200, { ...me([umd]), nationalAdmin: true }],
+      'GET /api/national/tools': [200, [tool('slack'), tool('documenso', { writable: false })]],
+      'PUT /api/national/tools/slack': [200, [tool('slack', { dryRun: false }), tool('documenso', { writable: false })]],
+      'GET /api/national/queue': [200, [{ id: 't1', tool: 'notion', action: 'add_member', description: 'Add Ada Lovelace (ada@hack4impact.org) to the Notion teamspace UMD', createdAt: '2026-10-10T12:00:00Z', status: 'open', doneBy: null, doneAt: null }]],
+      'POST /api/national/queue/t1': [200, []],
+      'GET /api/national/dead-letters': [200, [{ personId: 'p1', person: 'Ada Lovelace', resourceId: 'r1', tool: 'github', resource: 'umd-rise-dc', attempts: 5, lastError: 'boom', lastAttemptAt: null }]],
+      'POST /api/national/dead-letters/retry': [200, []],
+    })
+    render(<App />)
+    const tools = await screen.findByRole('list', { name: 'Tools' })
+    expect(within(tools).getAllByText('Dry run')).toHaveLength(2) // state in words
+    expect(within(tools).getByText(/read-only here/)).toBeInTheDocument()
+
+    await userEvent.click(within(tools).getAllByRole('button', { name: 'Leave dry run' })[0]!)
+    const calls = () => vi.mocked(fetch).mock.calls.map(([r]) => r as Request)
+    expect(calls().some((r) => r.method === 'PUT')).toBe(false) // nothing yet: it asks first
+    await userEvent.click(within(tools).getByRole('button', { name: 'Yes, let the portal change Slack' }))
+    const put = calls().find((r) => r.method === 'PUT')!
+    expect(await put.clone().json()).toEqual({ enabled: true, dryRun: false, reason: null })
+    expect(await within(tools).findByText('Changing the tool')).toBeInTheDocument()
+
+    await userEvent.click(within(screen.getByRole('list', { name: 'Open tasks' })).getByRole('button', { name: 'Done' }))
+    await waitFor(() => expect(calls().some((r) => r.method === 'POST' && r.url.endsWith('/queue/t1'))).toBe(true))
+    await userEvent.click(within(screen.getByRole('list', { name: 'Dead letters' })).getByRole('button', { name: 'Retry' }))
+    const retry = calls().find((r) => r.url.endsWith('/dead-letters/retry'))!
+    expect(await retry.clone().json()).toEqual([{ personId: 'p1', resourceId: 'r1' }])
   })
 })

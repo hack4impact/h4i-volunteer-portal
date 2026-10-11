@@ -27,6 +27,7 @@
   --h4i-note-bg: #fff8c5;
   --h4i-note-fg: #3b2300;
   --h4i-dots: rgb(0 26 255 / 0.18);
+  --h4i-logo-filter: none;
 }
 
 /* Dark tokens: explicit dark mode, and auto mode when the system is dark. */
@@ -52,6 +53,7 @@
   --h4i-note-bg: #2b2208;
   --h4i-note-fg: #f2cc60;
   --h4i-dots: rgb(143 160 255 / 0.18);
+  --h4i-logo-filter: brightness(0) invert(1); /* design guide: solid white logo in dark mode */
 }
 @media (prefers-color-scheme: dark) {
   [data-color-mode='auto'] {
@@ -76,6 +78,7 @@
     --h4i-note-bg: #2b2208;
     --h4i-note-fg: #f2cc60;
     --h4i-dots: rgb(143 160 255 / 0.18);
+    --h4i-logo-filter: brightness(0) invert(1); /* design guide: solid white logo in dark mode */
   }
 }
 

@@ -1,6 +1,7 @@
 import { ActionList, ActionMenu } from '@primer/react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { type Me, signOut } from '../api/client'
+import logo from '../assets/logo.svg'
 
 function initials(me: Me) {
   const source = me.name ?? me.email
@@ -14,7 +15,7 @@ export function TopBar({ me, chapterCode }: { me: Me; chapterCode?: string }) {
   return (
     <header className="topbar">
       <a className="wordmark" href="/">
-        hack<span>4</span>impact
+        <img src={logo} alt="Hack4Impact" />
       </a>
       {me.chapters.length > 0 && (
         <>
@@ -32,6 +33,9 @@ export function TopBar({ me, chapterCode }: { me: Me; chapterCode?: string }) {
             </ActionMenu.Overlay>
           </ActionMenu>
         </>
+      )}
+      {me.nationalAdmin && (
+        <Link className="topbar-link" to="/national">National</Link>
       )}
       <span className="spacer" />
       <ActionMenu>

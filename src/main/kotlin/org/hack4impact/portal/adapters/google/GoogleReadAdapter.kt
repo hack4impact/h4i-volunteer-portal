@@ -74,7 +74,8 @@ class GoogleReadAdapter(
 
 /**
  * Access tokens for a service account with domain-wide delegation, acting as [subject] (the limited
- * provisioning admin). Read-only scopes until step 9 adds writes.
+ * provisioning admin). Reads use [READ_SCOPES]; writes (step 9) use [WRITE_SCOPES], which domain-wide delegation must
+ * also authorize.
  */
 class GoogleServiceAccountToken(keyJson: String, subject: String, scopes: List<String> = READ_SCOPES) : () -> String {
 	private val credentials = ServiceAccountCredentials.fromStream(keyJson.byteInputStream()).createScoped(scopes).createDelegated(subject)
@@ -91,5 +92,8 @@ class GoogleServiceAccountToken(keyJson: String, subject: String, scopes: List<S
 			"https://www.googleapis.com/auth/admin.directory.group.readonly",
 			"https://www.googleapis.com/auth/admin.directory.group.member.readonly",
 		)
+
+		/** Create groups and manage their members. User accounts (step 10) will add admin.directory.user. */
+		val WRITE_SCOPES = listOf("https://www.googleapis.com/auth/admin.directory.group")
 	}
 }

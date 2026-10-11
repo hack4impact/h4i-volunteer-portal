@@ -5,6 +5,45 @@
     "version" : "v0"
   },
   "paths" : {
+    "/api/national/tools/{tool}" : {
+      "put" : {
+        "tags" : [ "national-controller" ],
+        "operationId" : "setTool",
+        "parameters" : [ {
+          "name" : "tool",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ToolChange"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ToolStatus"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chapters/{code}/projects/{slug}" : {
       "get" : {
         "tags" : [ "project-controller" ],
@@ -319,6 +358,90 @@
         }
       }
     },
+    "/api/national/sync/run" : {
+      "post" : {
+        "tags" : [ "national-controller" ],
+        "operationId" : "run",
+        "responses" : {
+          "202" : {
+            "description" : "Accepted"
+          }
+        }
+      }
+    },
+    "/api/national/queue/{id}" : {
+      "post" : {
+        "tags" : [ "national-controller" ],
+        "operationId" : "decide",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TaskDecision"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/QueueTask"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/national/dead-letters/retry" : {
+      "post" : {
+        "tags" : [ "national-controller" ],
+        "operationId" : "retry",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/DeadLetterRef"
+                }
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/DeadLetter"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chapters/{code}/sync/run" : {
       "post" : {
         "tags" : [ "project-controller" ],
@@ -594,7 +717,7 @@
       },
       "post" : {
         "tags" : [ "adoption-controller" ],
-        "operationId" : "decide",
+        "operationId" : "decide_1",
         "parameters" : [ {
           "name" : "code",
           "in" : "path",
@@ -666,6 +789,69 @@
                   "type" : "array",
                   "items" : {
                     "$ref" : "#/components/schemas/ProjectRoleOption"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/national/tools" : {
+      "get" : {
+        "tags" : [ "national-controller" ],
+        "operationId" : "tools",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/ToolStatus"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/national/queue" : {
+      "get" : {
+        "tags" : [ "national-controller" ],
+        "operationId" : "queue",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/QueueTask"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/national/dead-letters" : {
+      "get" : {
+        "tags" : [ "national-controller" ],
+        "operationId" : "deadLetters",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/DeadLetter"
                   }
                 }
               }
@@ -881,6 +1067,77 @@
   },
   "components" : {
     "schemas" : {
+      "ToolChange" : {
+        "type" : "object",
+        "properties" : {
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "dryRun" : {
+            "type" : "boolean"
+          },
+          "reason" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "LastRun" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          },
+          "mode" : {
+            "type" : "string"
+          },
+          "ranAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "applied" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "removed" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "error" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "ToolStatus" : {
+        "type" : "object",
+        "properties" : {
+          "tool" : {
+            "type" : "string"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "dryRun" : {
+            "type" : "boolean"
+          },
+          "writable" : {
+            "type" : "boolean"
+          },
+          "pauseReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "maxRemovals" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "lastRun" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/LastRun"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }
+      },
       "ProjectInput" : {
         "type" : "object",
         "properties" : {
@@ -1330,6 +1587,95 @@
           },
           "canEdit" : {
             "type" : "boolean"
+          }
+        }
+      },
+      "TaskDecision" : {
+        "type" : "object",
+        "properties" : {
+          "action" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : [ "string", "null" ]
+          }
+        }
+      },
+      "QueueTask" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "tool" : {
+            "type" : "string"
+          },
+          "action" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "doneBy" : {
+            "type" : [ "string", "null" ]
+          },
+          "doneAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
+          }
+        }
+      },
+      "DeadLetterRef" : {
+        "type" : "object",
+        "properties" : {
+          "personId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "resourceId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }
+      },
+      "DeadLetter" : {
+        "type" : "object",
+        "properties" : {
+          "personId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "person" : {
+            "type" : "string"
+          },
+          "resourceId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "tool" : {
+            "type" : "string"
+          },
+          "resource" : {
+            "type" : "string"
+          },
+          "attempts" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "lastError" : {
+            "type" : [ "string", "null" ]
+          },
+          "lastAttemptAt" : {
+            "type" : [ "string", "null" ],
+            "format" : "date-time"
           }
         }
       },

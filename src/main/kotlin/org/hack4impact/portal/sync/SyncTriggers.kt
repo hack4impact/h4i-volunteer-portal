@@ -36,7 +36,7 @@ class SyncListener(private val engine: SyncEngine) {
 
 	@ApplicationModuleListener
 	fun on(event: SyncRequested) {
-		val reports = engine.dryRun(event.trigger, event.tools)
+		val reports = engine.run(event.trigger, event.tools)
 		reports.forEach { log.info("Sync {} ({}): {}", it.tool, event.trigger, it) }
 	}
 }

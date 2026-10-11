@@ -29,3 +29,14 @@ if (!scope.ResizeObserver) {
     disconnect() {}
   }
 }
+
+// jsdom has no constructable stylesheets; the popover polyfill behind Primer's tooltips adds to adoptedStyleSheets.
+for (const target of [Document.prototype, ShadowRoot.prototype] as object[]) {
+  if (!('adoptedStyleSheets' in target)) {
+    Object.defineProperty(target, 'adoptedStyleSheets', {
+      configurable: true,
+      get(this: { _sheets?: unknown[] }) { return (this._sheets ??= []) },
+      set(this: { _sheets?: unknown[] }, value: unknown[]) { this._sheets = value },
+    })
+  }
+}

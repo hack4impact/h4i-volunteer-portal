@@ -39,8 +39,12 @@ enum class AccountState { ACTIVE, INVITED, ACCEPTED, SUSPENDED }
 /** A resource as the tool reports it. [externalId] is what the portal stores (channel ID, team slug, group email, collection ID). */
 data class ToolResource(val externalId: String, val name: String, val archived: Boolean = false)
 
-/** [login] is the login or email the tool shows for the member, when it shows one (GitHub, Google); it helps match people. */
-data class ResourceMember(val accountId: String, val access: Access, val login: String? = null)
+/**
+ * [login] is the login or email the tool shows for the member, when it shows one (GitHub, Google); it helps match
+ * people. [implicit]: access that comes from the member's role in the tool, not from this resource (Vaultwarden
+ * owners and admins reach every collection); the portal can neither give nor take it, so the sync leaves it alone.
+ */
+data class ResourceMember(val accountId: String, val access: Access, val login: String? = null, val implicit: Boolean = false)
 
 /** Failures every adapter reports the same way, so the sync engine can retry, pause or alert without knowing the tool. */
 sealed class AdapterException(val tool: Tool, message: String, cause: Throwable? = null) : RuntimeException("$tool: $message", cause) {
@@ -65,6 +69,7 @@ class NotFound(tool: Tool, what: String) : AdapterException(tool, "not found: $w
 }
 
 /** The tool refused the request for another reason (a 4xx that isn't auth, rate limit or not found). */
-class Rejected(tool: Tool, message: String) : AdapterException(tool, message) {
+/** [status] is the HTTP status when the tool answered with one, e.g. 409 for "already exists". */
+class Rejected(tool: Tool, message: String, val status: Int? = null) : AdapterException(tool, message) {
 	override val retryable = false
 }

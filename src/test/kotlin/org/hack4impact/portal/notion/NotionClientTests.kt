@@ -61,4 +61,36 @@ class NotionClientTests {
 		assertEquals(id, NotionClient.pageId(id))
 		assertNull(NotionClient.pageId("https://www.notion.so/hack4impact/Long-Term-Success"))
 	}
+
+	@Test
+	fun `creates a page with the template's content two levels deep, skipping what can't be recreated`() {
+		val template = "33333333-3333-3333-3333-333333333333"
+		fun children(id: String, body: String) = server.stubFor(get(urlEqualTo("/blocks/$id/children?page_size=100"))
+			.willReturn(aResponse().withHeader("Content-Type", "application/json").withBody(body)))
+		children(template, """{"results":[
+			{"id":"b1","type":"heading_1","has_children":false,"heading_1":{"rich_text":[{"type":"text","text":{"content":"Overview"}}]}},
+			{"id":"b2","type":"toggle","has_children":true,"toggle":{"rich_text":[{"type":"text","text":{"content":"Links"}}]}},
+			{"id":"b3","type":"child_database","has_children":false,"child_database":{"title":"Tasks"}}],"has_more":false}""")
+		children("b2", """{"results":[{"id":"b4","type":"paragraph","has_children":false,"paragraph":{"rich_text":[]}}],"has_more":false}""")
+		server.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post(urlEqualTo("/pages"))
+			.willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""{"id":"new-page"}""")))
+
+		assertEquals("new-page", client.createPage(lts, "RISE DC (Fall 2026)", template))
+		val sent = org.hack4impact.portal.adapters.HttpJson.MAPPER.readTree(server.allServeEvents.first { it.request.url == "/pages" }.request.bodyAsString)
+		assertEquals(lts, sent.path("parent").path("page_id").asString())
+		assertEquals("RISE DC (Fall 2026)", sent.path("properties").path("title").path("title")[0].path("text").path("content").asString())
+		assertEquals(listOf("heading_1", "toggle"), sent.path("children").toList().map { it.path("type").asString() }) // the database is left out
+		assertEquals("paragraph", sent.path("children")[1].path("toggle").path("children")[0].path("type").asString())
+	}
+
+	@Test
+	fun `moves a page to the trash, and a page already gone counts as done`() {
+		server.stubFor(com.github.tomakehurst.wiremock.client.WireMock.patch(urlEqualTo("/pages/$lts"))
+			.willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""{"id":"$lts","archived":true}""")))
+		client.archivePage(lts)
+		server.verify(com.github.tomakehurst.wiremock.client.WireMock.patchRequestedFor(urlEqualTo("/pages/$lts"))
+			.withRequestBody(com.github.tomakehurst.wiremock.client.WireMock.equalToJson("""{"archived":true}""")))
+		server.stubFor(com.github.tomakehurst.wiremock.client.WireMock.patch(urlEqualTo("/pages/$root")).willReturn(aResponse().withStatus(404).withBody("{}")))
+		client.archivePage(root)
+	}
 }

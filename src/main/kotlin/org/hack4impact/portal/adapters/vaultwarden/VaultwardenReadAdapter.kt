@@ -19,8 +19,8 @@ import java.time.Instant
 /**
  * Reads one Vaultwarden organization over its web API as the service admin: members with their status,
  * collections, and who can reach each collection directly or through a group. Collection names are
- * end-to-end encrypted, so resources are named by ID or external ID; writes go through the import API and
- * the Bitwarden CLI in step 9 (wiki: Vaultwarden).
+ * end-to-end encrypted, so resources are named by ID or external ID (collections the portal creates carry their
+ * name as external ID). Writes: [VaultwardenWriteAdapter].
  */
 class VaultwardenReadAdapter(
 	private val baseUrl: String,
@@ -50,6 +50,10 @@ class VaultwardenReadAdapter(
 			group.text("id")!! to group.path("collections").firstOrNull { it.text("id") == resourceId }?.let(::access)
 		}
 		return list("$org/users?includeCollections=true&includeGroups=true").mapNotNull { member ->
+			// Confirmed owners and admins reach every collection through their role (decision 107).
+			if (member.path("type").isNumber && member.path("type").asInt() in setOf(0, 1) && member.path("status").asInt() == 2) {
+				return@mapNotNull ResourceMember(member.text("id")!!, Access.ADMIN, implicit = true)
+			}
 			val direct = member.path("collections").firstOrNull { it.text("id") == resourceId }?.let(::access)
 			val viaGroups = member.path("groups").mapNotNull { groupAccess[it.asString()] }
 			(listOfNotNull(direct) + viaGroups).maxOrNull()?.let { ResourceMember(member.text("id")!!, it) }

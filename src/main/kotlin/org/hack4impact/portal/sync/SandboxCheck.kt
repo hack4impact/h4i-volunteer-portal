@@ -111,25 +111,7 @@ class SandboxCheck(
 		}
 		val resourceKeys = resources.entries.associate { (k, v) -> v to k }
 
-		// People: each tool account matched by login, email or ID in that tool.
-		val accountsByTool = mutableMapOf<Tool, List<org.hack4impact.portal.adapters.ToolAccount>>()
-		val people = (fixture["people"] as List<Map<String, Any?>>).associate { p ->
-			val name = p["name"] as String
-			val id = dsl.insertInto(PERSON).set(PERSON.FIRST_NAME, name.substringBefore(' ')).set(PERSON.LAST_NAME, name.substringAfter(' ', "Sandbox"))
-				.set(PERSON.STATUS, (p["status"] as String?) ?: "active").returningResult(PERSON.ID).fetchSingle().value1()!!
-			dsl.insertInto(CHAPTER_MEMBERSHIP).set(CHAPTER_MEMBERSHIP.PERSON_ID, id).set(CHAPTER_MEMBERSHIP.CHAPTER_ID, chapterId).execute()
-			(p["role"] as String?)?.let { dsl.insertInto(CHAPTER_ROLE).set(CHAPTER_ROLE.PERSON_ID, id).set(CHAPTER_ROLE.CHAPTER_ID, chapterId).set(CHAPTER_ROLE.ROLE, it).execute() }
-			((p["accounts"] as Map<String, String>?) ?: emptyMap()).forEach { (toolName, login) ->
-				val tool = Tool.valueOf(toolName.uppercase())
-				val adapter = tools[tool] ?: error("$name: the $tool adapter isn't enabled")
-				val accounts = accountsByTool.getOrPut(tool) { adapter.accounts() }
-				val account = accounts.firstOrNull { listOf(it.login, it.email, it.externalId).any { v -> v.equals(login, ignoreCase = true) } && it.externalId != null }
-					?: error("$name: no $tool account with login, email or ID '$login'")
-				dsl.insertInto(TOOL_ACCOUNT).set(TOOL_ACCOUNT.PERSON_ID, id).set(TOOL_ACCOUNT.TOOL, tool.name.lowercase())
-					.set(TOOL_ACCOUNT.EXTERNAL_ID, account.externalId).set(TOOL_ACCOUNT.EXTERNAL_LOGIN, account.login).set(TOOL_ACCOUNT.STATE, "confirmed").execute()
-			}
-			name to id
-		}
+		val people = loadFixturePeople(dsl, fixture, tools, chapterId)
 		val personNames = people.entries.associate { (k, v) -> v to k }
 
 		((fixture["projects"] as List<Map<String, Any?>>?) ?: emptyList()).forEach { proj ->

@@ -3,6 +3,11 @@ package org.hack4impact.portal.sync
 import org.hack4impact.portal.adapters.AdapterException
 import org.hack4impact.portal.adapters.NotFound
 import org.hack4impact.portal.adapters.ReadAdapter
+import org.hack4impact.portal.adapters.ToolAccount
+import org.hack4impact.portal.adapters.WriteAdapter
+import org.hack4impact.portal.adoption.AccountMatcher
+import org.hack4impact.portal.national.AdminQueue
+import org.hack4impact.portal.notion.NotionPages
 import org.hack4impact.portal.db.tables.references.AUDIT_EVENT
 import org.hack4impact.portal.db.tables.references.CHAPTER_RESOURCE
 import org.hack4impact.portal.db.tables.references.PROJECT
@@ -47,6 +52,13 @@ data class ToolRunReport(
 	/** Why a real (writing) run would stop for national's confirmation: the blast-radius limit. */
 	val wouldPause: String? = null,
 	val error: String? = null,
+	/** Apply runs: changes made (or invited) and access removed. */
+	val applied: Int = 0,
+	val removed: Int = 0,
+	/** Members confirmed after accepting an invitation (Vaultwarden). */
+	val confirmed: Int = 0,
+	/** Resources of closed projects archived (or, in a dry run, to archive). */
+	val archives: Int = 0,
 )
 
 /**
@@ -59,6 +71,10 @@ class SyncEngine(
 	private val dsl: DSLContext,
 	private val worlds: WorldLoader,
 	private val adapters: List<ReadAdapter>,
+	private val writers: List<WriteAdapter>,
+	private val applier: SyncApplier,
+	private val queue: AdminQueue,
+	private val notionPages: NotionPages,
 	private val transactions: TransactionTemplate,
 ) {
 	private val log = LoggerFactory.getLogger(javaClass)
@@ -66,20 +82,58 @@ class SyncEngine(
 
 	private data class ManagedResource(val id: UUID, val externalId: String)
 
-	private data class Actual(val memberships: List<Membership>, val unmatched: List<Pair<UUID, String>>, val missing: List<UUID>, val toCreate: List<UUID>)
+	/**
+	 * What a tool actually has. [memberAccounts] is the account behind each person's membership (to revoke it), and
+	 * [people] each person's account in the tool, matched like the adoption scan (ID, then login, then email).
+	 */
+	internal data class Actual(
+		val memberships: List<Membership>,
+		val unmatched: List<Pair<UUID, String>>,
+		val missing: List<UUID>,
+		val toCreate: List<UUID>,
+		val memberAccounts: Map<Pair<UUID, UUID>, String> = emptyMap(),
+		val people: Map<UUID, ToolAccount> = emptyMap(),
+		/** Resources to archive: every project using them is closed, and no chapter uses them (Slack only). */
+		val toArchive: List<UUID> = emptyList(),
+		/** Access people have through their role in the tool (Vaultwarden owners and admins): never added, changed or removed. */
+		val implicit: Set<Pair<UUID, UUID>> = emptySet(),
+	)
 
-	fun dryRun(trigger: String, tools: Set<Tool>? = null): List<ToolRunReport> {
+	companion object {
+		/** PRD: closing a project archives its channels. GitHub teams, Google groups and vault collections are only emptied. */
+		val ARCHIVE_ON_CLOSE = setOf(Tool.SLACK)
+	}
+
+	/**
+	 * A sync of every tool: tools whose setting is out of dry run (`tool_setting.dry_run = false`) and that have a
+	 * write adapter are changed; the rest are planned only. Every tool starts in dry run.
+	 */
+	fun run(trigger: String, tools: Set<Tool>? = null): List<ToolRunReport> = sync(trigger, tools, forceDryRun = false)
+
+	/** Plans every tool without changing any, whatever their settings (previews, the sandbox check). */
+	fun dryRun(trigger: String, tools: Set<Tool>? = null): List<ToolRunReport> = sync(trigger, tools, forceDryRun = true)
+
+	private fun sync(trigger: String, tools: Set<Tool>?, forceDryRun: Boolean): List<ToolRunReport> {
 		val loaded = worlds.load()
 		loaded.warnings.forEach { log.warn("Sync: {}", it) }
 		val resolution = Resolver.resolve(loaded.world)
 		val resourceTool = loaded.world.resources.associate { it.id to it.tool }
-		return adapters
+		val reports = adapters
 			.filter { tools == null || it.tool in tools }
 			.sortedBy { it.tool }
-			.map { adapter -> runTool(adapter, trigger, resolution, resourceTool) }
+			.map { adapter -> runTool(adapter, trigger, resolution, resourceTool, forceDryRun) }
+		// Project pages in Notion, when Notion is out of dry run and page writes are switched on.
+		if (!forceDryRun && (tools == null || Tool.NOTION in tools) && notionPages.canWrite()) {
+			val notion = dsl.selectFrom(TOOL_SETTING).where(TOOL_SETTING.TOOL.eq("notion")).fetchOne()
+			if (notion?.enabled == true && notion.dryRun == false) {
+				val pages = notionPages.sync()
+				if (pages.created + pages.archived + pages.failed > 0) log.info("Notion pages: {} created, {} archived, {} failed", pages.created, pages.archived, pages.failed)
+			}
+		}
+		return reports
 	}
 
-	private fun runTool(adapter: ReadAdapter, trigger: String, resolution: Resolution, resourceTool: Map<UUID, Tool>): ToolRunReport {
+	private fun runTool(adapter: ReadAdapter, trigger: String, resolution: Resolution, resourceTool: Map<UUID, Tool>, forceDryRun: Boolean): ToolRunReport {
 		val tool = adapter.tool
 		val setting = dsl.selectFrom(TOOL_SETTING).where(TOOL_SETTING.TOOL.eq(tool.name.lowercase())).fetchOne()
 		if (setting?.enabled == false) {
@@ -94,7 +148,11 @@ class SyncEngine(
 		}
 
 		val ofTool = { id: UUID -> resourceTool[id] == tool }
-		val desired = Resolution(resolution.grants.filter { ofTool(it.resourceId) }, resolution.withheld.filter { ofTool(it.resourceId) })
+		// Grants already met by someone's role in the tool (implicit access) are left out of the plan.
+		val desired = Resolution(
+			resolution.grants.filter { ofTool(it.resourceId) && (it.personId to it.resourceId) !in actual.implicit },
+			resolution.withheld.filter { ofTool(it.resourceId) },
+		)
 		val previous = dsl.select(SYNC_RECORD.PERSON_ID, SYNC_RECORD.RESOURCE_ID, SYNC_RECORD.REASONS).from(SYNC_RECORD)
 			.where(SYNC_RECORD.APPLIED_AT.isNotNull)
 			.fetch()
@@ -103,25 +161,34 @@ class SyncEngine(
 		val plan = Planner.plan(desired, actual.memberships, previous)
 		val wouldPause = blastRadius(plan, actual.memberships, setting?.maxRemovals ?: 25, setting?.maxRemovalRatio?.toDouble() ?: 0.2)
 
+		val writer = writers.firstOrNull { it.tool == tool }
+		if (!forceDryRun && setting?.dryRun == false && writer != null) {
+			// National confirmed this many removals recently (admin queue): the run may make them.
+			val hold = wouldPause?.takeUnless { queue.removalsConfirmed(tool, plan.removals.size) }
+			return applier.apply(tool, trigger, writer, plan, actual, desired, hold)
+		}
 		val runId = transactions.execute { record(tool, trigger, plan, actual, desired, wouldPause) }!!
 		return ToolRunReport(
 			tool, runId, if (wouldPause == null) "completed" else "paused",
 			plan.adds.size, plan.changes.size, plan.removals.size, plan.drift.size, actual.unmatched.size, actual.missing.size, actual.toCreate.size, wouldPause,
+			archives = actual.toArchive.size,
 		)
 	}
 
 	/** Reads members of every resource the portal manages in this tool, mapped to people through their tool accounts. */
 	private fun readActual(adapter: ReadAdapter): Actual {
 		// Always reach the tool, even with nothing to compare yet, so bad credentials or an outage show as a failed run.
-		adapter.accounts()
+		val accounts = adapter.accounts()
+		val accountsById = accounts.filter { it.externalId != null }.associateBy { it.externalId!! }
+		val matcher = AccountMatcher.load(dsl, adapter.tool)
+		val people = accounts.mapNotNull { a -> a.externalId?.let { id -> matcher.match(id, a.login, a.email)?.let { it.personId to a } } }.toMap()
 		val tool = adapter.tool.name.lowercase()
 		val managed = dsl.select(RESOURCE.ID, RESOURCE.EXTERNAL_ID).from(RESOURCE)
 			.where(RESOURCE.TOOL.eq(tool), RESOURCE.EXTERNAL_ID.isNotNull, RESOURCE.ARCHIVED_AT.isNull, RESOURCE.MANAGED.ne("unmanaged"))
 			.fetch { ManagedResource(it.value1()!!, it.value2()!!) }
-		val owner = dsl.select(TOOL_ACCOUNT.EXTERNAL_ID, TOOL_ACCOUNT.PERSON_ID).from(TOOL_ACCOUNT)
-			.where(TOOL_ACCOUNT.TOOL.eq(tool), TOOL_ACCOUNT.EXTERNAL_ID.isNotNull)
-			.fetchMap(TOOL_ACCOUNT.EXTERNAL_ID, TOOL_ACCOUNT.PERSON_ID)
 		val memberships = mutableListOf<Membership>()
+		val memberAccounts = mutableMapOf<Pair<UUID, UUID>, String>()
+		val implicit = mutableSetOf<Pair<UUID, UUID>>()
 		val unmatched = mutableListOf<Pair<UUID, String>>()
 		val missing = mutableListOf<UUID>()
 		for (resource in managed) {
@@ -132,8 +199,16 @@ class SyncEngine(
 				continue
 			}
 			for (member in members) {
-				val person = owner[member.accountId]
-				if (person == null) unmatched += resource.id to member.accountId else memberships += Membership(person, resource.id, member.access)
+				val account = accountsById[member.accountId]
+				val person = matcher.match(member.accountId, member.login ?: account?.login, account?.email)?.personId
+				if (member.implicit) {
+					person?.let { implicit += it to resource.id } // not unmatched or drift either: it isn't the portal's to manage
+				} else if (person == null) {
+					unmatched += resource.id to member.accountId
+				} else {
+					memberships += Membership(person, resource.id, member.access)
+					memberAccounts[person to resource.id] = member.accountId
+				}
 			}
 		}
 		// Portal-made resources not created in the tool yet, if a live project or the chapter uses them.
@@ -145,7 +220,16 @@ class SyncEngine(
 					.or(DSL.exists(DSL.selectOne().from(CHAPTER_RESOURCE).where(CHAPTER_RESOURCE.RESOURCE_ID.eq(RESOURCE.ID)))),
 			)
 			.fetch(RESOURCE.ID).filterNotNull()
-		return Actual(memberships, unmatched, missing, toCreate)
+		val toArchive = if (adapter.tool !in ARCHIVE_ON_CLOSE) emptyList() else dsl.select(RESOURCE.ID).from(RESOURCE)
+			.where(
+				RESOURCE.TOOL.eq(tool), RESOURCE.EXTERNAL_ID.isNotNull, RESOURCE.ARCHIVED_AT.isNull, RESOURCE.MANAGED.ne("unmanaged"),
+				DSL.exists(DSL.selectOne().from(PROJECT_RESOURCE).where(PROJECT_RESOURCE.RESOURCE_ID.eq(RESOURCE.ID))),
+				DSL.notExists(DSL.selectOne().from(PROJECT_RESOURCE).join(PROJECT).on(PROJECT.ID.eq(PROJECT_RESOURCE.PROJECT_ID))
+					.where(PROJECT_RESOURCE.RESOURCE_ID.eq(RESOURCE.ID), PROJECT.STATUS.ne("closed"))),
+				DSL.notExists(DSL.selectOne().from(CHAPTER_RESOURCE).where(CHAPTER_RESOURCE.RESOURCE_ID.eq(RESOURCE.ID))),
+			)
+			.fetch(RESOURCE.ID).filterNotNull()
+		return Actual(memberships, unmatched, missing, toCreate, memberAccounts, people, toArchive, implicit)
 	}
 
 	/** Why a writing run would pause for national: too many removals overall, or too large a share of one resource. */
@@ -173,6 +257,7 @@ class SyncEngine(
 			actual.unmatched.forEach { (resource, account) -> add(change("unmatched_account", null, resource, account = account)) }
 			actual.missing.forEach { add(change("missing_resource", null, it)) }
 			actual.toCreate.forEach { add(change("create_resource", null, it)) }
+			actual.toArchive.forEach { add(change("archive_resource", null, it)) }
 		}
 		dsl.batch(queries).execute()
 
@@ -214,7 +299,7 @@ class SyncEngine(
 			.set(SYNC_RUN.ERROR, error)
 			.returningResult(SYNC_RUN.ID).fetchSingle().value1()!!
 
-	private fun reasonsJson(reasons: List<Reason>): JSONB = JSONB.valueOf(json.writeValueAsString(reasons.map(::reasonMap)))
+	internal fun reasonsJson(reasons: List<Reason>): JSONB = JSONB.valueOf(json.writeValueAsString(reasons.map(::reasonMap)))
 
 	private fun reasonMap(reason: Reason): Map<String, String> = when (reason) {
 		is Reason.ChapterMember -> mapOf("type" to "chapter_member", "chapterId" to reason.chapterId.toString())

@@ -22,12 +22,17 @@ class AccountMatcher(
 ) {
 	fun match(accountId: String, login: String?, email: String?): PersonMatch? {
 		byId[accountId]?.let { return PersonMatch(it, MatchedBy.ID) }
+		// Memberships the portal records itself (the admin queue) name the person directly.
+		if (accountId.startsWith(PERSON_PREFIX)) return runCatching { UUID.fromString(accountId.removePrefix(PERSON_PREFIX)) }.getOrNull()?.let { PersonMatch(it, MatchedBy.ID) }
 		login?.lowercase()?.let { byLogin[it] }?.singleOrNull()?.let { return PersonMatch(it, MatchedBy.LOGIN) }
 		val emails = listOfNotNull(email, login?.takeIf { '@' in it }).map { it.lowercase() }.distinct()
 		return emails.firstNotNullOfOrNull { byEmail[it]?.singleOrNull() }?.let { PersonMatch(it, MatchedBy.EMAIL) }
 	}
 
 	companion object {
+		/** Account IDs of the form `person:<uuid>` are portal people (queue-based tools such as Notion). */
+		const val PERSON_PREFIX = "person:"
+
 		fun load(dsl: DSLContext, tool: Tool): AccountMatcher {
 			val name = tool.name.lowercase()
 			val accounts = dsl.select(TOOL_ACCOUNT.TOOL, TOOL_ACCOUNT.EXTERNAL_ID, TOOL_ACCOUNT.EXTERNAL_LOGIN, TOOL_ACCOUNT.PERSON_ID)

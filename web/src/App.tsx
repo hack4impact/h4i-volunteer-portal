@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { api, type Me, signIn } from './api/client'
 import { TopBar } from './components/TopBar'
 import { ChapterPage } from './pages/ChapterPage'
+import { National } from './pages/National'
 
 type Session = { state: 'loading' } | { state: 'signed-out' } | { state: 'signed-in'; me: Me }
 
@@ -30,6 +31,7 @@ export function App() {
               <Route path="/chapters/:code/projects/:slug" element={<ChapterPage me={session.me} tab="projects" />} />
               <Route path="/chapters/:code/adoption" element={<ChapterPage me={session.me} tab="adoption" />} />
               <Route path="/chapters/:code/settings" element={<ChapterPage me={session.me} tab="settings" />} />
+              <Route path="/national" element={<National me={session.me} />} />
               <Route
                 path="*"
                 element={session.me.chapters.length > 0 ? <Navigate to={`/chapters/${session.me.chapters[0]!.code}`} replace /> : <NoAccess me={session.me} />}

@@ -66,6 +66,21 @@ class VaultwardenReadAdapterTests : WireMockContract() {
 	}
 
 	@Test
+	fun `a confirmed owner or admin reaches every collection through their role, as implicit access`() {
+		val api = "/api/organizations/$org"
+		json("$api/collections", """{"data":[{"id":"c1","name":"2.x|y","externalId":"umd-rise-dc"}]}""")
+		json("$api/groups/details", """{"data":[]}""")
+		json("$api/users?includeCollections=true&includeGroups=true", """{"data":[
+			{"id":"owner","type":0,"status":2,"collections":[],"groups":[]},
+			{"id":"admin-invited","type":1,"status":0,"collections":[],"groups":[]},
+			{"id":"user","type":2,"status":2,"collections":[{"id":"c1","readOnly":false,"hidePasswords":false,"manage":false}],"groups":[]}]}""")
+		assertEquals(
+			setOf(ResourceMember("owner", Access.ADMIN, implicit = true), ResourceMember("user", Access.WRITE)),
+			VaultwardenReadAdapter(server.baseUrl(), org, { token }).members("c1").toSet(),
+		)
+	}
+
+	@Test
 	fun `a rejected API key (400 invalid_client) is AuthFailed`() {
 		server.stubFor(post(urlEqualTo("/identity/connect/token")).willReturn(aResponse().withStatus(400).withBody("""{"error":"invalid_client"}""")))
 		val tokens = VaultwardenApiKeyToken(server.baseUrl(), "user.abc", "wrong", "device-1")

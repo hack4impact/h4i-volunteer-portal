@@ -1,0 +1,9 @@
+# Step 9 finish line: REALLY changes the sandboxes through the sync engine (create, add, re-run, roll back, clean up).
+# Use scripts/sandbox-e2e.sh, which runs it against a throwaway Postgres.
+spring:
+  main:
+    web-application-type: none
+
+portal:
+  sandbox-e2e:
+    enabled: true
