@@ -5,13 +5,14 @@ import { api, type ChapterOverview, type ChapterSync, type Me, type MemberRow } 
 import { ROLE_LABEL } from '../components/Status'
 import { TopBar } from '../components/TopBar'
 import { Adoption } from './Adoption'
+import { Approvals } from './Approvals'
 import { MembersTable } from './MembersTable'
 import { Overview } from './Overview'
 import { ProjectPage } from './ProjectPage'
 import { Projects } from './Projects'
 import { Settings } from './Settings'
 
-export type ChapterTab = 'overview' | 'members' | 'projects' | 'adoption' | 'settings'
+export type ChapterTab = 'overview' | 'members' | 'approvals' | 'projects' | 'adoption' | 'settings'
 
 /** One chapter: page header, tabs, and the tab's content. A project's page sits under the Projects tab. */
 export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
@@ -20,6 +21,7 @@ export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
   const [chapter, setChapter] = useState<ChapterOverview | null>(null)
   const [members, setMembers] = useState<MemberRow[] | null>(null)
   const [sync, setSync] = useState<ChapterSync | null>(null)
+  const [waiting, setWaiting] = useState<number | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -33,11 +35,13 @@ export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
     )
     void api.GET('/api/chapters/{code}/members', params).then(({ data }) => data && setMembers(data))
     void api.GET('/api/chapters/{code}/sync', params).then(({ data }) => data && setSync(data))
+    void api.GET('/api/chapters/{code}/registrations', params).then(({ data }) => setWaiting(data?.filter((r) => r.status === 'submitted').length))
   }, [code])
 
   const tabs = [
     { key: 'overview', label: 'Overview', to: `/chapters/${code}` },
     { key: 'members', label: 'Members', to: `/chapters/${code}/members`, count: members?.length },
+    { key: 'approvals', label: 'Approvals', to: `/chapters/${code}/approvals`, count: waiting || undefined },
     { key: 'projects', label: 'Projects', to: `/chapters/${code}/projects` },
     { key: 'adoption', label: 'Adoption', to: `/chapters/${code}/adoption` },
     { key: 'settings', label: 'Settings', to: `/chapters/${code}/settings` },
@@ -78,6 +82,8 @@ export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
             <ProjectPage code={chapter.code} slug={slug} members={members} />
           ) : tab === 'projects' ? (
             <Projects code={chapter.code} canEdit={['lead', 'co_lead', 'national'].includes(chapter.role)} />
+          ) : tab === 'approvals' ? (
+            <Approvals code={chapter.code} canEdit={['lead', 'co_lead', 'national'].includes(chapter.role)} />
           ) : tab === 'settings' ? (
             <Settings code={chapter.code} />
           ) : (

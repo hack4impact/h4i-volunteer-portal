@@ -29,13 +29,17 @@ class SyncRequests(private val events: ApplicationEventPublisher) {
 	fun request(trigger: String, tools: Set<Tool>? = null) = events.publishEvent(SyncRequested(trigger, tools))
 }
 
-/** Runs requested syncs after the requesting transaction commits, in the background. */
+/**
+ * Runs requested syncs after the requesting transaction commits, in the background. `portal.sync.on-request=false`
+ * turns that off (the sandbox suite runs the engine itself and mustn't overlap a background run).
+ */
 @Component
-class SyncListener(private val engine: SyncEngine) {
+class SyncListener(private val engine: SyncEngine, @org.springframework.beans.factory.annotation.Value("\${portal.sync.on-request:true}") private val enabled: Boolean) {
 	private val log = LoggerFactory.getLogger(javaClass)
 
 	@ApplicationModuleListener
 	fun on(event: SyncRequested) {
+		if (!enabled) return
 		val reports = engine.run(event.trigger, event.tools)
 		reports.forEach { log.info("Sync {} ({}): {}", it.tool, event.trigger, it) }
 	}

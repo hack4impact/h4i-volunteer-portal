@@ -86,6 +86,7 @@ class NationalController(
 	private val writers: List<WriteAdapter>,
 	private val syncs: SyncRequests,
 	private val queue: AdminQueue,
+	private val adapters: org.hack4impact.portal.adapters.AdapterProperties,
 ) {
 	private val json = JsonMapper.builder().build()
 
@@ -95,7 +96,7 @@ class NationalController(
 	@GetMapping("/tools")
 	fun tools(@AuthenticationPrincipal user: OidcUser): List<ToolStatus> {
 		national(user)
-		val writable = writers.map { it.tool.name.lowercase() }.toSet()
+		val writable = writable()
 		val runs = dsl.selectFrom(SYNC_RUN).orderBy(SYNC_RUN.STARTED_AT.desc()).limit(500).fetch().filter { it.tool != null }.distinctBy { it.tool }.associateBy { it.tool }
 		return dsl.selectFrom(TOOL_SETTING).orderBy(TOOL_SETTING.TOOL).fetch().map { s ->
 			val run = runs[s.tool]
@@ -111,7 +112,7 @@ class NationalController(
 	fun setTool(@AuthenticationPrincipal user: OidcUser, @PathVariable tool: String, @RequestBody change: ToolChange): List<ToolStatus> {
 		val viewer = national(user)
 		val setting = dsl.selectFrom(TOOL_SETTING).where(TOOL_SETTING.TOOL.eq(tool)).fetchOne() ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No tool $tool")
-		if (!change.dryRun && writers.none { it.tool.name.lowercase() == tool }) {
+		if (!change.dryRun && tool !in writable()) {
 			throw ResponseStatusException(HttpStatus.CONFLICT, "This deployment can't change $tool: its write switch (PORTAL_ADAPTERS_${tool.uppercase()}_WRITE) is off")
 		}
 		if (!change.enabled && change.reason.isNullOrBlank()) throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Say why the tool is paused")
@@ -126,6 +127,10 @@ class NationalController(
 		))
 		return tools(user)
 	}
+
+	/** Tools this deployment can change: sync write adapters, and Documenso (it sends agreements) when its write switch is on. */
+	private fun writable(): Set<String> =
+		writers.map { it.tool.name.lowercase() }.toSet() + listOfNotNull("documenso".takeIf { adapters.documenso.enabled && adapters.documenso.write })
 
 	@GetMapping("/queue")
 	fun queue(@AuthenticationPrincipal user: OidcUser): List<QueueTask> {

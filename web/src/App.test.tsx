@@ -161,7 +161,7 @@ describe('App', () => {
     expect(screen.getByText(/will be created under/)).toBeInTheDocument()
     expect(screen.getByText('Hack4Impact-UMD / Long Term Success')).toBeInTheDocument()
     expect(screen.getByText(/The project changed since then/)).toBeInTheDocument()
-    expect(within(screen.getByRole('region', { name: /^Team/ })).getByText('Agreement not signed')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: /^Team/ })).getByText('Agreement not sent yet')).toBeInTheDocument()
 
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Person to add' }), 'p3')
     await userEvent.click(within(screen.getByRole('region', { name: /^Team/ })).getByRole('button', { name: 'Add' }))
@@ -234,5 +234,169 @@ describe('App', () => {
     await userEvent.click(within(screen.getByRole('list', { name: 'Dead letters' })).getByRole('button', { name: 'Retry' }))
     const retry = calls().find((r) => r.url.endsWith('/dead-letters/retry'))!
     expect(await retry.clone().json()).toEqual([{ personId: 'p1', resourceId: 'r1' }])
+  })
+
+  const applicant = (over: object = {}) => ({
+    kind: 'new', status: 'started', schoolEmail: 'ada@umd.edu', emailVerified: true, githubLogin: null, githubConfigured: true,
+    chapter: { code: 'umd', name: 'Hack4Impact UMD', emailDomains: ['umd.edu'], applicationsOpen: true, applicationUrl: null, questions: [{ id: 'q1', label: 'Why join?', kind: 'long_text', options: [], required: true }] },
+    details: { firstName: null, lastName: null, preferredName: null, personalEmail: null, graduationYear: null, roleInterest: null, stillActive: null },
+    answers: {}, missing: ['your GitHub account', 'your name'], declineReason: null, account: null, agreements: [], ...over,
+  })
+
+  it('takes a new applicant from the chapter link through a code to a sent application', async () => {
+    window.history.pushState({}, '', '/join/umd')
+    api({
+      '/api/apply/chapters/umd': [200, applicant().chapter],
+      '/api/apply/chapters/umd/code': [202, {}],
+      '/api/apply/chapters/umd/verify': [200, applicant()],
+      'PUT /api/apply/me': [200, applicant({ githubLogin: 'ada-gh', missing: [] })],
+      '/api/apply/me/submit': [200, applicant({ status: 'submitted' })],
+    })
+    render(<App />)
+    expect(await screen.findByRole('heading', { name: 'Hack4Impact UMD' })).toBeInTheDocument()
+    await userEvent.type(screen.getByRole('textbox', { name: /School email/ }), 'ada@umd.edu')
+    await userEvent.click(screen.getByRole('button', { name: 'Send code' }))
+    await userEvent.type(await screen.findByRole('textbox', { name: 'Code' }), '123456')
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }))
+
+    expect(await screen.findByText(/Still needed: your GitHub account, your name/)).toBeInTheDocument() // the checklist, in words
+    expect(screen.getByRole('button', { name: 'Sign in with GitHub' })).toBeInTheDocument()
+    await userEvent.type(screen.getByRole('textbox', { name: /First name/ }), 'Ada')
+    await userEvent.type(screen.getByRole('textbox', { name: /Why join\?/ }), 'To build')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    const put = vi.mocked(fetch).mock.calls.map(([r]) => r as Request).find((r) => r.method === 'PUT')!
+    expect(await put.clone().json()).toMatchObject({ details: { firstName: 'Ada' }, answers: { q1: 'To build' } })
+    await userEvent.click(await screen.findByRole('button', { name: 'Send application' }))
+    expect(await screen.findByRole('heading', { name: 'Application sent' })).toBeInTheDocument()
+  })
+
+  it('sends applicants to the chapter’s own application when it has turned the portal’s off', async () => {
+    window.history.pushState({}, '', '/join/umd')
+    api({ '/api/apply/chapters/umd': [200, { ...applicant().chapter, applicationsOpen: false, applicationUrl: 'https://forms.gle/umd' }] })
+    render(<App />)
+    expect(await screen.findByText(/runs its own application process/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Apply to Hack4Impact UMD' })).toHaveAttribute('href', 'https://forms.gle/umd')
+    expect(screen.queryByRole('textbox', { name: /School email/ })).not.toBeInTheDocument()
+  })
+
+  it('has applicants sign the volunteer agreement in Documenso before they can send', async () => {
+    window.history.pushState({}, '', '/apply')
+    const view = applicant({
+      githubLogin: 'ada-gh', missing: ['the Volunteer agreement'],
+      agreements: [{ kind: 'volunteer', name: 'Volunteer agreement', status: 'not_started', signUrl: null }, { kind: 'code_of_conduct', name: 'Code of conduct', status: 'signed', signUrl: null }],
+    })
+    api({
+      '/api/apply/me': [200, view],
+      'PUT /api/apply/me': [200, view],
+      '/api/apply/me/agreements/volunteer': [200, { url: 'https://sign.example/sign/tok' }],
+    })
+    render(<App />)
+    expect(await screen.findByRole('button', { name: 'Send application' })).toBeDisabled() // not signed yet
+    expect(screen.getByText('Signed')).toBeInTheDocument() // the code of conduct
+    await userEvent.click(screen.getByRole('button', { name: 'Read and sign' }))
+    const calls = () => vi.mocked(fetch).mock.calls.map(([r]) => r as Request)
+    await waitFor(() => expect(calls().some((r) => r.url.endsWith('/api/apply/me/agreements/volunteer'))).toBe(true))
+    expect(calls().findIndex((r) => r.method === 'PUT')).toBeLessThan(calls().findIndex((r) => r.url.endsWith('/agreements/volunteer'))) // saved first: the name goes on it
+  })
+
+  it('lets national set up an agreement template from Documenso', async () => {
+    window.history.pushState({}, '', '/national')
+    const templates = (list: unknown[]) => ({ templates: list, connected: true, sending: false })
+    api({
+      '/api/me': [200, { ...me([umd]), nationalAdmin: true }],
+      '/api/national/tools': [200, []], '/api/national/queue': [200, []], '/api/national/dead-letters': [200, []],
+      '/api/national/claims/preview': [200, { eligible: 0, alreadySent: 0, withoutEmail: 0 }],
+      'GET /api/national/agreement-templates': [200, templates([])],
+      'POST /api/national/agreement-templates': [200, templates([{ id: 't1', kind: 'project', name: 'Project agreement', documensoTemplateId: 'envelope_1', version: 1, active: true, createdAt: '2026-10-11T12:00:00Z', sent: 0 }])],
+    })
+    render(<App />)
+    const list = await screen.findByRole('list', { name: 'Agreement templates' })
+    expect(within(list).getAllByText('Not set up')).toHaveLength(3)
+    expect(screen.getByText('Dry run: nothing is sent')).toBeInTheDocument()
+    await userEvent.click(within(list).getAllByRole('button', { name: 'Set up' })[2]!) // the project agreement
+    await userEvent.type(within(list).getByRole('textbox', { name: 'Documenso template' }), 'envelope_1')
+    await userEvent.click(within(list).getByRole('button', { name: 'Save' }))
+    const post = vi.mocked(fetch).mock.calls.map(([r]) => r as Request).find((r) => r.method === 'POST')!
+    expect(await post.clone().json()).toEqual({ kind: 'project', name: 'Project agreement', documensoTemplateId: 'envelope_1' })
+    expect(await within(list).findByText('Project agreement · version 1')).toBeInTheDocument()
+  })
+
+  it('lets an imported member claim their record and say they have moved on', async () => {
+    window.history.pushState({}, '', '/claim/tok123')
+    const claim = applicant({ kind: 'claim', githubLogin: 'ada-gh', details: { ...applicant().details, firstName: 'Ada', lastName: 'Lovelace' }, missing: ['whether you’re still in the chapter'] })
+    api({
+      '/api/apply/claim': [200, claim],
+      'PUT /api/apply/me': [200, { ...claim, missing: [] }],
+      '/api/apply/me/submit': [200, { ...claim, status: 'completed', account: 'ada@umd.hack4impact.org' }],
+    })
+    render(<App />)
+    expect(await screen.findByText('Claim your record')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /First name/ })).toHaveValue('Ada') // pre-filled from the import
+    await userEvent.click(screen.getByRole('radio', { name: /I’ve moved on/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Claim my record' }))
+    expect(await screen.findByRole('heading', { name: 'Record claimed' })).toBeInTheDocument()
+    expect(screen.getByText('ada@umd.hack4impact.org')).toBeInTheDocument()
+    const put = vi.mocked(fetch).mock.calls.map(([r]) => r as Request).find((r) => r.method === 'PUT')!
+    expect((await put.clone().json()).details.stillActive).toBe(false)
+  })
+
+  it('hides the questions and the empty waiting list when the chapter runs its own application process', async () => {
+    const chapter = { id: 'c1', code: 'umd', name: 'Hack4Impact UMD', status: 'active', role: 'lead', stats: { activeMembers: 2, alumni: 1, liveProjects: 0, leads: 1 }, registrationLink: 'https://join.hack4impact.org/umd', notionProblems: 0 }
+    const settings = (open: boolean) => ({
+      questions: [{ id: 'q1', label: 'Why join?', kind: 'long_text', options: [], required: true }], googleDomain: 'umd.hack4impact.org', googleOrgUnit: '/UMD',
+      applicationsOpen: open, applicationUrl: open ? null : 'https://forms.gle/umd', canEditQuestions: true, canEditAccounts: false,
+    })
+    const routes = {
+      '/api/me': [200, me([umd])], '/api/chapters/umd': [200, chapter], '/api/chapters/umd/members': [200, []], '/api/chapters/umd/sync': [200, { tools: [], changes: [] }],
+      '/api/chapters/umd/registrations': [200, []], '/api/chapters/umd/roster': [200, []],
+      '/api/chapters/umd/notion': [200, { teamspaceId: null, defaultParent: null, template: null, titlePattern: '{project} ({semester})', routes: [], configured: false, problems: 0, canEdit: true }],
+    } satisfies Record<string, [number, unknown]>
+
+    window.history.pushState({}, '', '/chapters/umd/settings')
+    api({ ...routes, '/api/chapters/umd/registration-settings': [200, settings(true)] })
+    const { unmount } = render(<App />)
+    expect(await screen.findByRole('button', { name: 'Add question' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('radio', { name: /our own application process/ }))
+    expect(screen.queryByRole('button', { name: 'Add question' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Question' })).not.toBeInTheDocument()
+    unmount()
+
+    window.history.pushState({}, '', '/chapters/umd/approvals')
+    api({ ...routes, '/api/chapters/umd/registration-settings': [200, settings(false)] })
+    render(<App />)
+    expect(await screen.findByText('Invite a roster')).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('Waiting for a decision')).not.toBeInTheDocument())
+  })
+
+  it('shows leads the match and lets them approve as a matched record or decline with a reason', async () => {
+    window.history.pushState({}, '', '/chapters/umd/approvals')
+    const reg = {
+      id: 'r1', kind: 'new', status: 'submitted', name: 'Ada Lovelace', schoolEmail: 'ada@umd.edu', githubLogin: 'ada-gh', graduationYear: 2028, roleInterest: 'Developer',
+      matchStatus: 'duplicate', matches: [{ personId: 'p9', name: 'Ada Lovelace', status: 'alumni', chapters: ['Hack4Impact UMD'], why: ['same email'] }, { personId: 'p8', name: 'Ada L', status: 'active', chapters: [], why: ['same name in this chapter'] }],
+      answers: { 'Why join?': 'To build' }, githubChanged: false, submittedAt: '2026-10-11T12:00:00Z', decidedAt: null, declineReason: null,
+    }
+    api({
+      '/api/me': [200, me([umd])],
+      '/api/chapters/umd': [200, { id: 'c1', code: 'umd', name: 'Hack4Impact UMD', status: 'active', role: 'lead', stats: { activeMembers: 2, alumni: 1, liveProjects: 0, leads: 1 }, registrationLink: 'https://join.hack4impact.org/umd', notionProblems: 0 }],
+      '/api/chapters/umd/members': [200, []],
+      '/api/chapters/umd/sync': [200, { tools: [], changes: [] }],
+      '/api/chapters/umd/registrations': [200, [reg]],
+      '/api/chapters/umd/registrations/r1/approve': [200, []],
+      '/api/chapters/umd/roster': [200, []],
+    })
+    render(<App />)
+    const list = await screen.findByRole('list', { name: 'Waiting for a decision' })
+    expect(within(list).getByText('Possible duplicate')).toBeInTheDocument()
+    expect(within(list).getByText(/same email/)).toBeInTheDocument()
+    expect(within(list).getByText('To build')).toBeInTheDocument()
+
+    await userEvent.click(within(list).getByRole('button', { name: 'Decline' }))
+    expect(within(list).getAllByRole('button', { name: 'Decline' }).at(-1)).toBeDisabled() // a reason first
+    await userEvent.click(within(list).getByRole('button', { name: 'Cancel' }))
+
+    await userEvent.click(within(list).getAllByRole('radio')[1]!) // the alumni record
+    await userEvent.click(within(list).getByRole('button', { name: 'Approve as this record' }))
+    const approve = vi.mocked(fetch).mock.calls.map(([r]) => r as Request).find((r) => r.url.endsWith('/approve'))!
+    expect(await approve.clone().json()).toEqual({ personId: 'p9' })
   })
 })

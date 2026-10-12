@@ -3,6 +3,7 @@ package org.hack4impact.portal.projects
 import org.hack4impact.portal.chapters.PlannedChange
 import org.hack4impact.portal.db.tables.records.ProjectRecord
 import org.hack4impact.portal.db.tables.references.AUDIT_EVENT
+import org.hack4impact.portal.db.tables.references.AGREEMENT
 import org.hack4impact.portal.db.tables.references.CHAPTER
 import org.hack4impact.portal.db.tables.references.DISCOVERED_RESOURCE
 import org.hack4impact.portal.db.tables.references.PARTNER
@@ -55,6 +56,8 @@ class ProjectQueries(private val dsl: DSLContext, private val worlds: WorldLoade
 		val term = project.termId?.let { t -> dsl.select(TERM.SEASON, TERM.YEAR).from(TERM).where(TERM.ID.eq(t)).fetchOne()?.let { termLabel(it.value1(), it.value2()?.toInt()) } }
 		val partner = project.partnerId?.let { p -> dsl.select(PARTNER.NAME).from(PARTNER).where(PARTNER.ID.eq(p)).fetchOne()?.value1() }
 
+		val agreements = dsl.selectFrom(AGREEMENT).where(AGREEMENT.PROJECT_ID.eq(id)).orderBy(AGREEMENT.CREATED_AT.desc()).fetch()
+			.distinctBy { it.personId }.associateBy { it.personId }
 		val members = dsl.select(
 			PERSON.ID, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME, PERSON.ORG_EMAIL, PERSON.SCHOOL_EMAIL, PERSON.STATUS,
 			PROJECT_ROLE.ID, PROJECT_ROLE.NAME, PROJECT_ROLE.IS_LEAD, PROJECT_MEMBER.AGREEMENT_STATUS,
@@ -65,6 +68,9 @@ class ProjectQueries(private val dsl: DSLContext, private val worlds: WorldLoade
 				ProjectMemberRow(
 					it.value1()!!, name(it.value4(), it.value2()!!, it.value3()!!), it.value5() ?: it.value6(), it.value7()!!,
 					it.value8(), it.value9(), it.value10() == true, it.value11()!!,
+					agreements[it.value1()]?.let { a ->
+						MemberAgreement(a.id!!, a.status!!, a.sentAt, a.signedAt, a.remindersSent!!, a.pdfLocation != null, a.error, a.declineReason)
+					},
 				)
 			}
 			.sortedWith(compareBy({ !it.isLead }, { it.name }))

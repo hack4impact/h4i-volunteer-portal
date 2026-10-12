@@ -95,5 +95,8 @@ class GoogleServiceAccountToken(keyJson: String, subject: String, scopes: List<S
 
 		/** Create groups and manage their members. User accounts (step 10) will add admin.directory.user. */
 		val WRITE_SCOPES = listOf("https://www.googleapis.com/auth/admin.directory.group")
+
+		/** Create (and, in the sandbox, delete) member accounts (step 10). */
+		val USER_SCOPES = listOf("https://www.googleapis.com/auth/admin.directory.user")
 	}
 }

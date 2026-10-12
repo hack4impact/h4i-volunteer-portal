@@ -22,6 +22,7 @@ import org.hack4impact.portal.resolver.Resolution
 import org.hack4impact.portal.resolver.Tool
 import org.jooq.DSLContext
 import org.jooq.JSONB
+import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Component
@@ -111,8 +112,9 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 		val grants = plan.adds.map { it to null as Access? } + plan.changes.map { it.grant to it.from }
 		for ((grant, from) in grants) {
 			val ext = external[grant.resourceId]?.first
+			val ref = accountRef(tool, grant.personId, actual)
 			val (outcome, error) = if (ext == null) "skipped" to "the resource doesn't exist in the tool yet" else attempt(grant.personId, grant.resourceId) {
-				when (writer.grant(ext, accountRef(tool, grant.personId, actual), grant.access)) {
+				when (writer.grant(ext, ref, grant.access)) {
 					GrantResult.DONE -> "applied"
 					GrantResult.INVITED -> "invited"
 					GrantResult.WAITING -> "waiting"
@@ -120,7 +122,8 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 				}
 			}
 			if (outcome == "applied" || outcome == "invited") applied++
-			change(if (from == null) "add" else "change", grant.personId, grant.resourceId, outcome, error, from = from, to = grant.access, reasons = grant.reasons)
+			change(if (from == null) "add" else "change", grant.personId, grant.resourceId, outcome, error, account = ref.id ?: ref.login ?: ref.email,
+				from = from, to = grant.access, reasons = grant.reasons)
 			saveGrant(grant, outcome, error, runId, now, records[grant.personId to grant.resourceId])
 		}
 
@@ -196,7 +199,16 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 	private fun accountRef(tool: Tool, person: UUID, actual: SyncEngine.Actual): AccountRef {
 		val who = dsl.select(PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME).from(PERSON).where(PERSON.ID.eq(person)).fetchOne()
 		val name = who?.let { "${it.value3()?.takeIf { p -> p.isNotBlank() } ?: it.value1()} ${it.value2()}" }
-		actual.people[person]?.let { return AccountRef(it.externalId, it.login, it.email, person, name) }
+		// Their H4I account first, even before the tool lists it: Google's listing lags a just-created account, and a
+		// returning member's old account would otherwise get the access (step 10).
+		val listed = actual.people[person]
+		val orgEmail = dsl.select(PERSON.ORG_EMAIL).from(PERSON).where(PERSON.ID.eq(person)).fetchOne()?.value1()
+		if (orgEmail != null && !orgEmail.equals(listed?.email, ignoreCase = true)) {
+			dsl.select(TOOL_ACCOUNT.EXTERNAL_ID).from(TOOL_ACCOUNT)
+				.where(TOOL_ACCOUNT.PERSON_ID.eq(person), TOOL_ACCOUNT.TOOL.eq(tool.name.lowercase()), DSL.lower(TOOL_ACCOUNT.EXTERNAL_LOGIN).eq(orgEmail.lowercase()))
+				.limit(1).fetchOne()?.let { return AccountRef(it.value1(), orgEmail, orgEmail, person, name) }
+		}
+		listed?.let { return AccountRef(it.externalId, it.login, it.email, person, name) }
 		val login = dsl.select(TOOL_ACCOUNT.EXTERNAL_LOGIN).from(TOOL_ACCOUNT)
 			.where(TOOL_ACCOUNT.PERSON_ID.eq(person), TOOL_ACCOUNT.TOOL.eq(tool.name.lowercase()), TOOL_ACCOUNT.EXTERNAL_LOGIN.isNotNull)
 			.limit(1).fetchOne()?.value1()

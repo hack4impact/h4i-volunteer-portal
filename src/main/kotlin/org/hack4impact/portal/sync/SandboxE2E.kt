@@ -39,6 +39,12 @@ data class SandboxE2EProperties(
 	val resetDatabase: Boolean = false,
 	/** Leave the created channel, team and group in the sandboxes (to look at them). */
 	val keep: Boolean = false,
+	/** Registration phase (step 10): the verified Workspace domain test accounts are created at. */
+	val accountDomain: String = "hack4impact.org",
+	/** Agreements phase (step 11): the project agreement template's envelope ID in staging Documenso. */
+	val agreementTemplate: String = "",
+	/** How long to wait for someone to sign the test agreement by hand (the step 11 finish line); zero: don't wait. */
+	val waitForSignature: java.time.Duration = java.time.Duration.ZERO,
 )
 
 /**
@@ -65,6 +71,11 @@ class SandboxE2E(
 	private val writers: List<WriteAdapter>,
 	private val engine: SyncEngine,
 	private val queue: org.hack4impact.portal.national.AdminQueue,
+	private val registrations: org.hack4impact.portal.registration.RegistrationService,
+	private val accounts: org.springframework.beans.factory.ObjectProvider<org.hack4impact.portal.adapters.google.GoogleAccounts>,
+	private val adapterProperties: org.hack4impact.portal.adapters.AdapterProperties,
+	private val agreements: org.hack4impact.portal.agreements.AgreementService,
+	private val documenso: org.springframework.beans.factory.ObjectProvider<org.hack4impact.portal.adapters.documenso.DocumensoClient>,
 	private val context: ConfigurableApplicationContext,
 ) : ApplicationRunner {
 	private val log = LoggerFactory.getLogger(javaClass)
@@ -139,11 +150,18 @@ class SandboxE2E(
 			return open.size
 		}
 		dsl.update(TOOL_SETTING).set(TOOL_SETTING.DRY_RUN, false).where(TOOL_SETTING.TOOL.`in`(tools.map { it.name.lowercase() })).execute()
+
+		// 1b. Registration (step 10): a returning applicant is approved and gets a real Google account, which the
+		// apply phase below then gives the chapter's access. Needs PORTAL_ADAPTERS_GOOGLE_CREATEACCOUNTS and USERSCOPE.
+		val createdAccount = registrationPhase(chapterId, active.values.toList(), run)
+		// 1c. Agreements (step 11): one member's project agreement goes out through staging Documenso, and the GitHub
+		// team waits for their signature.
+		val signer = agreementPhase(project, active.values.toList(), resources, run)
 		report.appendLine("Run $run: ${tools.joinToString { it.name.lowercase() }}, ${active.size} people, resources named $code-$slug")
 
-		// The account each person has in each tool, from the fixture.
-		fun accountOf(tool: Tool, person: UUID) = dsl.select(TOOL_ACCOUNT.EXTERNAL_ID).from(TOOL_ACCOUNT)
-			.where(TOOL_ACCOUNT.PERSON_ID.eq(person), TOOL_ACCOUNT.TOOL.eq(tool.name.lowercase())).fetchOne()?.value1()
+		// The accounts each person has in each tool: the fixture's, plus the one a registration created.
+		fun accountsOf(tool: Tool, person: UUID) = dsl.select(TOOL_ACCOUNT.EXTERNAL_ID).from(TOOL_ACCOUNT)
+			.where(TOOL_ACCOUNT.PERSON_ID.eq(person), TOOL_ACCOUNT.TOOL.eq(tool.name.lowercase())).fetch().mapNotNull { it.value1() }
 		fun externalId(tool: Tool) = dsl.select(RESOURCE.EXTERNAL_ID).from(RESOURCE).where(RESOURCE.ID.eq(resources.getValue(tool))).fetchSingle().value1()
 		fun outcomes(runId: UUID?) = dsl.select(SYNC_CHANGE.KIND, SYNC_CHANGE.OUTCOME, SYNC_CHANGE.PERSON_ID, SYNC_CHANGE.ERROR).from(SYNC_CHANGE)
 			.where(SYNC_CHANGE.RUN_ID.eq(runId)).fetch()
@@ -168,12 +186,30 @@ class SandboxE2E(
 				}
 				val created = changes.any { it.value1() == "create_resource" && it.value2() == "applied" }
 				check(r.tool, "apply: created ${externalId(r.tool) ?: "nothing"}", created, changes.firstOrNull { it.value1() == "create_resource" }?.value4() ?: "")
-				val done = changes.filter { it.value1() == "add" && it.value2() == "applied" }.mapNotNull { it.value3()?.let { p -> accountOf(r.tool, p) } }.toSet()
+				val there = membersIn(r.tool)
+				// Per person added, the account that got access (someone may have two: the fixture's and a new H4I one).
+				val done = changes.filter { it.value1() == "add" && it.value2() == "applied" }.mapNotNull { it.value3() }
+					.mapNotNull { p -> accountsOf(r.tool, p).let { mine -> mine.firstOrNull { there?.contains(it) == true } ?: mine.firstOrNull() } }.toSet()
 				val other = changes.filter { it.value1() == "add" && it.value2() != "applied" }.map { "${it.value2()}${it.value4()?.let { e -> ": $e" } ?: ""}" }
 				check(r.tool, "apply: added ${done.size} of ${active.size}", done.isNotEmpty(), other.joinToString().ifEmpty { "everyone" })
-				val there = membersIn(r.tool)
 				check(r.tool, "apply: the tool shows them", there != null && there.containsAll(done), if (there == null) "couldn't read members" else "${(done - there).size} missing")
 				applied[r.tool] = done
+				if (r.tool == Tool.GOOGLE && createdAccount != null) {
+					val row = dsl.select(TOOL_ACCOUNT.EXTERNAL_ID, TOOL_ACCOUNT.PERSON_ID).from(TOOL_ACCOUNT).where(TOOL_ACCOUNT.TOOL.eq("google"), TOOL_ACCOUNT.EXTERNAL_LOGIN.eq(createdAccount)).fetchOne()
+					val id = row?.value1()
+					val createdPerson = row?.value2()
+					val ok = id != null && there != null && id in there
+					val given = dsl.select(SYNC_CHANGE.ACCOUNT_ID).from(SYNC_CHANGE).where(SYNC_CHANGE.RUN_ID.eq(r.runId), SYNC_CHANGE.KIND.eq("add"), SYNC_CHANGE.PERSON_ID.eq(createdPerson)).fetch().map { it.value1() }
+					val listed = if (ok) "" else try {
+						"given to: ${given.joinToString { if (it == id) "the new account" else "another account" }}; listed by Google now: ${readerOf.getValue(r.tool).accounts().any { it.externalId == id }}"
+					} catch (e: AdapterException) { e.message ?: "" }
+					check(r.tool, "apply: the applicant's new H4I account got the access", ok, "$createdAccount $listed".trim())
+				}
+			}
+
+			if (signer != null) {
+				val held = accountsOf(Tool.GITHUB, signer.person).none { membersIn(Tool.GITHUB)?.contains(it) == true }
+				check(Tool.GITHUB, "agreement: held back from the team until signed", held, signer.email)
 			}
 
 			// 3. Again: nothing left to do for those already added.
@@ -181,6 +217,30 @@ class SandboxE2E(
 				val repeated = outcomes(r.runId).filter { (it.value1() == "add" || it.value1() == "create_resource") && it.value2() in setOf("applied", "queued") }
 				check(r.tool, "again: nothing left to do", repeated.isEmpty(), "${repeated.size} changes repeated")
 			}
+
+			// 3b. The step 11 finish line: someone signs the test agreement by hand, and the signature releases the repo.
+			if (signer != null && !properties.waitForSignature.isZero) {
+				log.info("Sandbox suite: sign the test agreement now ({}): {} (or the email to {} in Mailpit, http://localhost:8025). Waiting up to {}.",
+					run, signer.signingUrl, signer.email, properties.waitForSignature)
+				val until = System.currentTimeMillis() + properties.waitForSignature.toMillis()
+				fun signed() = dsl.select(PROJECT_MEMBER.AGREEMENT_STATUS).from(PROJECT_MEMBER)
+					.where(PROJECT_MEMBER.PROJECT_ID.eq(project), PROJECT_MEMBER.PERSON_ID.eq(signer.person)).fetchSingle().value1() == "signed"
+				while (!signed() && System.currentTimeMillis() < until) {
+					Thread.sleep(10_000)
+					agreements.pass()
+				}
+				check(Tool.DOCUMENSO, "agreement: signed, and the portal saw it", signed(), signer.email)
+				if (signed()) {
+					val pdf = dsl.select(org.hack4impact.portal.db.tables.references.AGREEMENT.PDF_LOCATION).from(org.hack4impact.portal.db.tables.references.AGREEMENT)
+						.where(org.hack4impact.portal.db.tables.references.AGREEMENT.DOCUMENSO_DOCUMENT_ID.eq(signer.envelopeId)).fetchSingle().value1()
+					check(Tool.DOCUMENSO, "agreement: the signed PDF is archived in the portal", pdf == "database")
+					val release = engine.run("agreement", setOf(Tool.GITHUB)).single()
+					val there = membersIn(Tool.GITHUB)
+					val account = accountsOf(Tool.GITHUB, signer.person).firstOrNull { there?.contains(it) == true }
+					check(Tool.GITHUB, "agreement: the signature released the repo access", release.status == "completed" && account != null, release.error ?: "")
+					account?.let { applied[Tool.GITHUB] = applied[Tool.GITHUB].orEmpty() + it }
+				}
+			} else if (signer != null) report.appendLine("   Agreement not signed by hand (add --portal.sandbox-e2e.wait-for-signature=PT15M for the step 11 finish line)")
 
 			// 4. Rollback: everyone leaves the project, and the chapter drops the test teamspace.
 			dsl.update(PROJECT_MEMBER).set(PROJECT_MEMBER.REMOVED_AT, OffsetDateTime.now()).where(PROJECT_MEMBER.PROJECT_ID.eq(project)).execute()
@@ -204,8 +264,25 @@ class SandboxE2E(
 				val there = membersIn(r.tool)
 				check(r.tool, "rollback: the tool shows them gone", there != null && there.intersect(expected).isEmpty(), if (there == null) "couldn't read members" else "${there.intersect(expected).size} still there")
 			}
+		} catch (e: RuntimeException) {
+			// Still clean up and report: a crash mustn't leave real accounts and groups behind unnoticed.
+			log.error("Sandbox suite stopped early", e)
+			failures++
+			report.appendLine("FAIL  stopped early: ${e.javaClass.simpleName}: ${e.message}")
 		} finally {
 			// 5. Cleanup.
+			signer?.let { a ->
+				val client = documenso.ifAvailable!!
+				val ok = try {
+					runCatching { client.cancel(a.envelopeId, "Sandbox suite cleanup") } // a signed one can't be cancelled; deleting is enough
+					client.delete(a.envelopeId); true
+				} catch (e: AdapterException) { report.appendLine("   cleanup agreement: ${e.message}"); false }
+				check(Tool.DOCUMENSO, "cleanup: deleted the test agreement", ok)
+			}
+			createdAccount?.let { email ->
+				val ok = try { accounts.ifAvailable?.delete(email); true } catch (e: AdapterException) { report.appendLine("   cleanup account: ${e.message}"); false }
+				check(Tool.GOOGLE, "cleanup: deleted the test account $email", ok)
+			}
 			if (!properties.keep) {
 				for (tool in tools.filter { it != Tool.NOTION }) {
 					val ext = externalId(tool) ?: continue
@@ -217,6 +294,77 @@ class SandboxE2E(
 		report.appendLine(if (failures == 0) "ALL PASSED" else "$failures FAILED")
 		log.info("Sandbox suite:\n{}", report)
 		return failures == 0
+	}
+
+	private data class AgreementRun(val person: UUID, val email: String, val envelopeId: String, val signingUrl: String?)
+
+	/** Sends one member's project agreement through staging Documenso; the project's GitHub team waits for it. */
+	private fun agreementPhase(project: UUID, people: List<UUID>, resources: Map<Tool, UUID>, run: String): AgreementRun? {
+		val client = documenso.ifAvailable
+		if (client == null || !adapterProperties.documenso.write || properties.agreementTemplate.isBlank() || Tool.GITHUB !in resources) {
+			report.appendLine("Agreements: skipped (needs PORTAL_ADAPTERS_DOCUMENSO_* with WRITE=true, PORTAL_SANDBOXE2E_AGREEMENTTEMPLATE and GitHub)")
+			return null
+		}
+		val person = people.firstOrNull { p -> dsl.fetchExists(TOOL_ACCOUNT, TOOL_ACCOUNT.PERSON_ID.eq(p), TOOL_ACCOUNT.TOOL.eq("github"), TOOL_ACCOUNT.EXTERNAL_ID.isNotNull) } ?: run {
+			report.appendLine("Agreements: skipped (no fixture person with a GitHub account)")
+			return null
+		}
+		val agreement = org.hack4impact.portal.db.tables.references.AGREEMENT
+		val template = org.hack4impact.portal.db.tables.references.AGREEMENT_TEMPLATE
+		dsl.insertInto(template).set(template.KIND, "project").set(template.NAME, "Project agreement (sandbox $run)")
+			.set(template.DOCUMENSO_TEMPLATE_ID, properties.agreementTemplate.trim()).set(template.VERSION, 1).execute()
+		dsl.update(TOOL_SETTING).set(TOOL_SETTING.DRY_RUN, false).where(TOOL_SETTING.TOOL.eq("documenso")).execute()
+		dsl.update(PROJECT_RESOURCE).set(PROJECT_RESOURCE.REQUIRES_AGREEMENT, true).where(PROJECT_RESOURCE.RESOURCE_ID.eq(resources.getValue(Tool.GITHUB))).execute()
+		dsl.update(PROJECT_MEMBER).set(PROJECT_MEMBER.AGREEMENT_STATUS, "pending").where(PROJECT_MEMBER.PROJECT_ID.eq(project), PROJECT_MEMBER.PERSON_ID.eq(person)).execute()
+		agreements.pass()
+		val a = dsl.selectFrom(agreement).where(agreement.PERSON_ID.eq(person), agreement.PROJECT_ID.eq(project)).fetchOne()
+		check(Tool.DOCUMENSO, "agreement: sent", a?.status == "sent", a?.error ?: "")
+		if (a?.status != "sent") return null
+		val envelope = try { client.envelope(a.documensoDocumentId!!) } catch (e: AdapterException) { null }
+		val signer = envelope?.signers?.firstOrNull()
+		check(Tool.DOCUMENSO, "agreement: Documenso has it waiting for a signature", envelope?.status == "PENDING" && signer != null, envelope?.status ?: "couldn't read it")
+		return AgreementRun(person, signer?.email ?: "", a.documensoDocumentId!!, signer?.signingUrl)
+	}
+
+	/** Returns the created account's address, or null when the phase didn't run. */
+	private fun registrationPhase(chapterId: UUID, people: List<UUID>, run: String): String? {
+		val google = accounts.ifAvailable
+		val scope = adapterProperties.google.userScope.takeIf { it.isNotBlank() }?.let(org.hack4impact.portal.adapters.google.GoogleAccounts::orgUnitPath).orEmpty()
+		if (google == null || scope.isEmpty()) {
+			report.appendLine("Registration: skipped (needs PORTAL_ADAPTERS_GOOGLE_CREATEACCOUNTS=true and PORTAL_ADAPTERS_GOOGLE_USERSCOPE)")
+			return null
+		}
+		// A fixture person with a sandbox GitHub account returns: same GitHub account, so the match is "returning".
+		val (person, github) = people.firstNotNullOfOrNull { p ->
+			dsl.select(org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT.EXTERNAL_ID, org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT.EXTERNAL_LOGIN)
+				.from(org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT)
+				.where(org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT.PERSON_ID.eq(p), org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT.TOOL.eq("github"))
+				.fetchOne()?.let { p to org.hack4impact.portal.registration.GitHubUser(it.value1()!!, it.value2() ?: it.value1()!!) }
+		} ?: run {
+			report.appendLine("Registration: skipped (no fixture person with a GitHub account)")
+			return null
+		}
+		// Accounts an earlier run created but couldn't delete (it stopped early): the applicant is always "E2e<run>".
+		val leftovers = try { google.accountsInScope("e2e").filter { Regex("^e2e\\d{12}\\d*@").containsMatchIn(it) } } catch (e: AdapterException) { emptyList() }
+		if (leftovers.isNotEmpty()) {
+			val deleted = leftovers.count { try { google.delete(it); true } catch (e: AdapterException) { false } }
+			check(Tool.GOOGLE, "registration: deleted $deleted of ${leftovers.size} test accounts left by earlier runs", deleted == leftovers.size)
+		}
+		dsl.update(CHAPTER).set(CHAPTER.GOOGLE_DOMAIN, properties.accountDomain).set(CHAPTER.GOOGLE_ORG_UNIT, scope).where(CHAPTER.ID.eq(chapterId)).execute()
+		val reg = org.hack4impact.portal.db.tables.references.REGISTRATION
+		// The school-email code is covered by the API tests; here the address counts as verified.
+		val registration = dsl.insertInto(reg).set(reg.CHAPTER_ID, chapterId).set(reg.KIND, "new").set(reg.SCHOOL_EMAIL, "e2e-$run@example.edu")
+			.set(reg.EMAIL_VERIFIED_AT, OffsetDateTime.now()).returningResult(reg.ID).fetchSingle().value1()!!
+		registrations.linkGitHub(registration, github) // what the OAuth callback does
+		registrations.save(registration, org.hack4impact.portal.registration.DetailsInput(org.hack4impact.portal.registration.Details("E2e$run", "Applicant", graduationYear = 2030)))
+		registrations.submit(registration)
+		val match = dsl.select(reg.MATCH_STATUS).from(reg).where(reg.ID.eq(registration)).fetchSingle().value1()
+		check(Tool.GOOGLE, "registration: matched as $match", match == "returning")
+		registrations.approve(chapterId, registration, org.hack4impact.portal.registration.ApproveInput(person), null)
+		val email = dsl.select(org.hack4impact.portal.db.tables.references.PERSON.ORG_EMAIL).from(org.hack4impact.portal.db.tables.references.PERSON)
+			.where(org.hack4impact.portal.db.tables.references.PERSON.ID.eq(person)).fetchSingle().value1()
+		check(Tool.GOOGLE, "registration: approved, account ${email ?: "not created"}", email != null && email.endsWith("@${properties.accountDomain}"))
+		return email
 	}
 
 	private fun resetDatabase() {

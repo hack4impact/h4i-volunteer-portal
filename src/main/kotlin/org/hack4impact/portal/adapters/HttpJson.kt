@@ -42,7 +42,8 @@ class HttpJson(
 ) {
 	private val log = LoggerFactory.getLogger(javaClass)
 
-	data class Response(val status: Int, val headers: HttpHeaders, val body: JsonNode)
+	/** [raw] holds the body's bytes when it isn't JSON (a PDF download); empty otherwise. */
+	class Response(val status: Int, val headers: HttpHeaders, val body: JsonNode, val raw: ByteArray = ByteArray(0))
 
 	fun get(url: String, headers: Map<String, String> = emptyMap()): Response =
 		send(request(url, headers).GET().build())
@@ -84,6 +85,22 @@ class HttpJson(
 	fun post(url: String, headers: Map<String, String> = emptyMap()): Response =
 		send(request(url, headers).POST(HttpRequest.BodyPublishers.noBody()).build())
 
+	/** POSTs [fields] as multipart/form-data text parts (Documenso takes its JSON payload this way). */
+	fun postMultipart(url: String, fields: Map<String, String>, headers: Map<String, String> = emptyMap()): Response {
+		val boundary = "h4i-" + java.util.UUID.randomUUID()
+		val body = buildString {
+			fields.forEach { (name, value) ->
+				append("--$boundary\r\nContent-Disposition: form-data; name=\"$name\"\r\n\r\n").append(value).append("\r\n")
+			}
+			append("--$boundary--\r\n")
+		}
+		return send(request(url, headers + ("Content-Type" to "multipart/form-data; boundary=$boundary")).POST(HttpRequest.BodyPublishers.ofString(body)).build())
+	}
+
+	/** GETs a file (e.g. a signed PDF): its bytes. */
+	fun download(url: String, headers: Map<String, String> = emptyMap()): ByteArray =
+		send(request(url, headers).header("Accept", "*/*").GET().build()).raw
+
 	private fun request(url: String, headers: Map<String, String>) =
 		HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(30)).header("Accept", "application/json")
 			.apply { headers.forEach { (k, v) -> header(k, v) } }
@@ -108,12 +125,14 @@ class HttpJson(
 
 	private fun attempt(request: HttpRequest): Response {
 		val response = try {
-			client.send(request, HttpResponse.BodyHandlers.ofString())
+			client.send(request, HttpResponse.BodyHandlers.ofByteArray())
 		} catch (e: IOException) {
 			throw Unavailable(tool, "${request.uri().path}: ${e.message ?: e.javaClass.simpleName}", e)
 		}
-		val body = response.body().takeIf { it.isNotBlank() }?.let {
-			try { MAPPER.readTree(it) } catch (e: RuntimeException) { null }
+		val type = response.headers().firstValue("content-type").orElse("")
+		val binary = type.startsWith("application/pdf") || type.startsWith("application/octet-stream")
+		val body = response.body().takeIf { !binary && it.isNotEmpty() }?.let {
+			try { MAPPER.readTree(String(it, Charsets.UTF_8)) } catch (e: RuntimeException) { null }
 		} ?: MAPPER.nullNode()
 		val status = response.statusCode()
 		val path = request.uri().path
@@ -124,7 +143,7 @@ class HttpJson(
 			status >= 500 -> throw Unavailable(tool, "$path: HTTP $status")
 			status >= 400 -> throw Rejected(tool, "$path: HTTP $status${errorMessage(body)?.let { " ($it)" } ?: ""}", status)
 		}
-		return Response(status, response.headers(), body)
+		return Response(status, response.headers(), body, if (binary) response.body() else ByteArray(0))
 	}
 
 	/** The tool's own explanation, when it gives one (Google: error.message; Slack and OAuth: error). */
@@ -134,7 +153,7 @@ class HttpJson(
 	}
 
 	// GitHub signals exhausted rate limits with 403 and x-ratelimit-remaining: 0; Google with a rateLimitExceeded reason.
-	private fun isRateLimit(response: HttpResponse<String>, body: JsonNode) =
+	private fun isRateLimit(response: HttpResponse<*>, body: JsonNode) =
 		response.headers().firstValue("x-ratelimit-remaining").orElse(null) == "0" ||
 			response.headers().firstValue("retry-after").isPresent ||
 			body.toString().contains("RateLimitExceeded", ignoreCase = true)

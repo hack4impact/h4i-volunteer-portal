@@ -10,6 +10,7 @@ import org.hack4impact.portal.national.AdminQueue
 import org.hack4impact.portal.notion.NotionPages
 import org.hack4impact.portal.db.tables.references.AUDIT_EVENT
 import org.hack4impact.portal.db.tables.references.CHAPTER_RESOURCE
+import org.hack4impact.portal.db.tables.references.PERSON
 import org.hack4impact.portal.db.tables.references.PROJECT
 import org.hack4impact.portal.db.tables.references.PROJECT_RESOURCE
 import org.hack4impact.portal.db.tables.references.RESOURCE
@@ -181,7 +182,12 @@ class SyncEngine(
 		val accounts = adapter.accounts()
 		val accountsById = accounts.filter { it.externalId != null }.associateBy { it.externalId!! }
 		val matcher = AccountMatcher.load(dsl, adapter.tool)
-		val people = accounts.mapNotNull { a -> a.externalId?.let { id -> matcher.match(id, a.login, a.email)?.let { it.personId to a } } }.toMap()
+		val matched = accounts.mapNotNull { a -> a.externalId?.let { id -> matcher.match(id, a.login, a.email)?.let { it.personId to a } } }.groupBy({ it.first }, { it.second })
+		// Someone with several accounts in the tool (an old one, and the H4I one a registration created) gets access on
+		// their H4I address; otherwise the first the tool lists, so the choice doesn't change from run to run.
+		val orgEmails = dsl.select(PERSON.ID, PERSON.ORG_EMAIL).from(PERSON).where(PERSON.ID.`in`(matched.filterValues { it.size > 1 }.keys))
+			.fetch().associate { it.value1()!! to it.value2() }
+		val people = matched.mapValues { (person, options) -> options.firstOrNull { o -> orgEmails[person]?.let { o.email.equals(it, ignoreCase = true) } == true } ?: options.first() }
 		val tool = adapter.tool.name.lowercase()
 		val managed = dsl.select(RESOURCE.ID, RESOURCE.EXTERNAL_ID).from(RESOURCE)
 			.where(RESOURCE.TOOL.eq(tool), RESOURCE.EXTERNAL_ID.isNotNull, RESOURCE.ARCHIVED_AT.isNull, RESOURCE.MANAGED.ne("unmanaged"))

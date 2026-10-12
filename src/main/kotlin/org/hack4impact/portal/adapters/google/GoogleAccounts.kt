@@ -1,0 +1,94 @@
+package org.hack4impact.portal.adapters.google
+
+import org.hack4impact.portal.adapters.HttpJson
+import org.hack4impact.portal.adapters.NotFound
+import org.hack4impact.portal.adapters.Rejected
+import org.hack4impact.portal.adapters.text
+import org.hack4impact.portal.mail.NewAccount
+import org.hack4impact.portal.resolver.Tool
+import java.security.SecureRandom
+import java.text.Normalizer
+
+/**
+ * Creates Google Workspace accounts for approved members and claims (build plan step 10, decision 108): first name
+ * at the chapter's domain (`ada@umd.hack4impact.org`, then `ada2@…` if taken), in the chapter's org unit, with a
+ * temporary password to change at first sign-in. Needs the user scope ([GoogleServiceAccountToken.USER_SCOPES]).
+ *
+ * With [orgUnitScope] set, accounts are only created in, and deleted from, org units under it (the sandbox shares
+ * the real Workspace, like groups do, decision 69).
+ */
+class GoogleAccounts(
+	private val baseUrl: String,
+	private val token: () -> String,
+	orgUnitScope: String? = null,
+	private val http: HttpJson = HttpJson(Tool.GOOGLE),
+) {
+	private val orgUnitScope = orgUnitScope?.takeIf { it.isNotBlank() }?.let(::orgUnitPath)
+	private val users get() = "$baseUrl/admin/directory/v1/users"
+	private val random = SecureRandom()
+
+	fun create(firstName: String, lastName: String, domain: String, orgUnit: String, recoveryEmail: String?): NewAccount {
+		val orgUnit = orgUnitPath(orgUnit)
+		inScope(orgUnit)
+		val email = freeAddress(localPart(firstName), domain.lowercase())
+		val password = (1..16).map { PASSWORD_CHARS[random.nextInt(PASSWORD_CHARS.length)] }.joinToString("")
+		val body = buildMap {
+			put("primaryEmail", email)
+			put("name", mapOf("givenName" to firstName, "familyName" to lastName))
+			put("password", password)
+			put("changePasswordAtNextLogin", true)
+			put("orgUnitPath", orgUnit)
+			recoveryEmail?.let { put("recoveryEmail", it) }
+		}
+		val id = http.postJson(users, body, headers()).body.text("id")!!
+		return NewAccount(id, email, password)
+	}
+
+	/** Deletes an account, only inside the org-unit scope (the sandbox suite's cleanup). Gone already counts as done. */
+	fun delete(userKey: String) {
+		val user = try { http.get("$users/${HttpJson.encode(userKey)}", headers()).body } catch (e: NotFound) { return }
+		inScope(user.text("orgUnitPath") ?: "/")
+		http.delete("$users/${HttpJson.encode(userKey)}", headers())
+	}
+
+	/** Addresses of the accounts inside the org-unit scope that start with [prefix]: what earlier suite runs left. */
+	fun accountsInScope(prefix: String): List<String> {
+		val scope = orgUnitScope ?: return emptyList()
+		val query = HttpJson.encode("orgUnitPath='$scope'")
+		return http.get("$users?customer=my_customer&maxResults=500&query=$query", headers()).body.path("users").toList()
+			.mapNotNull { it.text("primaryEmail") }.filter { it.startsWith(prefix) }
+	}
+
+	/** The first of `name@domain`, `name2@domain`, … that no account or alias uses. */
+	private fun freeAddress(local: String, domain: String): String {
+		for (n in 1..99) {
+			val candidate = "${if (n == 1) local else "$local$n"}@$domain"
+			try {
+				http.get("$users/${HttpJson.encode(candidate)}", headers())
+			} catch (e: NotFound) {
+				return candidate
+			}
+		}
+		throw Rejected(Tool.GOOGLE, "no free address for $local@$domain")
+	}
+
+	private fun inScope(orgUnit: String) {
+		if (orgUnitScope != null && orgUnit != orgUnitScope && !orgUnit.startsWith("$orgUnitScope/")) {
+			throw Rejected(Tool.GOOGLE, "org unit $orgUnit is outside portal.adapters.google.user-scope")
+		}
+	}
+
+	private fun headers() = mapOf("Authorization" to "Bearer ${token()}")
+
+	companion object {
+		private const val PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
+
+		/** The first name as an address: letters and digits only, accents removed ("Zoë-Ann" → "zoeann"). */
+		fun localPart(firstName: String): String =
+			Normalizer.normalize(firstName, Normalizer.Form.NFD).replace(Regex("\\p{M}"), "").lowercase().filter { it in 'a'..'z' || it in '0'..'9' }
+				.ifEmpty { "member" }
+
+		/** An org unit as Google wants it: a leading slash, no trailing one ("Sandbox/" → "/Sandbox"). */
+		fun orgUnitPath(value: String): String = "/" + value.trim().trim('/')
+	}
+}

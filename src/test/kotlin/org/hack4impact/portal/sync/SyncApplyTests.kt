@@ -125,6 +125,31 @@ class SyncApplyTests(
 	}
 
 	@Test
+	fun `someone with two accounts in the tool gets access on their H4I one`() {
+		applying("slack")
+		// Her H4I account, and an old one the tool happens to list after it.
+		dsl.insertInto(TOOL_ACCOUNT).set(TOOL_ACCOUNT.PERSON_ID, people.getValue("Ada")).set(TOOL_ACCOUNT.TOOL, "slack").set(TOOL_ACCOUNT.EXTERNAL_ID, "U-ada-old").execute()
+		slack.accounts = slack.accounts + ToolAccount("U-ada-old", "ada-old", "ada@gmail.test", null, AccountState.ACTIVE)
+		slackRun()
+		assertTrue("grant new-umd-rise-dc U-ada WRITE" in slack.writes)
+		assertTrue(slack.writes.none { "U-ada-old" in it })
+	}
+
+	@Test
+	fun `a just-created H4I account gets the access even before the tool lists it`() {
+		applying("slack")
+		// Ada's listed account is an old one; her H4I account was just created (Google's listing lags).
+		dsl.deleteFrom(TOOL_ACCOUNT).where(TOOL_ACCOUNT.PERSON_ID.eq(people.getValue("Ada"))).execute()
+		dsl.insertInto(TOOL_ACCOUNT).set(TOOL_ACCOUNT.PERSON_ID, people.getValue("Ada")).set(TOOL_ACCOUNT.TOOL, "slack").set(TOOL_ACCOUNT.EXTERNAL_ID, "U-ada-old").execute()
+		dsl.insertInto(TOOL_ACCOUNT).set(TOOL_ACCOUNT.PERSON_ID, people.getValue("Ada")).set(TOOL_ACCOUNT.TOOL, "slack").set(TOOL_ACCOUNT.EXTERNAL_ID, "U-ada-new")
+			.set(TOOL_ACCOUNT.EXTERNAL_LOGIN, "ada@hack4impact.org").execute()
+		slack.accounts = listOf(ToolAccount("U-ada-old", "ada-old", "ada@gmail.test", null, AccountState.ACTIVE), slack.accounts[1])
+		slackRun()
+		assertTrue("grant new-umd-rise-dc U-ada-new WRITE" in slack.writes)
+		assertTrue(slack.writes.none { "U-ada-old" in it })
+	}
+
+	@Test
 	fun `someone without an account the tool knows is invited or waited for, and still counts as granted`() {
 		applying("slack")
 		member("Cy")

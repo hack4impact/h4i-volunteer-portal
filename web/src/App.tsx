@@ -3,13 +3,28 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { api, type Me, signIn } from './api/client'
 import { TopBar } from './components/TopBar'
+import { ApplyApp } from './pages/Apply'
 import { ChapterPage } from './pages/ChapterPage'
 import { National } from './pages/National'
 
 type Session = { state: 'loading' } | { state: 'signed-out' } | { state: 'signed-in'; me: Me }
 
+/** Applicants (no Google account yet) use their own pages and session (build plan step 10). */
+const isApplicantPage = () => /^\/(join|claim|apply)(\/|$)/.test(window.location.pathname)
+
 /** Loads who's signed in, then routes: sign-in page, no-access page, or the first chapter they can see. */
 export function App() {
+  if (isApplicantPage()) {
+    return (
+      <ThemeProvider colorMode="auto">
+        <BaseStyles className="app"><ApplyApp /></BaseStyles>
+      </ThemeProvider>
+    )
+  }
+  return <MemberApp />
+}
+
+function MemberApp() {
   const [session, setSession] = useState<Session>({ state: 'loading' })
   useEffect(() => {
     void api.GET('/api/me').then(({ data }) => setSession(data ? { state: 'signed-in', me: data } : { state: 'signed-out' }))
@@ -27,6 +42,7 @@ export function App() {
             <Routes>
               <Route path="/chapters/:code" element={<ChapterPage me={session.me} tab="overview" />} />
               <Route path="/chapters/:code/members" element={<ChapterPage me={session.me} tab="members" />} />
+              <Route path="/chapters/:code/approvals" element={<ChapterPage me={session.me} tab="approvals" />} />
               <Route path="/chapters/:code/projects" element={<ChapterPage me={session.me} tab="projects" />} />
               <Route path="/chapters/:code/projects/:slug" element={<ChapterPage me={session.me} tab="projects" />} />
               <Route path="/chapters/:code/adoption" element={<ChapterPage me={session.me} tab="adoption" />} />

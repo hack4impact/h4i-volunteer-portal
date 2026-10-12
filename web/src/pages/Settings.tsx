@@ -2,6 +2,7 @@ import { Banner, Button, Select, Spinner, TextInput } from '@primer/react'
 import { useEffect, useState } from 'react'
 import { api, reason, type NotionPageRef, type NotionSettingsView } from '../api/client'
 import { Status } from '../components/Status'
+import { RegistrationSettings } from './RegistrationSettings'
 
 type RouteForm = { kind: string; value: string; parent: string }
 
@@ -120,6 +121,7 @@ export function Settings({ code }: { code: string }) {
           </div>
         )}
       </form>
+      <RegistrationSettings code={code} />
     </div>
   )
 }

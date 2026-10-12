@@ -41,6 +41,10 @@ portal:
   # Public address of this deployment, for OAuth redirects, emails and links (wiki decision 31).
   # Staging will probably be https://staging.portal.hack4impact.org; change it here or with PORTAL_BASE_URL only.
   base-url: ${PORTAL_BASE_URL:http://localhost:8080}
+  mail:
+    # gmail in production (the Gmail API as noreply@, decision 109), smtp for Mailpit (dev: localhost:1026), log in tests.
+    mode: ${PORTAL_MAIL_MODE:log}
+    from: ${PORTAL_MAIL_FROM:noreply@hack4impact.org}
   adoption:
     # When grandfathered access ends for chapters without their own date (wiki decision 80: end of May for now).
     default-grandfather-until: ${PORTAL_ADOPTION_DEFAULTGRANDFATHERUNTIL:2027-05-31}

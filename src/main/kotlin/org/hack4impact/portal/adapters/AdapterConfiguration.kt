@@ -1,8 +1,10 @@
 package org.hack4impact.portal.adapters
 
+import org.hack4impact.portal.adapters.documenso.DocumensoClient
 import org.hack4impact.portal.adapters.github.GitHubAppToken
 import org.hack4impact.portal.adapters.github.GitHubReadAdapter
 import org.hack4impact.portal.adapters.github.GitHubWriteAdapter
+import org.hack4impact.portal.adapters.google.GoogleAccounts
 import org.hack4impact.portal.adapters.google.GoogleReadAdapter
 import org.hack4impact.portal.adapters.google.GoogleWriteAdapter
 import org.hack4impact.portal.adapters.google.GoogleServiceAccountToken
@@ -38,6 +40,7 @@ data class AdapterProperties(
 	val google: Google = Google(),
 	val vaultwarden: Vaultwarden = Vaultwarden(),
 	val notion: Notion = Notion(),
+	val documenso: Documenso = Documenso(),
 ) {
 	data class GitHub(
 		val enabled: Boolean = false,
@@ -65,6 +68,10 @@ data class AdapterProperties(
 		val groupScope: String = "",
 		/** Also change Google groups (step 9); domain-wide delegation must then also allow the group write scope. */
 		val write: Boolean = false,
+		/** Also create member accounts (step 10); delegation must allow the user scope. */
+		val createAccounts: Boolean = false,
+		/** Org-unit path: accounts are only created in (and deleted from) org units under it. Empty = any (production). */
+		val userScope: String = "",
 	)
 
 	/** An internal Notion integration's secret, shared with the chapters' parent pages (Notion routes, step 8). */
@@ -73,6 +80,19 @@ data class AdapterProperties(
 		val baseUrl: String = "https://api.notion.com/v1",
 		val token: String = "",
 		/** Also create and trash project pages (step 9); the integration then needs "Insert content" and "Update content". */
+		val write: Boolean = false,
+	)
+
+	/**
+	 * Agreements (step 11): [baseUrl] is the instance (`https://sign.hack4impact.org`), [token] a team API token,
+	 * [webhookSecret] the secret set on the team's webhook to `<portal>/api/webhooks/documenso`. [write]: also send
+	 * agreements; otherwise the portal only reads their status.
+	 */
+	data class Documenso(
+		val enabled: Boolean = false,
+		val baseUrl: String = "",
+		val token: String = "",
+		val webhookSecret: String = "",
 		val write: Boolean = false,
 	)
 
@@ -145,6 +165,18 @@ class AdapterConfiguration {
 		)
 	}
 
+	@Bean
+	@ConditionalOnBooleanProperty("portal.adapters.google.create-accounts")
+	fun googleAccounts(p: AdapterProperties): GoogleAccounts = with(p.google) {
+		if (!enabled) error("portal.adapters.google.create-accounts needs portal.adapters.google.enabled")
+		GoogleAccounts(
+			baseUrl,
+			GoogleServiceAccountToken(inlineOrFile(serviceAccountKey), required("google.admin-subject", adminSubject), GoogleServiceAccountToken.USER_SCOPES),
+			orgUnitScope = userScope,
+			http = patient(Tool.GOOGLE),
+		)
+	}
+
 	/** Writes need the tool enabled and its own switch (`…_WRITE=true`); the tool's dry-run setting still applies on top. */
 	@Bean
 	@ConditionalOnBooleanProperty("portal.adapters.slack.write")
@@ -174,6 +206,12 @@ class AdapterConfiguration {
 			VaultwardenApiKeyToken(url, required("vaultwarden.client-id", clientId), required("vaultwarden.client-secret", clientSecret), deviceId, http),
 			http,
 		)
+	}
+
+	@Bean
+	@ConditionalOnBooleanProperty("portal.adapters.documenso.enabled")
+	fun documensoClient(p: AdapterProperties) = with(p.documenso) {
+		DocumensoClient(required("documenso.base-url", baseUrl).trimEnd('/'), required("documenso.token", token), http = patient(Tool.DOCUMENSO))
 	}
 
 	@Bean

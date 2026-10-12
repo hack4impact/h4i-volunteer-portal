@@ -43,6 +43,8 @@ class SecurityConfiguration {
 		http
 			.authorizeHttpRequests {
 				it.requestMatchers("/api/status", "/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
+				// Tools calling back (Documenso): no sign-in, verified by their shared secret instead.
+				it.requestMatchers("/api/webhooks/**").permitAll()
 				it.requestMatchers("/api/**", "/v3/api-docs", "/v3/api-docs/**").authenticated()
 				it.anyRequest().permitAll() // the single-page app; it asks /api/me who's signed in
 			}
@@ -56,7 +58,10 @@ class SecurityConfiguration {
 			// The API answers 401 instead of redirecting to Google; the app starts the sign-in itself.
 			.exceptionHandling { it.defaultAuthenticationEntryPointFor(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED), api) }
 			// Cookie-based CSRF token the single-page app sends back as a header (Spring Security's SPA mode).
-			.csrf { it.spa() }
+			.csrf {
+				it.spa()
+				it.ignoringRequestMatchers("/api/webhooks/**")
+			}
 		return http.build()
 	}
 

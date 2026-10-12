@@ -7,3 +7,10 @@ spring:
 portal:
   sandbox-e2e:
     enabled: true
+  sync:
+    # The suite runs the engine itself; requests from approvals mustn't start overlapping background runs.
+    on-request: false
+  agreements:
+    # Likewise for agreements: the suite runs its own passes.
+    on-request: false
+    schedule-enabled: false

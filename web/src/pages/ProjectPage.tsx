@@ -196,11 +196,7 @@ function Team({ project, members, roles, edit, gated, apply, code, slug }: {
         <div className="box-row" key={m.personId} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', alignItems: 'center' }}>
           <strong>{m.name}</strong>
           {m.status !== 'active' && <span className="muted">{STATUS_LABEL[m.status] ?? m.status}</span>}
-          {gated && (
-            <Status tone={m.agreementStatus === 'pending' ? 'warn' : 'ok'}>
-              {m.agreementStatus === 'pending' ? 'Agreement not signed' : m.agreementStatus === 'waived' ? 'Agreement waived' : 'Agreement signed'}
-            </Status>
-          )}
+          {gated && <AgreementState m={m} canEdit={edit} />}
           <span style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
             {edit ? (
               <Select aria-label={`${m.name}'s role`} size="small" value={m.roleId ?? ''}
@@ -412,4 +408,24 @@ function NotionText({ project, code }: { project: ProjectDetail; code: string })
       <div className="muted">{n.matchedBy === 'default' ? 'Default route' : `Route: ${n.matchedBy}`} · created when writes are switched on</div>
     </div>
   )
+}
+
+/** A member's project agreement in words: where it is in Documenso, and the signed PDF for leads. */
+function AgreementState({ m, canEdit }: { m: ProjectDetail['members'][number]; canEdit: boolean }) {
+  const a = m.agreement
+  const day = (d?: string | null) => (d ? new Date(d).toLocaleDateString() : '')
+  if (m.agreementStatus === 'waived') return <Status tone="ok">Agreement waived</Status>
+  if (m.agreementStatus === 'signed') {
+    return (
+      <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+        <Status tone="ok">Agreement signed{a?.signedAt ? ` ${day(a.signedAt)}` : ''}</Status>
+        {canEdit && a?.hasPdf && <a href={`/api/agreements/${a.id}/pdf`}>PDF</a>}
+      </span>
+    )
+  }
+  if (a?.status === 'declined') return <Status tone="danger">Agreement declined{a.declineReason ? `: ${a.declineReason}` : ''}</Status>
+  if (a?.status === 'sent') {
+    return <Status tone="warn">Agreement sent {day(a.sentAt)}{a.reminders ? ` · reminded ${a.reminders}×` : ''}</Status>
+  }
+  return <Status tone="warn">{a?.error ? `Agreement not sent: ${a.error}` : 'Agreement not sent yet'}</Status>
 }

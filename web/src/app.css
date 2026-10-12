@@ -135,3 +135,21 @@ body { margin: 0; }
 .task-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 16px; align-items: center; padding: 10px 16px; }
 @media (max-width: 760px) { .tool-row { grid-template-columns: 1fr; row-gap: 8px; } }
 .plain-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+
+/* Applicant pages: one narrow column, the logo on top. */
+.apply { min-height: 100vh; background: var(--h4i-bg-subtle); }
+.apply-head { padding: 20px 24px; border-bottom: 1px solid var(--h4i-border); background: var(--h4i-bg); }
+.apply-head img { height: 22px; filter: var(--h4i-logo-filter); display: block; }
+.apply-main { max-width: 640px; margin: 0 auto; padding: 32px 16px 64px; }
+.apply-card { background: var(--h4i-bg); border: 1px solid var(--h4i-border); border-radius: 8px; padding: 24px; display: grid; gap: 16px; }
+.apply-title { font-size: 26px; line-height: 34px; font-weight: 700; color: var(--h4i-fg-strong); margin: 0; text-wrap: balance; }
+.apply-steps { list-style: none; margin: 0; padding: 12px 16px; border: 1px solid var(--h4i-border-muted); border-radius: 6px; display: grid; gap: 8px; }
+.apply-steps li { display: grid; grid-template-columns: 140px 1fr; align-items: center; gap: 12px; }
+.apply-quote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--h4i-border); color: var(--h4i-fg-2); }
+.two-up { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.choice { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+.choice legend { font-weight: 600; margin-bottom: 4px; }
+@media (max-width: 520px) { .two-up { grid-template-columns: 1fr; } .apply-steps li { grid-template-columns: 1fr; gap: 2px; } }
+.registration { padding: 16px; display: grid; gap: 12px; }
+.registration .facts { grid-template-columns: minmax(120px, 220px) 1fr; margin: 0; }
+.registration .facts dd { overflow-wrap: anywhere; }

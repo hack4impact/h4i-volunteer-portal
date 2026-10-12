@@ -76,7 +76,11 @@ class AdminQueue(private val dsl: DSLContext) {
 	 * are desired again (PRD: "if the desired state changes before a task is done, the task cancels itself").
 	 */
 	fun reconcile(tool: Tool, desired: Set<Pair<UUID, UUID>>) {
-		val open = dsl.selectFrom(ADMIN_TASK).where(ADMIN_TASK.TOOL.eq(tool.name.lowercase()), ADMIN_TASK.STATUS.eq("open"), ADMIN_TASK.PERSON_ID.isNotNull).fetch()
+		// Only membership tasks: others name a person without a resource (step 10's create_account, GitHub conflicts).
+		val open = dsl.selectFrom(ADMIN_TASK).where(
+			ADMIN_TASK.TOOL.eq(tool.name.lowercase()), ADMIN_TASK.STATUS.eq("open"), ADMIN_TASK.ACTION.`in`("add_member", "remove_member"),
+			ADMIN_TASK.PERSON_ID.isNotNull, ADMIN_TASK.RESOURCE_ID.isNotNull,
+		).fetch()
 		for (task in open) {
 			val wanted = (task.personId!! to task.resourceId!!) in desired
 			if ((task.action == "add_member" && !wanted) || (task.action == "remove_member" && wanted)) {

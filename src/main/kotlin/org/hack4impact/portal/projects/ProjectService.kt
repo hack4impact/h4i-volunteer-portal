@@ -31,7 +31,7 @@ import java.util.UUID
  * in dry run, so they only change what the next dry run plans. Every change is audited on the project.
  */
 @Component
-class ProjectService(private val dsl: DSLContext) {
+class ProjectService(private val dsl: DSLContext, private val agreements: org.hack4impact.portal.agreements.AgreementRequests) {
 	private val json = JsonMapper.builder().build()
 
 	companion object {
@@ -114,6 +114,7 @@ class ProjectService(private val dsl: DSLContext) {
 		dsl.update(PROJECT).set(PROJECT.STATUS, to).set(PROJECT.CLOSED_AT, if (to == "closed") OffsetDateTime.now() else null)
 			.where(PROJECT.ID.eq(project.id)).execute()
 		audit(viewer, chapterId, project.id!!, "project.status", "Changed status from $from to $to")
+		if (to == "active") agreements.request(project.id!!) // members added while it was a draft get theirs now
 	}
 
 	@Transactional
@@ -132,6 +133,7 @@ class ProjectService(private val dsl: DSLContext) {
 			.set(PROJECT_MEMBER.PROJECT_ROLE_ID, input.roleId).set(PROJECT_MEMBER.ADDED_BY, viewer.personId).execute()
 		touch(project)
 		audit(viewer, chapterId, project.id!!, "project.member_add", "Added ${ProjectQueries.name(person.value3(), person.value1()!!, person.value2()!!)}")
+		agreements.request(project.id!!) // PRD: the project agreement is sent on assignment
 	}
 
 	@Transactional

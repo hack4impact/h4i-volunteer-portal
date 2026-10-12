@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 # Build plan step 9 finish line: loads sandbox-fixture.yml into a THROWAWAY Postgres, then REALLY changes the
 # sandboxes through the sync engine and checks them (apply, re-run, rollback, cleanup). Your dev database isn't touched.
-# Usage (from Membership-Project-Portal/, SSH tunnel open for Vaultwarden):
-#   scripts/sandbox-e2e.sh [env file, default sandbox.env] [--keep]
+# Usage (from Membership-Project-Portal/, SSH tunnel open for Vaultwarden, and Documenso on 3010 for agreements):
+#   scripts/sandbox-e2e.sh [env file, default sandbox.env] [--keep] [--sign]
+#   --keep  leave the created channel, team and group in the sandboxes
+#   --sign  pause up to 15 minutes for you to sign the test agreement (step 11 finish line); the link is logged
 set -euo pipefail
 cd "$(dirname "$0")/.."
 env_file="${1:-sandbox.env}"
 extra=""
-[[ "${2:-}" == "--keep" ]] && extra="--portal.sandbox-e2e.keep=true"
+for arg in "${@:2}"; do
+  case "$arg" in
+    --keep) extra="$extra --portal.sandbox-e2e.keep=true" ;;
+    --sign) extra="$extra --portal.sandbox-e2e.wait-for-signature=PT15M" ;;
+    *) echo "unknown option $arg" >&2; exit 2 ;;
+  esac
+done
 name=h4i-sandbox-e2e-db
 
 docker rm -f "$name" >/dev/null 2>&1 || true

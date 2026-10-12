@@ -143,6 +143,15 @@ class NationalTests(
 	}
 
 	@Test
+	fun `tasks about a person but no resource are left alone by the sync`() {
+		// Like step 10's create_account: a person, no resource. Reconciling used to fail on these.
+		val other = dsl.insertInto(ADMIN_TASK).set(ADMIN_TASK.TOOL, "notion").set(ADMIN_TASK.ACTION, "create_account").set(ADMIN_TASK.PERSON_ID, ada)
+			.set(ADMIN_TASK.DESCRIPTION, "Create an account for Ada").returningResult(ADMIN_TASK.ID).fetchSingle().value1()!!
+		notionRun()
+		assertEquals("open", dsl.select(ADMIN_TASK.STATUS).from(ADMIN_TASK).where(ADMIN_TASK.ID.eq(other)).fetchSingle().value1())
+	}
+
+	@Test
 	fun `held removals go ahead once national confirms them`() {
 		dsl.update(TOOL_SETTING).set(TOOL_SETTING.DRY_RUN, false).set(TOOL_SETTING.MAX_REMOVALS, 0).where(TOOL_SETTING.TOOL.eq("slack")).execute()
 		dsl.insertInto(TOOL_ACCOUNT).set(TOOL_ACCOUNT.PERSON_ID, ada).set(TOOL_ACCOUNT.TOOL, "slack").set(TOOL_ACCOUNT.EXTERNAL_ID, "U-ada").execute()
