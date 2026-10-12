@@ -20,7 +20,8 @@ class DocumensoClient(
 	data class Signer(val recipientId: Int, val email: String, val signingUrl: String, val status: String, val rejectionReason: String?)
 
 	/** [status]: DRAFT, PENDING, COMPLETED, REJECTED or CANCELLED. [items]: the envelope's PDFs, in order. */
-	data class Envelope(val id: String, val status: String, val externalId: String?, val signers: List<Signer>, val items: List<String>, val completedAt: String?)
+	/** [type]: TEMPLATE or DOCUMENT. */
+	data class Envelope(val id: String, val type: String, val status: String, val externalId: String?, val signers: List<Signer>, val items: List<String>, val completedAt: String?)
 
 	private val api = "${baseUrl.trimEnd('/')}/api/v2"
 	private val templateSigners = ConcurrentHashMap<String, Int>()
@@ -28,6 +29,8 @@ class DocumensoClient(
 	/** The template's signer placeholder, which each agreement fills with the real person. */
 	fun templateSigner(templateId: String): Int = templateSigners.getOrPut(templateId) {
 		val template = envelope(templateId)
+		// A document made from the template has an envelope ID too; only the template itself can make new agreements.
+		if (template.type != "TEMPLATE") throw Rejected(Tool.DOCUMENSO, "$templateId is a document, not a template: use the template's ID")
 		template.signers.firstOrNull()?.recipientId ?: throw Rejected(Tool.DOCUMENSO, "template $templateId has no signer")
 	}
 
@@ -54,7 +57,7 @@ class DocumensoClient(
 	fun envelope(id: String): Envelope {
 		val e = http.get("$api/envelope/${HttpJson.encode(id)}", headers()).body
 		return Envelope(
-			e.text("id")!!, e.text("status") ?: "DRAFT", e.text("externalId"),
+			e.text("id")!!, e.text("type") ?: "DOCUMENT", e.text("status") ?: "DRAFT", e.text("externalId"),
 			e.path("recipients").toList().filter { it.text("role") == "SIGNER" }.map {
 				Signer(it.path("id").asInt(), it.text("email") ?: "", "${baseUrl.trimEnd('/')}/sign/${it.text("token")}", it.text("signingStatus") ?: "NOT_SIGNED", it.text("rejectionReason"))
 			},

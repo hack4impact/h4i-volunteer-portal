@@ -155,7 +155,7 @@ class AgreementTests(
 			.returningResult(PROJECT.ID).fetchSingle().value1()!!
 		template("project", "tmpl-project")
 		// The template's signer placeholder, a new envelope, its PDF, and Documenso's reminder and cancel.
-		stubJson("/api/v2/envelope/tmpl-project", """{"id":"tmpl-project","status":"DRAFT","recipients":[{"id":7,"role":"SIGNER","email":"","token":"x","signingStatus":"NOT_SIGNED"}],"envelopeItems":[]}""")
+		stubJson("/api/v2/envelope/tmpl-project", """{"id":"tmpl-project","type":"TEMPLATE","status":"DRAFT","recipients":[{"id":7,"role":"SIGNER","email":"","token":"x","signingStatus":"NOT_SIGNED"}],"envelopeItems":[]}""")
 		stubJson("/api/v2/envelope/use", """{"id":"env-1","recipients":[]}""", "POST")
 		envelope("env-1", "PENDING")
 		server.stubFor(get(urlPathEqualTo("/api/v2/envelope/item/item-env-1/download")).willReturn(aResponse().withHeader("Content-Type", "application/pdf").withBody("%PDF-1.7 signed".toByteArray())))
@@ -269,7 +269,7 @@ class AgreementTests(
 		template("volunteer", "tmpl-volunteer")
 		template("code_of_conduct", "tmpl-coc")
 		for ((t, env) in listOf("tmpl-volunteer" to "env-vol", "tmpl-coc" to "env-coc")) {
-			stubJson("/api/v2/envelope/$t", """{"id":"$t","status":"DRAFT","recipients":[{"id":8,"role":"SIGNER","email":"","token":"x","signingStatus":"NOT_SIGNED"}],"envelopeItems":[]}""")
+			stubJson("/api/v2/envelope/$t", """{"id":"$t","type":"TEMPLATE","status":"DRAFT","recipients":[{"id":8,"role":"SIGNER","email":"","token":"x","signingStatus":"NOT_SIGNED"}],"envelopeItems":[]}""")
 			server.stubFor(post(urlPathEqualTo("/api/v2/envelope/use")).withRequestBody(containing(t)).willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""{"id":"$env","recipients":[]}""")))
 			envelope(env, "PENDING")
 		}
@@ -305,7 +305,7 @@ class AgreementTests(
 	fun `national sets templates after Documenso confirms them, and a new one is the next version`() {
 		dsl.insertInto(NATIONAL_ADMIN).set(NATIONAL_ADMIN.PERSON_ID, dsl.select(PERSON.ID).from(PERSON).where(PERSON.FIRST_NAME.eq("Lena")).fetchSingle().value1()).execute()
 		server.stubFor(get(urlPathEqualTo("/api/v2/envelope/missing")).willReturn(aResponse().withStatus(404).withBody("{}")))
-		stubJson("/api/v2/envelope/tmpl-project-2", """{"id":"tmpl-project-2","status":"DRAFT","recipients":[{"id":9,"role":"SIGNER","email":"","token":"x","signingStatus":"NOT_SIGNED"}],"envelopeItems":[]}""")
+		stubJson("/api/v2/envelope/tmpl-project-2", """{"id":"tmpl-project-2","type":"TEMPLATE","status":"DRAFT","recipients":[{"id":9,"role":"SIGNER","email":"","token":"x","signingStatus":"NOT_SIGNED"}],"envelopeItems":[]}""")
 		json("/api/national/agreement-templates", """{"kind":"project","name":"Project agreement","documensoTemplateId":"missing"}""", as_ = "vic@hack4impact.org").andExpect { status { isForbidden() } }
 		json("/api/national/agreement-templates", """{"kind":"project","name":"Project agreement","documensoTemplateId":"missing"}""", as_ = "lena@hack4impact.org").andExpect { status { isBadRequest() } }
 		json("/api/national/agreement-templates", """{"kind":"project","name":"Project agreement 2027","documensoTemplateId":"https://sign.example/t/tmpl-project-2"}""", as_ = "lena@hack4impact.org")
