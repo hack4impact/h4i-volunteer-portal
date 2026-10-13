@@ -303,9 +303,6 @@ a.res-name:hover { text-decoration-color: currentColor; }
 .chip-button:hover { border-color: var(--h4i-fg-muted); }
 .rule-pick-list { max-height: 200px; overflow-y: auto; gap: 6px; }
 .rule-pick-list .check .muted { margin-left: 4px; }
-.rule-preview { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--h4i-border); border-radius: 6px; background: var(--h4i-bg-subtle); }
-.rule-preview .adopt-list { border: 1px solid var(--h4i-border-muted); border-radius: 6px; background: var(--h4i-bg); max-height: 320px; overflow-y: auto; }
-.rule-preview .change-grid { grid-template-columns: 110px minmax(0, 1fr); }
 .rule-footer-line { margin-right: auto; font-size: 13px; color: var(--h4i-fg-2); align-self: center; }
 .rule-problem { color: var(--h4i-danger); }
 .why-list { margin: -8px -16px; }
@@ -313,7 +310,6 @@ a.res-name:hover { text-decoration-color: currentColor; }
 @media (max-width: 700px) {
   .rule-choices { padding-left: 0; }
   .rule-choice-group { grid-template-columns: 1fr; row-gap: 4px; }
-  .rule-preview .change-grid { grid-template-columns: 1fr; }
   /* The switch and menu go under the rule, so the sentence keeps the width. */
   .rule-row { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
   .rule-actions { justify-content: flex-start; }
@@ -324,3 +320,17 @@ a.res-name:hover { text-decoration-color: currentColor; }
 .center > .mascot { margin: 0 auto 4px; }
 .mascot-row { display: flex; align-items: center; gap: 12px; }
 .tools-missing { max-width: 1180px; margin: 12px auto 0; padding: 0 16px; }
+
+/* The rule editor's Result: a plain section like the others, a sentence, and a table of who changes. */
+.rule-result { display: grid; gap: 10px; }
+.rule-result p { margin: 0; }
+.rule-result-rule { color: var(--h4i-fg-muted); font-size: 13px; }
+.rule-result-summary { color: var(--h4i-fg-strong); }
+.rule-result-table { border: 1px solid var(--h4i-border); border-radius: 6px; overflow: hidden; }
+.rule-result-table .list-table td { padding: 8px 12px; }
+.rule-result-table .list-table th { padding: 6px 12px; }
+.rule-result-table > button { margin: 4px 8px 6px; }
+.rule-result-change { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.rule-result-later { display: inline-flex; align-items: center; gap: 6px; }
+.rule-result-later .muted { font-size: 12px; }
+.rule-result-note { font-size: 13px; }

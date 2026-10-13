@@ -107,8 +107,10 @@ describe('Automations', () => {
     render(<App />)
     await userEvent.click(await screen.findByRole('button', { name: 'Everyone in #general', pressed: true }))
     const dialog = await screen.findByRole('dialog', { name: /Turn off/ })
-    expect(await within(dialog).findByText('Removes 12 grants from 12 people')).toBeInTheDocument()
-    expect(within(dialog).getByText('Loses')).toBeInTheDocument()
+    expect(await within(dialog).findByText('Removes 12 grants from 12 people.')).toBeInTheDocument()
+    // Who loses what, as a struck-through chip with the tool's icon in the table.
+    const row = within(within(dialog).getByRole('table', { name: 'Who it changes' })).getByRole('row', { name: /Ada Test/ })
+    expect(within(row).getByTitle('Slack: umd-general')).toHaveClass('chip-remove')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Turn off' }))
     expect(await screen.findByText(/Off: gives nothing/)).toBeInTheDocument()
     const post = calls().find((r) => r.url.endsWith('/rules/r1/enabled'))!

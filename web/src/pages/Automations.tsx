@@ -6,7 +6,7 @@ import { useActiveDraft } from '../api/drafts'
 import { TOOL_NAME } from '../components/Status'
 import { resourceName, resourceTools } from '../api/tools'
 import { ToolIcon } from '../components/ToolIcon'
-import { PeopleChanges, previewSentence } from './Drafts'
+import { ResourceChip, previewSentence } from './Drafts'
 
 /** Whose rules: a chapter's (with the national defaults read-only) or the national defaults themselves. */
 export type RuleScope = { kind: 'chapter'; code: string } | { kind: 'national' }
@@ -159,11 +159,43 @@ function Warning({ text }: { text: string }) {
 }
 
 /** What a preview says, in full: the counts, what's worth knowing, and each person's change. */
-function PreviewDetails({ preview, warnings }: { preview: DraftPreview; warnings: string[] }) {
+/**
+ * What a rule change does: the totals in a sentence, anything worth knowing, and a table of who changes and how.
+ * The editor shows it as its last section; turning a rule on or off and deleting it show it before confirming.
+ */
+function RuleResult({ preview, warnings = [] }: { preview: DraftPreview; warnings?: string[] }) {
+  const [all, setAll] = useState(false)
+  const people = preview.perPerson
+  const shown = all ? people : people.slice(0, 6)
   return (
     <>
+      <p className="rule-result-summary">{previewSentence(preview)}.</p>
       {warnings.map((w) => <Warning key={w} text={w} />)}
-      {preview.perPerson.length > 0 && <PeopleChanges people={preview.perPerson} label="Who it changes" />}
+      {people.length > 0 && (
+        <div className="rule-result-table">
+          <table className="list-table" aria-label="Who it changes">
+            <colgroup><col style={{ width: '32%' }} /><col /></colgroup>
+            <thead><tr><th scope="col">Person</th><th scope="col">Change</th></tr></thead>
+            <tbody>
+              {shown.map((p) => (
+                <tr key={p.personId}>
+                  <td>{p.name}</td>
+                  <td>
+                    <div className="rule-result-change">
+                      {p.gains.map((g) => <ResourceChip key={g} label={g} refs={p.resources} />)}
+                      {p.afterAgreement.map((g) => <span key={g} className="rule-result-later"><ResourceChip label={g} refs={p.resources} /><span className="muted">after the agreement</span></span>)}
+                      {p.loses.map((g) => <ResourceChip key={g} label={g} refs={p.resources} remove />)}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {people.length > shown.length && (
+            <Button size="small" variant="invisible" onClick={() => setAll(true)}>Show all {people.length} people</Button>
+          )}
+        </div>
+      )}
     </>
   )
 }
@@ -196,10 +228,9 @@ function ConfirmRule({ scope, rule, action, inDraft, onClose, onDone }: {
       {error ? <Banner title="No preview" description={error} variant="critical" />
         : !preview ? <Spinner size="small" aria-label="Working out what it would do" />
         : (
-          <div className="rule-preview">
-            <strong>{previewSentence(preview.preview)}</strong>
-            {action === 'delete' && <div className="muted">The rule stays in the records, so past changes still say where they came from.</div>}
-            <PreviewDetails preview={preview.preview} warnings={[]} />
+          <div className="rule-result">
+            <RuleResult preview={preview.preview} />
+            {action === 'delete' && <p className="muted rule-result-note">The rule stays in the records, so past changes still say where they came from.</p>}
           </div>
         )}
     </Dialog>
@@ -413,16 +444,13 @@ function RuleEditor({ scope, page, rule, inDraft, onClose, onSaved }: {
           </div>
         </fieldset>
 
-        <section className="rule-preview" aria-label="What this rule does">
-          <div className="pane-label">What it does</div>
-          {preview?.sentence && <Sentence text={preview.sentence} />}
-          {problem ? <div className="rule-problem">{problem}</div> : preview ? (
-            <>
-              <strong>{previewSentence(preview.preview)}</strong>
-              <PreviewDetails preview={preview.preview} warnings={preview.warnings} />
-            </>
-          ) : <Spinner size="small" aria-label="Working out what it would do" />}
-        </section>
+        <fieldset className="rule-section rule-result" aria-live="polite">
+          <legend>Result</legend>
+          {preview?.sentence && <p className="rule-result-rule"><Sentence text={preview.sentence} /></p>}
+          {problem ? <p className="rule-problem">{problem}</p>
+            : preview ? <RuleResult preview={preview.preview} warnings={preview.warnings} />
+            : <Spinner size="small" aria-label="Working out what it would do" />}
+        </fieldset>
       </div>
     </Dialog>
   )

@@ -25,7 +25,7 @@ type Refs = Record<string, { tool: string; name: string }>
  * A resource as the preview names it ("umd-rise-dc (Slack)", "… (GitHub), now admin"), as a chip with its tool's icon.
  * The tool and name come from the preview's [refs]; summaries stored before it had refs fall back to reading the label.
  */
-function ResourceChip({ label, refs, remove }: { label: string; refs?: Refs; remove?: boolean }) {
+export function ResourceChip({ label, refs, remove }: { label: string; refs?: Refs; remove?: boolean }) {
   const now = label.match(/, now (\w+)$/)?.[1]
   const base = now ? label.slice(0, -`, now ${now}`.length) : label
   const parsed = base.match(/^(.*) \(([^)]+)\)$/)
