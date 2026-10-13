@@ -11,7 +11,17 @@ import org.jooq.DSLContext
 fun DSLContext.emptyPortalTables() {
 	val keep = setOf("flyway_schema_history")
 	val tables = fetch("SELECT tablename FROM pg_tables WHERE schemaname = 'portal'").map { it.get(0, String::class.java) } - keep
-	execute("TRUNCATE " + tables.joinToString { "portal.\"$it\"" } + " CASCADE")
+	// A background listener from the previous test (a release's summary emails) may still be writing: try again.
+	var attempt = 0
+	while (true) {
+		try {
+			execute("TRUNCATE " + tables.joinToString { "portal.\"$it\"" } + " CASCADE")
+			break
+		} catch (e: org.springframework.dao.PessimisticLockingFailureException) {
+			if (++attempt >= 5) throw e
+			Thread.sleep(200L * attempt)
+		}
+	}
 	execute("INSERT INTO portal.tool_setting (tool) VALUES ('google'), ('github'), ('slack'), ('notion'), ('vaultwarden'), ('documenso') ON CONFLICT DO NOTHING")
 	execute("INSERT INTO portal.chapter (code, name, kind, applications_open) VALUES ('national', 'Hack4Impact National', 'national', false) ON CONFLICT DO NOTHING")
 	val national = listOf(

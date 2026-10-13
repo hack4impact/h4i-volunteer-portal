@@ -53,6 +53,15 @@ class NationalTests(
 	@Autowired private val engine: SyncEngine,
 	@Autowired private val slack: InMemoryReadAdapter,
 ) {
+	companion object {
+		@JvmStatic
+		@org.springframework.test.context.DynamicPropertySource
+		fun properties(registry: org.springframework.test.context.DynamicPropertyRegistry) {
+			// The tests run the engine themselves; a background run would race them (e.g. after confirming removals).
+			registry.add("portal.sync.on-request") { "false" }
+		}
+	}
+
 	private lateinit var umd: UUID
 	private lateinit var ada: UUID
 	private val teamspace = "11111111-2222-3333-4444-555555555555"
@@ -167,7 +176,10 @@ class NationalTests(
 		val held = engine.run("manual", setOf(Tool.SLACK)).single()
 		assertEquals("paused", held.status)
 		val confirm = openTasks("confirm_removals").single()
+		val requested = { dsl.fetchCount(dsl.selectFrom("portal.event_publication").where("serialized_event LIKE '%SLACK%'")) }
+		val before = requested()
 		call("POST", "/api/national/queue/${confirm.id}", """{"action":"done"}""").andExpect { status { isOk() } }
+		assertEquals(before + 1, requested()) // confirming asks for a Slack run (review M9); the test makes it below
 		slack.writes.clear()
 		val confirmed = engine.run("manual", setOf(Tool.SLACK)).single()
 		assertEquals("completed", confirmed.status)

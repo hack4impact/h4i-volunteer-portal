@@ -318,3 +318,8 @@ a.res-name:hover { text-decoration-color: currentColor; }
   .rule-row { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
   .rule-actions { justify-content: flex-start; }
 }
+
+/* The mascot: Hack4Impact's plush Earth (components/Mascot.tsx), in a few friendly places. */
+.mascot { display: block; flex-shrink: 0; overflow: visible; }
+.center > .mascot { margin: 0 auto 4px; }
+.mascot-row { display: flex; align-items: center; gap: 12px; }

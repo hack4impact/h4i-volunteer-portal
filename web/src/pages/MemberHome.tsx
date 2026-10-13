@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { api, reason, type Me, type MemberHome as Home } from '../api/client'
 import { PROJECT_STATUS, ROLE_LABEL, STATUS_LABEL, Status, TOOL_NAME, resourceName } from '../components/Status'
 import { ToolIcon } from '../components/ToolIcon'
+import { Mascot } from '../components/Mascot'
 import { TopBar } from '../components/TopBar'
 
 const STATE: Record<string, [string, 'ok' | 'warn' | 'off']> = {
@@ -60,7 +61,7 @@ export function MemberHome({ me }: { me: Me }) {
 
               <section className="box" aria-labelledby="my-projects">
                 <div className="box-head" id="my-projects">Your projects <span className="Counter">{home.projects.length}</span></div>
-                {home.projects.length === 0 && <div className="box-row muted">You’re not on a project right now.</div>}
+                {home.projects.length === 0 && <div className="box-row muted mascot-row"><Mascot pose="peek" size={64} />You’re not on a project right now.</div>}
                 {home.projects.map((p) => {
                   const [label, tone] = PROJECT_STATUS[p.status] ?? [p.status, 'off']
                   return (

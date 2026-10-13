@@ -4,6 +4,7 @@ import { Link } from 'react-router'
 import { api, reason, type AgreementTemplates, type ClaimPreview, type DeadLetter, type Me, type QueueTask, type ToolStatus } from '../api/client'
 import { Status, TOOL_NAME } from '../components/Status'
 import { ToolName } from '../components/ToolIcon'
+import { Mascot } from '../components/Mascot'
 import { TopBar } from '../components/TopBar'
 import { Automations } from './Automations'
 
@@ -90,7 +91,7 @@ export function National({ me }: { me: Me }) {
 
           <section className="box" aria-labelledby="queue-title">
             <div className="box-head" id="queue-title">Admin queue <span className="Counter">{open.length}</span></div>
-            {open.length === 0 && <div className="box-row muted">Nothing to do.</div>}
+            {open.length === 0 && <div className="box-row muted mascot-row"><Mascot pose="nap" size={56} />Nothing to do.</div>}
             <ul className="adopt-list" aria-label="Open tasks">
               {open.map((t) => (
                 <li key={t.id}>

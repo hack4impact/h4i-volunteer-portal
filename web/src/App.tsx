@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
 import { api, type Me, signIn } from './api/client'
 import logo from './assets/logo.svg'
+import { Mascot } from './components/Mascot'
 import { TopBar } from './components/TopBar'
 import { ApplyApp } from './pages/Apply'
 import { ChapterPage } from './pages/ChapterPage'
@@ -129,6 +130,7 @@ function NoAccess({ me }: { me: Me }) {
     <>
       <TopBar me={me} />
       <div className="center">
+        <Mascot pose="shrug" size={104} />
         <h1 className="page-title">No chapter access yet</h1>
         <p>
           You're signed in as <strong>{me.email}</strong>, but this account isn't linked to a member yet.
