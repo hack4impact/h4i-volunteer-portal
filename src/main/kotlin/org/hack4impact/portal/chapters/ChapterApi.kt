@@ -23,6 +23,8 @@ data class ChapterOverview(
 	val code: String,
 	val name: String,
 	val status: String,
+	/** chapter, or national: the chapter holding national's own projects (decision 141). */
+	val kind: String,
 	val role: String,
 	val stats: ChapterStats,
 	val registrationLink: String,

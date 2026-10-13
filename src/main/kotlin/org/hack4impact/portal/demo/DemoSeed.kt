@@ -133,7 +133,8 @@ class DemoSeed(
 		val tables = dsl.fetch("SELECT tablename FROM pg_tables WHERE schemaname = 'portal' AND tablename <> 'flyway_schema_history'").map { it.get(0, String::class.java) }
 		dsl.execute("TRUNCATE " + tables.joinToString { "portal.\"$it\"" } + " CASCADE")
 		dsl.execute("INSERT INTO portal.tool_setting (tool) VALUES ('google'), ('github'), ('slack'), ('notion'), ('vaultwarden'), ('documenso') ON CONFLICT DO NOTHING")
-		// The national project template (V5), which truncating chapters took with it.
+		// National's own chapter (V13) and the national project template (V5), which truncating chapters took with them.
+		dsl.execute("INSERT INTO portal.chapter (code, name, kind, applications_open) VALUES ('national', 'Hack4Impact National', 'national', false) ON CONFLICT DO NOTHING")
 		listOf(
 			listOf("slack", "{chapter}-{project}", false, "main"), listOf("google", "{chapter}-{project}@hack4impact.org", false, "main"),
 			listOf("github", "{chapter}-{project}", true, "eng"), listOf("vaultwarden", "{chapter}-{project}", true, "eng"),
@@ -320,6 +321,17 @@ class DemoSeed(
 				projects.addMember(sample, dsl.selectFrom(PROJECT).where(PROJECT.ID.eq(water.id)).fetchSingle(), MemberInput(id(who), r), saraViewer)
 			}
 			projects.setStatus(sample, dsl.selectFrom(PROJECT).where(PROJECT.ID.eq(water.id)).fetchSingle(), "active", saraViewer)
+
+			// National's own project (decision 141): people from both chapters on one team.
+			dsl.execute("INSERT INTO portal.chapter (code, name, kind, applications_open) VALUES ('national', 'Hack4Impact National', 'national', false) ON CONFLICT DO NOTHING")
+			val nationalChapter = dsl.select(CHAPTER.ID).from(CHAPTER).where(CHAPTER.KIND.eq("national")).fetchSingle().value1()!!
+			val nadiaViewer = Viewer(nadia, p.national, "Nadia Okafor", true, emptyMap())
+			val kit = projects.create(nationalChapter, ProjectInput("Chapter Starter Kit", type = "internal", tags = listOf("national"), partner = "Hack4Impact"), nadiaViewer)
+			listOf("Arjun Rao" to techLead, "Grace Lee" to dev, "Lucia Fernandez" to designer).forEach { (who, r) ->
+				projects.addMember(nationalChapter, dsl.selectFrom(PROJECT).where(PROJECT.ID.eq(kit.id)).fetchSingle(), MemberInput(id(who), r), nadiaViewer)
+			}
+			projects.setStatus(nationalChapter, dsl.selectFrom(PROJECT).where(PROJECT.ID.eq(kit.id)).fetchSingle(), "active", nadiaViewer)
+			dsl.update(PROJECT_MEMBER).set(PROJECT_MEMBER.AGREEMENT_STATUS, "signed").where(PROJECT_MEMBER.PROJECT_ID.eq(kit.id)).execute()
 
 			return Triple(demo, leoViewer, listOf("Jack Turner" to techLead, "Lily Evans" to dev, "Mason Wright" to dev, "Zoe Mitchell" to designer).map { (who, r) -> id(who) to r })
 		}

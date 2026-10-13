@@ -19,7 +19,7 @@ function Check({ page, configured }: { page: NotionPageRef | null | undefined; c
  * Chapter settings: Notion routes (PRD). Where each project's Notion page goes: ordered rules from a tag or type to a
  * parent page, a default, the template page and the title pattern. Saving checks every page the integration can reach.
  */
-export function Settings({ code }: { code: string }) {
+export function Settings({ code, national = false }: { code: string; national?: boolean }) {
   const [view, setView] = useState<NotionSettingsView | null>(null)
   const [form, setForm] = useState({ teamspaceId: '', defaultParent: '', template: '', titlePattern: '{project} ({semester})' })
   const [routes, setRoutes] = useState<RouteForm[]>([])
@@ -122,7 +122,7 @@ export function Settings({ code }: { code: string }) {
           </div>
         )}
       </form>
-      <RegistrationSettings code={code} />
+      {!national && <RegistrationSettings code={code} />}
     </div>
   )
 }

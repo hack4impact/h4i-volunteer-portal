@@ -43,14 +43,18 @@ export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
     void api.GET('/api/chapters/{code}/registrations', params).then(({ data }) => setWaiting(data?.filter((r) => r.status === 'submitted').length))
   }, [code])
 
+  // National's own chapter (decision 141) has projects but no members, applications or chapter rules of its own.
+  const national = chapter?.kind === 'national'
   const tabs = [
     { key: 'overview', label: 'Overview', to: `/chapters/${code}`, icon: HomeIcon },
-    { key: 'members', label: 'Members', to: `/chapters/${code}/members`, count: members?.length, icon: PeopleIcon },
-    { key: 'approvals', label: 'Approvals', to: `/chapters/${code}/approvals`, count: waiting || undefined, icon: InboxIcon },
+    ...(national ? [] : [
+      { key: 'members', label: 'Members', to: `/chapters/${code}/members`, count: members?.length, icon: PeopleIcon },
+      { key: 'approvals', label: 'Approvals', to: `/chapters/${code}/approvals`, count: waiting || undefined, icon: InboxIcon },
+    ]),
     { key: 'projects', label: 'Projects', to: `/chapters/${code}/projects`, icon: ProjectIcon },
-    { key: 'automations', label: 'Automations', to: `/chapters/${code}/automations`, icon: ZapIcon },
+    ...(national ? [] : [{ key: 'automations', label: 'Automations', to: `/chapters/${code}/automations`, icon: ZapIcon }]),
     ...(chapter && ['lead', 'co_lead', 'national'].includes(chapter.role) ? [{ key: 'drafts', label: 'Drafts', to: `/chapters/${code}/drafts`, icon: GitPullRequestDraftIcon }] : []),
-    { key: 'adoption', label: 'Adoption', to: `/chapters/${code}/adoption`, icon: LinkIcon },
+    ...(national ? [] : [{ key: 'adoption', label: 'Adoption', to: `/chapters/${code}/adoption`, icon: LinkIcon }]),
     { key: 'settings', label: 'Settings', to: `/chapters/${code}/settings`, icon: GearIcon },
   ]
 
@@ -69,7 +73,7 @@ export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
         <>
           <div className="page-head">
             <div className="inner">
-              <div className="eyebrow">Chapter · {ROLE_LABEL[chapter.role] ?? chapter.role}</div>
+              <div className="eyebrow">{national ? 'National projects' : <>Chapter · {ROLE_LABEL[chapter.role] ?? chapter.role}</>}</div>
               <h1 className="page-title">{chapter.name}</h1>
               <UnderlineNav aria-label="Chapter sections">
                 {tabs.map((t) => (
@@ -97,7 +101,7 @@ export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
           ) : tab === 'approvals' ? (
             <Approvals code={chapter.code} canEdit={['lead', 'co_lead', 'national'].includes(chapter.role)} />
           ) : tab === 'settings' ? (
-            <Settings code={chapter.code} />
+            <Settings code={chapter.code} national={national} />
           ) : (
             <Adoption code={chapter.code} />
           )}

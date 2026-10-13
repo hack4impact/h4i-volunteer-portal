@@ -4,6 +4,7 @@ import org.hack4impact.portal.auth.Viewer
 import org.hack4impact.portal.db.tables.references.CHAPTER
 import org.hack4impact.portal.db.tables.references.CHAPTER_MEMBERSHIP
 import org.hack4impact.portal.db.tables.references.CHAPTER_ROLE
+import org.hack4impact.portal.db.tables.references.NATIONAL_ADMIN
 import org.hack4impact.portal.db.tables.references.PERSON
 import org.hack4impact.portal.db.tables.references.PROJECT
 import org.hack4impact.portal.db.tables.references.PROJECT_MEMBER
@@ -19,14 +20,18 @@ import java.util.UUID
 @Component
 class ChapterQueries(private val dsl: DSLContext) {
 
-	data class Chapter(val id: UUID, val code: String, val name: String, val status: String)
+	/** [national]: the one chapter that holds national's own projects (decision 141): anyone in the org can be on them. */
+	data class Chapter(val id: UUID, val code: String, val name: String, val status: String, val national: Boolean = false)
 
 	private val LIVE = listOf("active", "paused")
 
 	fun byCode(code: String): Chapter? =
-		dsl.select(CHAPTER.ID, CHAPTER.CODE, CHAPTER.NAME, CHAPTER.STATUS).from(CHAPTER)
+		dsl.select(CHAPTER.ID, CHAPTER.CODE, CHAPTER.NAME, CHAPTER.STATUS, CHAPTER.KIND).from(CHAPTER)
 			.where(CHAPTER.CODE.eq(code.lowercase()), CHAPTER.DELETED_AT.isNull)
-			.fetchOne { Chapter(it.value1()!!, it.value2()!!, it.value3()!!, it.value4()!!) }
+			.fetchOne { Chapter(it.value1()!!, it.value2()!!, it.value3()!!, it.value4()!!, it.value5() == "national") }
+
+	/** Whether [chapterId] is national's own (decision 141). */
+	fun isNational(chapterId: UUID): Boolean = dsl.fetchExists(CHAPTER, CHAPTER.ID.eq(chapterId), CHAPTER.KIND.eq("national"))
 
 	fun visibleTo(viewer: Viewer): List<ChapterRef> {
 		val all = dsl.select(CHAPTER.ID, CHAPTER.CODE, CHAPTER.NAME).from(CHAPTER).where(CHAPTER.DELETED_AT.isNull).orderBy(CHAPTER.NAME).fetch()
@@ -36,16 +41,24 @@ class ChapterQueries(private val dsl: DSLContext) {
 		}
 	}
 
-	fun stats(chapterId: UUID): ChapterStats {
-		val members = dsl.select(PERSON.STATUS).from(PERSON)
-			.join(CHAPTER_MEMBERSHIP).on(CHAPTER_MEMBERSHIP.PERSON_ID.eq(PERSON.ID))
-			.where(CHAPTER_MEMBERSHIP.CHAPTER_ID.eq(chapterId), CHAPTER_MEMBERSHIP.LEFT_ON.isNull, PERSON.DELETED_AT.isNull)
-			.fetch(PERSON.STATUS)
+	/** For the national chapter, "members" are the people on its live projects and "leads" the national admins. */
+	fun stats(chapterId: UUID, national: Boolean = false): ChapterStats {
+		val members = if (national) {
+			dsl.selectDistinct(PERSON.ID, PERSON.STATUS).from(PERSON)
+				.join(PROJECT_MEMBER).on(PROJECT_MEMBER.PERSON_ID.eq(PERSON.ID), PROJECT_MEMBER.REMOVED_AT.isNull)
+				.join(PROJECT).on(PROJECT.ID.eq(PROJECT_MEMBER.PROJECT_ID), PROJECT.CHAPTER_ID.eq(chapterId), PROJECT.STATUS.`in`(LIVE))
+				.where(PERSON.DELETED_AT.isNull).fetch(PERSON.STATUS)
+		} else {
+			dsl.select(PERSON.STATUS).from(PERSON)
+				.join(CHAPTER_MEMBERSHIP).on(CHAPTER_MEMBERSHIP.PERSON_ID.eq(PERSON.ID))
+				.where(CHAPTER_MEMBERSHIP.CHAPTER_ID.eq(chapterId), CHAPTER_MEMBERSHIP.LEFT_ON.isNull, PERSON.DELETED_AT.isNull)
+				.fetch(PERSON.STATUS)
+		}
 		return ChapterStats(
 			activeMembers = members.count { it == "active" || it == "removal_requested" },
 			alumni = members.count { it == "alumni" },
 			liveProjects = dsl.fetchCount(PROJECT, PROJECT.CHAPTER_ID.eq(chapterId).and(PROJECT.STATUS.`in`(LIVE))),
-			leads = dsl.fetchCount(
+			leads = if (national) dsl.fetchCount(NATIONAL_ADMIN) else dsl.fetchCount(
 				CHAPTER_ROLE,
 				CHAPTER_ROLE.CHAPTER_ID.eq(chapterId).and(CHAPTER_ROLE.ROLE.`in`("lead", "co_lead")).and(CHAPTER_ROLE.ENDS_AT.isNull),
 			),

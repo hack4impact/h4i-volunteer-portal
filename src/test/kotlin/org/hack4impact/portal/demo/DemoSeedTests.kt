@@ -60,7 +60,7 @@ class DemoSeedTests(
 	fun `the demo seeds an empty database and every persona sees their own view`() {
 		dsl.emptyPortalTables()
 		seed.seed()
-		assertEquals(2, dsl.fetchCount(CHAPTER))
+		assertEquals(2, dsl.fetchCount(CHAPTER, CHAPTER.KIND.eq("chapter"))) // and national's own
 		assertEquals(setOf("active", "paused", "closed", "draft"), dsl.select(PROJECT.STATUS).from(PROJECT).fetch().map { it.value1() }.toSet())
 		assertEquals(3, dsl.fetchCount(REGISTRATION, REGISTRATION.STATUS.eq("submitted")))
 		val draft = dsl.selectFrom(CHANGESET).fetchSingle()
@@ -74,7 +74,11 @@ class DemoSeedTests(
 		assertFailsWith<IllegalStateException> { seed.seed() } // not again over existing data
 
 		// National: both chapters.
-		assertEquals(listOf("demo", "sample"), get("/api/me", "nadia.test@hack4impact.org").path("chapters").toList().map { it.path("code").asString() })
+		assertEquals(listOf("demo", "national", "sample"), get("/api/me", "nadia.test@hack4impact.org").path("chapters").toList().map { it.path("code").asString() })
+		// National's own project: a team from both chapters.
+		with(get("/api/chapters/national/projects/chapter-starter-kit", "nadia.test@hack4impact.org")) {
+			assertEquals(setOf("Arjun Rao", "Grace Lee", "Lucia Fernandez"), path("members").toList().map { it.path("name").asString() }.toSet())
+		}
 		// The viewer (address matched without regard to case): the chapter, read-only.
 		assertEquals("viewer", get("/api/chapters/demo", "victor.test@hack4impact.org").path("role").asString())
 		assertEquals(false, get("/api/chapters/demo/projects/food-rescue-network", "victor.test@hack4impact.org").path("canEditTeam").asBoolean())

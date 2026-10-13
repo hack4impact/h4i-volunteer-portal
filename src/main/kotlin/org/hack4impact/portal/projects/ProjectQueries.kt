@@ -35,16 +35,24 @@ class ProjectQueries(
 	private val links: org.hack4impact.portal.adapters.ToolLinks,
 ) {
 	/** Who could join the team: the chapter's active members and alumni not on it yet (PRD: alumni can join). */
-	fun candidates(chapterId: UUID, projectId: UUID): List<TeamCandidate> =
-		dsl.selectDistinct(PERSON.ID, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME, PERSON.STATUS).from(PERSON)
-			.join(CHAPTER_MEMBERSHIP).on(CHAPTER_MEMBERSHIP.PERSON_ID.eq(PERSON.ID))
-			.where(
-				CHAPTER_MEMBERSHIP.CHAPTER_ID.eq(chapterId), CHAPTER_MEMBERSHIP.LEFT_ON.isNull, PERSON.DELETED_AT.isNull,
-				PERSON.STATUS.`in`("active", "alumni", "removal_requested"),
-				DSL.notExists(DSL.selectOne().from(PROJECT_MEMBER).where(PROJECT_MEMBER.PROJECT_ID.eq(projectId), PROJECT_MEMBER.PERSON_ID.eq(PERSON.ID), PROJECT_MEMBER.REMOVED_AT.isNull)),
-			)
-			.fetch { TeamCandidate(it.value1()!!, name(it.value4(), it.value2()!!, it.value3()!!), it.value5()!!) }
-			.sortedBy { it.name }
+	/** Who could join the team: the chapter's members, or for national's own projects anyone in the org (decision 141). */
+	fun candidates(chapterId: UUID, projectId: UUID): List<TeamCandidate> {
+		val national = dsl.fetchExists(CHAPTER, CHAPTER.ID.eq(chapterId), CHAPTER.KIND.eq("national"))
+		val notOnTeam = DSL.notExists(DSL.selectOne().from(PROJECT_MEMBER).where(PROJECT_MEMBER.PROJECT_ID.eq(projectId), PROJECT_MEMBER.PERSON_ID.eq(PERSON.ID), PROJECT_MEMBER.REMOVED_AT.isNull))
+		val eligible = PERSON.DELETED_AT.isNull.and(PERSON.STATUS.`in`("active", "alumni", "removal_requested")).and(notOnTeam)
+		if (!national) {
+			return dsl.selectDistinct(PERSON.ID, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME, PERSON.STATUS).from(PERSON)
+				.join(CHAPTER_MEMBERSHIP).on(CHAPTER_MEMBERSHIP.PERSON_ID.eq(PERSON.ID))
+				.where(CHAPTER_MEMBERSHIP.CHAPTER_ID.eq(chapterId), CHAPTER_MEMBERSHIP.LEFT_ON.isNull, eligible)
+				.fetch { TeamCandidate(it.value1()!!, name(it.value4(), it.value2()!!, it.value3()!!), it.value5()!!) }
+				.sortedBy { it.name }
+		}
+		val chapters = dsl.select(CHAPTER_MEMBERSHIP.PERSON_ID, CHAPTER.CODE).from(CHAPTER_MEMBERSHIP).join(CHAPTER).on(CHAPTER.ID.eq(CHAPTER_MEMBERSHIP.CHAPTER_ID))
+			.where(CHAPTER_MEMBERSHIP.LEFT_ON.isNull).fetch().groupBy({ it.value1()!! }, { it.value2()!!.uppercase() })
+		return dsl.select(PERSON.ID, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME, PERSON.STATUS).from(PERSON).where(eligible)
+			.fetch { TeamCandidate(it.value1()!!, name(it.value4(), it.value2()!!, it.value3()!!), it.value5()!!, chapters[it.value1()].orEmpty().sorted()) }
+			.sortedWith(compareBy({ it.name }, { it.chapters.joinToString() }))
+	}
 
 	fun byId(id: UUID): ProjectRecord? = dsl.selectFrom(PROJECT).where(PROJECT.ID.eq(id)).fetchOne()
 

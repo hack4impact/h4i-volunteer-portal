@@ -72,8 +72,11 @@ class WorldLoader(private val dsl: DSLContext) {
 			// "waived": imported members who predate portal agreements.
 			.fetch { ProjectMember(it.value1()!!, it.value2()!!, it.value3(), it.value4() in setOf("signed", "waived")) }
 
+		// National's own projects' resources belong to no one chapter, so the resolver's chapter guard lets anyone in the org
+		// on the project have them (decision 141).
+		val national = dsl.select(CHAPTER.ID).from(CHAPTER).where(CHAPTER.KIND.eq("national")).fetch().map { it.value1()!! }.toSet()
 		val resources = dsl.select(RESOURCE.ID, RESOURCE.TOOL, RESOURCE.CHAPTER_ID, RESOURCE.TAGS, RESOURCE.ARCHIVED_AT).from(RESOURCE).fetch {
-			Resource(it.value1()!!, Tool.valueOf(it.value2()!!.uppercase()), it.value3(), it.value4().orEmpty().filterNotNull().toSet(), it.value5() != null)
+			Resource(it.value1()!!, Tool.valueOf(it.value2()!!.uppercase()), it.value3()?.takeUnless { c -> c in national }, it.value4().orEmpty().filterNotNull().toSet(), it.value5() != null)
 		}
 		val projectResources = dsl.selectFrom(PROJECT_RESOURCE).fetch().mapNotNull { pr ->
 			val access = access(pr.accessLevel, "project resource ${pr.projectId}/${pr.resourceId}", warnings) ?: return@mapNotNull null

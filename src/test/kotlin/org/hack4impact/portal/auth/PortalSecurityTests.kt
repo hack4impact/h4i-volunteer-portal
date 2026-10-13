@@ -112,7 +112,7 @@ class PortalSecurityTests(
 	fun `a national admin sees every chapter`() {
 		mvc.get("/api/me") { with(signedIn("nora@hack4impact.org")) }.andExpect {
 			jsonPath("$.nationalAdmin") { value(true) }
-			jsonPath("$.chapters[*].code") { value(org.hamcrest.Matchers.containsInAnyOrder("umd", "gt")) }
+			jsonPath("$.chapters[*].code") { value(org.hamcrest.Matchers.containsInAnyOrder("umd", "gt", "national")) }
 			jsonPath("$.chapters[0].role") { value("national") }
 		}
 		mvc.get("/api/chapters/gt/members") { with(signedIn("nora@hack4impact.org")) }.andExpect { status { isOk() } }

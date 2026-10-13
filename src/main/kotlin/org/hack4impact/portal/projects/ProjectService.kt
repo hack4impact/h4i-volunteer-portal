@@ -123,10 +123,17 @@ class ProjectService(private val dsl: DSLContext, private val agreements: org.ha
 
 	@Transactional
 	fun addMember(chapterId: UUID, project: ProjectRecord, input: MemberInput, viewer: Viewer) {
-		val person = dsl.select(PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME, PERSON.STATUS).from(PERSON)
-			.join(CHAPTER_MEMBERSHIP).on(CHAPTER_MEMBERSHIP.PERSON_ID.eq(PERSON.ID))
-			.where(PERSON.ID.eq(input.personId), PERSON.DELETED_AT.isNull, CHAPTER_MEMBERSHIP.CHAPTER_ID.eq(chapterId), CHAPTER_MEMBERSHIP.LEFT_ON.isNull)
-			.fetchOne() ?: bad("That person isn't a member of this chapter")
+		// National's own projects take anyone in the org (decision 141); a chapter's, only its members.
+		val national = dsl.fetchExists(CHAPTER, CHAPTER.ID.eq(chapterId), CHAPTER.KIND.eq("national"))
+		val person = if (national) {
+			dsl.select(PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME, PERSON.STATUS).from(PERSON)
+				.where(PERSON.ID.eq(input.personId), PERSON.DELETED_AT.isNull).fetchOne() ?: bad("Nobody in the portal has that ID")
+		} else {
+			dsl.select(PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME, PERSON.STATUS).from(PERSON)
+				.join(CHAPTER_MEMBERSHIP).on(CHAPTER_MEMBERSHIP.PERSON_ID.eq(PERSON.ID))
+				.where(PERSON.ID.eq(input.personId), PERSON.DELETED_AT.isNull, CHAPTER_MEMBERSHIP.CHAPTER_ID.eq(chapterId), CHAPTER_MEMBERSHIP.LEFT_ON.isNull)
+				.fetchOne() ?: bad("That person isn't a member of this chapter")
+		}
 		// PRD: alumni can be added like any member. Applicants and removed people can't.
 		if (person.value4() !in setOf("active", "alumni", "removal_requested")) bad("Only active members and alumni can join a project")
 		checkRole(input.roleId)

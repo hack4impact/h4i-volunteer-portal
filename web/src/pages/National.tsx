@@ -1,5 +1,6 @@
 import { Banner, Button, Label, Select, Spinner, TextInput } from '@primer/react'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
 import { api, reason, type AgreementTemplates, type ClaimPreview, type DeadLetter, type Me, type QueueTask, type ToolStatus } from '../api/client'
 import { Status, TOOL_NAME } from '../components/Status'
 import { ToolName } from '../components/ToolIcon'
@@ -65,6 +66,14 @@ export function National({ me }: { me: Me }) {
       ) : (
         <div className="page-body" style={{ gridTemplateColumns: '1fr' }}>
           {error && <Banner title="Not saved" description={error} variant="critical" onDismiss={() => setError(null)} />}
+
+          <section className="box" aria-labelledby="national-projects-title">
+            <div className="box-head" id="national-projects-title">National projects</div>
+            <div className="box-row" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              <span>National’s own projects, with teams from any chapter.</span>
+              <Button size="small" as={Link} to="/chapters/national/projects" style={{ marginLeft: 'auto' }}>Open national projects</Button>
+            </div>
+          </section>
 
           <section className="box" aria-labelledby="tools-title">
             <div className="box-head" id="tools-title">

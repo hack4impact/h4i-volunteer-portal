@@ -164,6 +164,8 @@ class RegistrationController(
 	@PostMapping("/roster")
 	fun upload(@AuthenticationPrincipal user: OidcUser, @PathVariable code: String, @RequestBody input: RosterInput): RosterResult {
 		val (viewer, chapter) = access.manage(user, code)
+		// Nobody joins national's own chapter (decision 141): its projects take people from the chapters.
+		if (chapter.national) throw org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Nobody joins National; add people to its projects instead")
 		return registrations.roster(chapter.id, input.csv, viewer.personId)
 	}
 }

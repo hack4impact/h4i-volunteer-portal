@@ -10,6 +10,7 @@ const TOOLS = ['google', 'github', 'slack', 'notion', 'vaultwarden']
 export function Overview({ chapter, members, sync }: { chapter: ChapterOverview; members: MemberRow[] | null; sync: ChapterSync | null }) {
   const leads = (members ?? []).filter((m) => m.chapterRole)
   const active = (members ?? []).filter((m) => m.status === 'active' || m.status === 'removal_requested')
+  if (chapter.kind === 'national') return <NationalOverview chapter={chapter} sync={sync} />
   return (
     <div className="page-body">
       <main style={{ display: 'grid', gap: 24, alignContent: 'start' }}>
@@ -143,6 +144,36 @@ function Stat({ label, value }: { label: string; value: number }) {
     <div>
       <div className="stat-label">{label}</div>
       <div className="stat-value">{value}</div>
+    </div>
+  )
+}
+
+/** National's own projects (decision 141): no members or applications, so the figures are about the projects' teams. */
+function NationalOverview({ chapter, sync }: { chapter: ChapterOverview; sync: ChapterSync | null }) {
+  return (
+    <div className="page-body">
+      <main style={{ display: 'grid', gap: 24, alignContent: 'start' }}>
+        <section className="box" aria-labelledby="national-projects">
+          <div className="box-head" id="national-projects">National’s own projects</div>
+          <div className="box-row">
+            Projects run by national, with teams from any chapter. Anyone in the portal can be added, and they get the project’s
+            channels, groups and repositories like on a chapter project. Nobody applies to join National itself.
+          </div>
+          <div className="box-row"><PrimerLink as={Link} to={`/chapters/${chapter.code}/projects`}>Open the projects</PrimerLink></div>
+        </section>
+        <SyncBox sync={sync} />
+      </main>
+      <aside>
+        <div className="pane-section" style={{ paddingTop: 0 }}>
+          <div className="pane-label">National projects</div>
+          <div className="stats">
+            <Stat label="People on them" value={chapter.stats.activeMembers} />
+            <Stat label="Alumni on them" value={chapter.stats.alumni} />
+            <Stat label="Live projects" value={chapter.stats.liveProjects} />
+            <Stat label="National admins" value={chapter.stats.leads} />
+          </div>
+        </div>
+      </aside>
     </div>
   )
 }

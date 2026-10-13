@@ -55,7 +55,7 @@ class RegistrationService(
 	fun chapter(code: String): ApplyChapter {
 		val c = dsl.select(CHAPTER.ID, CHAPTER.CODE, CHAPTER.NAME, INSTITUTION.EMAIL_DOMAINS, CHAPTER.APPLICATIONS_OPEN, CHAPTER.APPLICATION_URL)
 			.from(CHAPTER).leftJoin(INSTITUTION).on(INSTITUTION.ID.eq(CHAPTER.INSTITUTION_ID))
-			.where(CHAPTER.CODE.eq(code.lowercase()), CHAPTER.DELETED_AT.isNull, CHAPTER.STATUS.`in`("active", "supported", "pending"))
+			.where(CHAPTER.CODE.eq(code.lowercase()), CHAPTER.DELETED_AT.isNull, CHAPTER.STATUS.`in`("active", "supported", "pending"), CHAPTER.KIND.eq("chapter"))
 			.fetchOne() ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No chapter $code")
 		return ApplyChapter(c.value2()!!, c.value3()!!, c.value4()?.filterNotNull().orEmpty(), asked(c.value1()!!), c.value5()!!, c.value6())
 	}

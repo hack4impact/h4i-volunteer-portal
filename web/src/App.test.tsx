@@ -175,7 +175,7 @@ describe('App', () => {
       '/api/chapters/umd/projects/rise-dc': [200, project],
       '/api/chapters/umd/projects/rise-dc/members': [200, project],
       '/api/chapters/umd/projects/rise-dc/activity': [200, { items: [{ at: '2026-10-09T12:00:00Z', kind: 'agreement', text: 'Ada Test signed the project agreement', actor: null, details: [] }], more: false }],
-      '/api/chapters/umd/projects/rise-dc/candidates': [200, [{ personId: 'p3', name: 'Alan Alumnus', status: 'alumni' }]],
+      '/api/chapters/umd/projects/rise-dc/candidates': [200, [{ personId: 'p3', name: 'Alan Alumnus', status: 'alumni', chapters: [] }]],
       '/api/chapters/umd/sync/run': [202, {}],
     })
     render(<App />)

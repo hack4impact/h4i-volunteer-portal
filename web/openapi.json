@@ -388,6 +388,9 @@
             "format" : "uuid",
             "type" : "string"
           },
+          "kind" : {
+            "type" : "string"
+          },
           "name" : {
             "type" : "string"
           },
@@ -2395,6 +2398,12 @@
       },
       "TeamCandidate" : {
         "properties" : {
+          "chapters" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
           "name" : {
             "type" : "string"
           },

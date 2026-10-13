@@ -146,7 +146,8 @@ data class StatusChange(val status: String)
 data class MemberInput(val personId: UUID, val roleId: UUID? = null)
 
 /** Someone who could join a project's team. */
-data class TeamCandidate(val personId: UUID, val name: String, val status: String)
+/** [chapters]: on a national project (decision 141), the chapters the person is in, to tell people apart across the org. */
+data class TeamCandidate(val personId: UUID, val name: String, val status: String, val chapters: List<String> = emptyList())
 
 data class MemberRoleInput(val roleId: UUID? = null)
 

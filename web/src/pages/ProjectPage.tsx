@@ -192,8 +192,13 @@ function Team({ project, roles, edit, leadsView, gated, apply, code, slug }: {
   useEffect(() => {
     if (edit) void api.GET('/api/chapters/{code}/projects/{slug}/candidates', { params: { path: { code, slug } } }).then(({ data }) => setPeople(data ?? []))
   }, [code, slug, edit, project.members.length])
+  const [search, setSearch] = useState('')
   const onTeam = new Set(project.members.map((m) => m.personId))
-  const candidates = people.filter((m) => !onTeam.has(m.personId))
+  const q = search.trim().toLowerCase()
+  const candidates = people.filter((m) => !onTeam.has(m.personId) && (!q || m.name.toLowerCase().includes(q) || m.chapters.some((c) => c.toLowerCase().includes(q))))
+  // A national project's candidates are the whole org: search first, and say which chapter each person is in.
+  const many = people.length > 40
+  const label = (m: TeamCandidate) => `${m.name}${m.chapters.length ? ` · ${m.chapters.join(', ')}` : ''}${m.status === 'alumni' ? ' (alumni)' : ''}`
   const member = (personId: string) => ({ params: { path: { code, slug, personId } } })
   return (
     <div className="team-editor">
@@ -237,9 +242,10 @@ function Team({ project, roles, edit, leadsView, gated, apply, code, slug }: {
       )}
       {edit && (
         <div className="inline-form team-add">
+          {many && <TextInput aria-label="Search people" placeholder="Search by name or chapter" value={search} onChange={(e) => { setSearch(e.target.value); setPersonId('') }} />}
           <Select aria-label="Person to add" value={personId} onChange={(e) => setPersonId(e.target.value)}>
-            <Select.Option value="">Add a member…</Select.Option>
-            {candidates.map((m) => <Select.Option key={m.personId} value={m.personId}>{m.name}{m.status === 'alumni' ? ' (alumni)' : ''}</Select.Option>)}
+            <Select.Option value="">{many && q ? `Add a member (${candidates.length} found)…` : 'Add a member…'}</Select.Option>
+            {candidates.slice(0, 200).map((m) => <Select.Option key={m.personId} value={m.personId}>{label(m)}</Select.Option>)}
           </Select>
           <Select aria-label="Role" value={roleId} onChange={(e) => setRoleId(e.target.value)}>
             <Select.Option value="">No role</Select.Option>

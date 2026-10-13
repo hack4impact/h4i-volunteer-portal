@@ -1267,6 +1267,7 @@ export interface components {
             code: string;
             /** Format: uuid */
             id: string;
+            kind: string;
             name: string;
             /** Format: int32 */
             notionProblems: number;
@@ -1964,6 +1965,7 @@ export interface components {
             reason: string | null;
         };
         TeamCandidate: {
+            chapters: string[];
             name: string;
             /** Format: uuid */
             personId: string;

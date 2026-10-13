@@ -95,7 +95,7 @@ class MemberDbImporterTests(
 	fun `trims padded chapter codes and skips invalid or deleted chapters`() {
 		val report = runImport()
 
-		assertEquals(setOf("umd", "gt"), dsl.select(CHAPTER.CODE).from(CHAPTER).fetchSet(CHAPTER.CODE))
+		assertEquals(setOf("umd", "gt"), dsl.select(CHAPTER.CODE).from(CHAPTER).where(CHAPTER.KIND.eq("chapter")).fetchSet(CHAPTER.CODE)) // besides national's own
 		assertTrue(report.issues.any { "bad code!" in it.message })
 		// UMD: Ada, Alan, Grace, Lee. GT: Hal, Sam, Cora and both Danas. Otto's chapter was deleted; Nia has none.
 		assertEquals(9, dsl.fetchCount(CHAPTER_MEMBERSHIP))

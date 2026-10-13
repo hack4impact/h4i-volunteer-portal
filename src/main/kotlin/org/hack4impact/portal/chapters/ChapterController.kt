@@ -34,8 +34,9 @@ class ChapterController(
 		val (viewer, chapter) = authorize(user, code)
 		return ChapterOverview(
 			chapter.id, chapter.code, chapter.name, chapter.status,
+			kind = if (chapter.national) "national" else "chapter",
 			role = viewer.chapterRoles[chapter.id] ?: "national",
-			stats = chapters.stats(chapter.id),
+			stats = chapters.stats(chapter.id, chapter.national),
 			registrationLink = "${joinBaseUrl.trimEnd('/')}/${chapter.code}",
 			notionProblems = notion.view(chapter.id, false).problems,
 		)

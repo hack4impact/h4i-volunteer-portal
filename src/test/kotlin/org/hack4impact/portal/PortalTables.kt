@@ -5,14 +5,15 @@ import org.jooq.DSLContext
 
 /**
  * Empties every portal table, for tests that need a clean database. TRUNCATE ... CASCADE also empties
- * tool_setting (its paused_by references person) and the national resource template (V5), so what the
- * migrations seed is put back.
+ * tool_setting (its paused_by references person), the national resource template (V5) and national's own chapter
+ * (V13), so what the migrations seed is put back.
  */
 fun DSLContext.emptyPortalTables() {
 	val keep = setOf("flyway_schema_history")
 	val tables = fetch("SELECT tablename FROM pg_tables WHERE schemaname = 'portal'").map { it.get(0, String::class.java) } - keep
 	execute("TRUNCATE " + tables.joinToString { "portal.\"$it\"" } + " CASCADE")
 	execute("INSERT INTO portal.tool_setting (tool) VALUES ('google'), ('github'), ('slack'), ('notion'), ('vaultwarden'), ('documenso') ON CONFLICT DO NOTHING")
+	execute("INSERT INTO portal.chapter (code, name, kind, applications_open) VALUES ('national', 'Hack4Impact National', 'national', false) ON CONFLICT DO NOTHING")
 	val national = listOf(
 		listOf("slack", "{chapter}-{project}", false, "main"),
 		listOf("google", "{chapter}-{project}@hack4impact.org", false, "main"),
