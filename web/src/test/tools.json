@@ -1,0 +1,73 @@
+[ {
+  "key" : "slack",
+  "name" : "Slack",
+  "resourceLabel" : "Slack",
+  "resourcesTitle" : "Slack channels",
+  "order" : 1,
+  "projectOrder" : 1,
+  "namePrefix" : "#",
+  "nameExample" : "{chapter}-{project}-eng",
+  "sensitive" : false,
+  "hasAdminLevel" : false,
+  "projectResources" : true
+}, {
+  "key" : "google",
+  "name" : "Google",
+  "resourceLabel" : "Google group",
+  "resourcesTitle" : "Google groups",
+  "order" : 2,
+  "projectOrder" : 5,
+  "namePrefix" : "",
+  "nameExample" : "{chapter}-{project}-eng@hack4impact.org",
+  "sensitive" : false,
+  "hasAdminLevel" : true,
+  "projectResources" : true
+}, {
+  "key" : "github",
+  "name" : "GitHub",
+  "resourceLabel" : "GitHub",
+  "resourcesTitle" : "GitHub teams",
+  "order" : 3,
+  "projectOrder" : 2,
+  "namePrefix" : "",
+  "nameExample" : "{chapter}-{project}-eng",
+  "sensitive" : true,
+  "hasAdminLevel" : true,
+  "projectResources" : true
+}, {
+  "key" : "notion",
+  "name" : "Notion",
+  "resourceLabel" : "Notion",
+  "resourcesTitle" : "Notion page",
+  "order" : 4,
+  "projectOrder" : 4,
+  "namePrefix" : "",
+  "nameExample" : "{chapter}-{project}-eng",
+  "sensitive" : false,
+  "hasAdminLevel" : false,
+  "projectResources" : true
+}, {
+  "key" : "vaultwarden",
+  "name" : "Vaultwarden",
+  "resourceLabel" : "Vaultwarden",
+  "resourcesTitle" : "Vaultwarden collections",
+  "order" : 5,
+  "projectOrder" : 3,
+  "namePrefix" : "",
+  "nameExample" : "{chapter}-{project}-eng",
+  "sensitive" : true,
+  "hasAdminLevel" : true,
+  "projectResources" : true
+}, {
+  "key" : "documenso",
+  "name" : "Documenso",
+  "resourceLabel" : "Documenso",
+  "resourcesTitle" : "Documenso",
+  "order" : 6,
+  "projectOrder" : 6,
+  "namePrefix" : "",
+  "nameExample" : "{chapter}-{project}-eng",
+  "sensitive" : false,
+  "hasAdminLevel" : false,
+  "projectResources" : false
+} ]

@@ -196,6 +196,11 @@ class ProjectTests(
 		send("POST", path, """{"tool":"slack","name":"#UMD Rise Dc Design"}""").andExpect { status { isBadRequest() } } // spaces
 		send("POST", path, """{"tool":"slack","name":"umd-food-bank"}""").andExpect { status { isConflict() } } // exists: attach it instead
 		send("POST", path, """{"tool":"notion","name":"x"}""").andExpect { status { isBadRequest() } }
+		send("POST", path, """{"tool":"NOTION","name":"x"}""").andExpect { status { isBadRequest() } } // any case
+		send("POST", path, """{"tool":"figma","name":"x"}""").andExpect { status { isBadRequest() } } // not a registered tool
+		// A tool key in another case is the registry's key: stored as slack, not refused by the database (tool plugins review).
+		send("POST", path, """{"tool":"Slack","name":"umd-rise-dc-random"}""").andExpect { status { isOk() } }
+		assertEquals("slack", dsl.select(RESOURCE.TOOL).from(RESOURCE).where(RESOURCE.NAME.eq("umd-rise-dc-random")).fetchSingle().value1())
 		send("POST", path, """{"tool":"github","name":"umd-rise-dc-design","audience":"role"}""").andExpect { status { isBadRequest() } } // role missing
 
 		val design = body(send("POST", path, """{"tool":"slack","name":"#umd-rise-dc-design","audience":"role","roleId":"$developer","tags":["Design"]}""").andExpect { status { isOk() } })

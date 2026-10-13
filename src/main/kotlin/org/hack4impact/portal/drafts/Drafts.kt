@@ -356,7 +356,7 @@ class Drafts(
 		fun person(id: UUID) = dsl.select(PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME).from(PERSON).where(PERSON.ID.eq(id)).fetchOne()
 			?.let { ProjectQueries.name(it.value3(), it.value1()!!, it.value2()!!) } ?: "someone"
 		fun role(id: UUID?) = id?.let { dsl.select(PROJECT_ROLE.NAME).from(PROJECT_ROLE).where(PROJECT_ROLE.ID.eq(it)).fetchOne()?.value1() }
-		fun resource(id: UUID) = dsl.select(RESOURCE.TOOL, RESOURCE.NAME).from(RESOURCE).where(RESOURCE.ID.eq(id)).fetchOne()?.let { AccessDiff.label(it.value1()!!, it.value2()!!) } ?: "a resource"
+		fun resource(id: UUID) = dsl.select(RESOURCE.TOOL, RESOURCE.NAME).from(RESOURCE).where(RESOURCE.ID.eq(id)).fetchOne()?.let { diffs.label(it.value1()!!, it.value2()!!) } ?: "a resource"
 		val rule = "“${rules.name(op.targetId)}”"
 		return when (op.op) {
 			"create_project" -> "Create $project"

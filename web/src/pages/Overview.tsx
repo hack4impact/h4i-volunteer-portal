@@ -3,8 +3,8 @@ import { Link } from 'react-router'
 import { type ChapterOverview, type ChapterSync, type MemberRow } from '../api/client'
 import { CHANGE_LABEL, ROLE_LABEL, Status } from '../components/Status'
 import { ToolName } from '../components/ToolIcon'
+import { resourceTools } from '../api/tools'
 
-const TOOLS = ['google', 'github', 'slack', 'notion', 'vaultwarden']
 
 /** Chapter overview: leads, tool coverage, sync dry runs, and the side pane with counts and links. */
 export function Overview({ chapter, members, sync }: { chapter: ChapterOverview; members: MemberRow[] | null; sync: ChapterSync | null }) {
@@ -39,7 +39,7 @@ export function Overview({ chapter, members, sync }: { chapter: ChapterOverview;
         </section>
         <section className="box" aria-labelledby="coverage">
           <div className="box-head" id="coverage">Tool accounts of active members</div>
-          {TOOLS.map((tool) => {
+          {resourceTools().map(({ key: tool }) => {
             const linked = active.filter((m) => m.accounts.some((a) => a.tool === tool)).length
             return (
               <div className="box-row" key={tool} style={{ display: 'flex', justifyContent: 'space-between' }}>

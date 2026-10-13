@@ -60,6 +60,7 @@ class AgreementService(
 	private val properties: AgreementProperties,
 	private val mailer: Mailer,
 	private val syncs: SyncRequests,
+	private val tools: org.hack4impact.portal.tools.ToolRegistry,
 	private val locks: org.hack4impact.portal.sync.RunLocks,
 	@Value("\${portal.base-url}") private val baseUrl: String,
 ) {
@@ -221,7 +222,7 @@ class AgreementService(
 		val updated = dsl.update(PROJECT_MEMBER).set(PROJECT_MEMBER.AGREEMENT_STATUS, "signed")
 			.where(PROJECT_MEMBER.PROJECT_ID.eq(project), PROJECT_MEMBER.PERSON_ID.eq(agreement.personId), PROJECT_MEMBER.REMOVED_AT.isNull, PROJECT_MEMBER.AGREEMENT_STATUS.eq("pending"))
 			.execute()
-		if (updated > 0) syncs.request("agreement", setOf(Tool.GITHUB, Tool.VAULTWARDEN))
+		if (updated > 0) syncs.request("agreement", tools.sensitive) // what an agreement holds back: repositories and vaults
 	}
 
 	private fun declined(agreement: AgreementRecord, reason: String?) {

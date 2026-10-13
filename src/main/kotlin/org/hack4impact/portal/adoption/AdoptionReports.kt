@@ -179,7 +179,7 @@ class AdoptionReports(
 		if (proposals.isEmpty() && adopted.isEmpty()) return emptyMap()
 		val base = worlds.load().world
 		val world = base.copy(
-			resources = base.resources + proposals.map { Resource(it.id!!, Tool.valueOf(it.tool!!.uppercase()), chapterId, archived = it.archived!!) },
+			resources = base.resources + proposals.mapNotNull { p -> Tool.fromKey(p.tool)?.let { Resource(p.id!!, it, chapterId, archived = p.archived!!) } },
 			chapterResources = base.chapterResources + proposals.filter { it.target != "project_team" }.map {
 				ChapterResource(chapterId, it.id!!, if (it.target == "chapter_leads") ChapterAudience.LEADS else ChapterAudience.MEMBERS, Access.WRITE)
 			},

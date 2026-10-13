@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { api, reason, type DraftDetail, type DraftPreview, type DraftSummary } from '../api/client'
 import { setActiveDraft, useActiveDraft } from '../api/drafts'
-import { Status } from '../components/Status'
+import { Status, TOOL_NAME } from '../components/Status'
 import { ToolIcon } from '../components/ToolIcon'
+import { resourceName, toolByLabel } from '../api/tools'
 
 const when = (d?: string | null) => (d ? new Date(d).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '')
 
@@ -17,17 +18,22 @@ function DraftState({ d }: { d: DraftSummary }) {
   return <Status tone="off">Draft</Status>
 }
 
-const TOOL_BY_LABEL: Record<string, string> = { Slack: 'slack', GitHub: 'github', 'Google group': 'google', Notion: 'notion', Vaultwarden: 'vaultwarden' }
 
-/** A resource as the preview names it ("umd-rise-dc (Slack)", "… (GitHub), now admin"), as a chip with its tool's icon. */
-function ResourceChip({ label, remove }: { label: string; remove?: boolean }) {
-  const m = label.match(/^(.*) \(([^)]+)\)(?:, now (\w+))?$/)
-  const tool = m ? TOOL_BY_LABEL[m[2]!] : undefined
-  if (!m || !tool) return <span className="chip">{label}</span>
-  const name = tool === 'slack' ? `#${m[1]}` : m[1]
+type Refs = Record<string, { tool: string; name: string }>
+
+/**
+ * A resource as the preview names it ("umd-rise-dc (Slack)", "… (GitHub), now admin"), as a chip with its tool's icon.
+ * The tool and name come from the preview's [refs]; summaries stored before it had refs fall back to reading the label.
+ */
+function ResourceChip({ label, refs, remove }: { label: string; refs?: Refs; remove?: boolean }) {
+  const now = label.match(/, now (\w+)$/)?.[1]
+  const base = now ? label.slice(0, -`, now ${now}`.length) : label
+  const parsed = base.match(/^(.*) \(([^)]+)\)$/)
+  const ref = refs?.[base] ?? (parsed && toolByLabel(parsed[2]!) ? { tool: toolByLabel(parsed[2]!)!, name: parsed[1]! } : undefined)
+  if (!ref) return <span className="chip">{label}</span>
   return (
-    <span className={`chip${remove ? ' chip-remove' : ''}`} title={`${m[2]}: ${m[1]}`}>
-      <ToolIcon tool={tool} size={14} label />{name}{m[3] && <span className="muted"> · now {m[3]}</span>}
+    <span className={`chip${remove ? ' chip-remove' : ''}`} title={`${TOOL_NAME[ref.tool] ?? ref.tool}: ${ref.name}`}>
+      <ToolIcon tool={ref.tool} size={14} label />{resourceName(ref.tool, ref.name)}{now && <span className="muted"> · now {now}</span>}
     </span>
   )
 }
@@ -54,9 +60,9 @@ export function PeopleChanges({ people, label = 'People' }: { people: DraftPrevi
             <dl className="change-grid">
               {p.joins.length > 0 && <><dt>Joins</dt><dd>{p.joins.map((j) => <span key={j} className="chip">{j}</span>)}</dd></>}
               {p.leaves.length > 0 && <><dt>Leaves</dt><dd>{p.leaves.map((j) => <span key={j} className="chip">{j}</span>)}</dd></>}
-              {p.gains.length > 0 && <><dt className="add">Gets</dt><dd>{p.gains.map((g) => <ResourceChip key={g} label={g} />)}</dd></>}
-              {p.afterAgreement.length > 0 && <><dt>After agreement</dt><dd>{p.afterAgreement.map((g) => <ResourceChip key={g} label={g} />)}</dd></>}
-              {p.loses.length > 0 && <><dt className="remove">Loses</dt><dd>{p.loses.map((g) => <ResourceChip key={g} label={g} remove />)}</dd></>}
+              {p.gains.length > 0 && <><dt className="add">Gets</dt><dd>{p.gains.map((g) => <ResourceChip key={g} label={g} refs={p.resources} />)}</dd></>}
+              {p.afterAgreement.length > 0 && <><dt>After agreement</dt><dd>{p.afterAgreement.map((g) => <ResourceChip key={g} label={g} refs={p.resources} />)}</dd></>}
+              {p.loses.length > 0 && <><dt className="remove">Loses</dt><dd>{p.loses.map((g) => <ResourceChip key={g} label={g} refs={p.resources} remove />)}</dd></>}
             </dl>
           </div>
         </li>

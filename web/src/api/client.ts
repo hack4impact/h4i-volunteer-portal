@@ -44,6 +44,7 @@ export type RulesPage = components['schemas']['RulesPage']
 export type RulePreview = components['schemas']['RulePreview']
 export type RulePreviewInput = components['schemas']['RulePreviewInput']
 export type MyAccess = components['schemas']['MyAccess']
+export type ToolInfo = components['schemas']['ToolInfo']
 
 /** Typed client for the portal API; types come from web/openapi.json (`npm run gen:api`). */
 export const api = createClient<paths>({

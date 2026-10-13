@@ -31,8 +31,16 @@ import java.util.UUID
  * it's shown, previewed or released (step 12). Every change is audited on the project.
  */
 @Component
-class ProjectService(private val dsl: DSLContext, private val agreements: org.hack4impact.portal.agreements.AgreementRequests) {
+class ProjectService(
+	private val dsl: DSLContext,
+	private val agreements: org.hack4impact.portal.agreements.AgreementRequests,
+	private val tools: org.hack4impact.portal.tools.ToolRegistry,
+) {
 	private val json = JsonMapper.builder().build()
+
+	/** A resource name as the tool will need it: Slack, GitHub and Google names lose a leading # and are lowercase (registry). */
+	fun normalizeName(tool: String, name: String) =
+		if (tools.find(tool)?.lowercaseNames == true) name.trim().trimStart('#').lowercase() else name.trim()
 
 	companion object {
 		val TRANSITIONS = mapOf(
@@ -42,20 +50,7 @@ class ProjectService(private val dsl: DSLContext, private val agreements: org.ha
 			"closed" to emptySet(),
 		)
 		private val SLUG = Regex("^[a-z0-9][a-z0-9-]*$")
-		private val NAME_RULES = mapOf(
-			"slack" to (Regex("^[a-z0-9][a-z0-9_-]{0,79}$") to "lowercase letters, digits, - and _, at most 80"),
-			"github" to (Regex("^[a-z0-9][a-z0-9-]{0,99}$") to "lowercase letters, digits and -"),
-			"google" to (Regex("^[a-z0-9][a-z0-9._-]*@([a-z0-9-]+\\.)*hack4impact\\.org$") to "an address at hack4impact.org"),
-			"vaultwarden" to (Regex("^.{1,100}$") to "at most 100 characters"),
-		)
-
 		fun slugify(name: String) = name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
-
-		/** A resource name as the tool will need it: Slack names lose a leading # and are lowercase, GitHub team slugs too. */
-		fun normalizeName(tool: String, name: String) = when (tool) {
-			"slack", "github", "google" -> name.trim().trimStart('#').lowercase()
-			else -> name.trim()
-		}
 
 		private fun bad(message: String): Nothing = throw ResponseStatusException(HttpStatus.BAD_REQUEST, message)
 		private fun conflict(message: String): Nothing = throw ResponseStatusException(HttpStatus.CONFLICT, message)
@@ -177,11 +172,15 @@ class ProjectService(private val dsl: DSLContext, private val agreements: org.ha
 			if (dsl.fetchExists(PROJECT_RESOURCE, PROJECT_RESOURCE.PROJECT_ID.eq(project.id), PROJECT_RESOURCE.RESOURCE_ID.eq(r.id))) conflict("Already attached")
 			r.id!!
 		} else {
-			val tool = input.tool ?: bad("Choose a tool")
+			val asked = input.tool ?: bad("Choose a tool")
+			// The registry's key from here on, so "Slack" is stored and compared as "slack" (the database takes lowercase only).
+			val described = tools.find(asked)?.takeIf { it.projectResources } ?: bad("The portal can't manage $asked resources")
+			val tool = described.key
 			if (tool == "notion") bad("Notion pages come from the chapter's Notion routes")
-			val (rule, hint) = NAME_RULES[tool] ?: bad("The portal can't manage $tool resources")
+			// Each tool's naming rule comes from the tool registry; no rule: the portal doesn't create that tool's resources.
+			val naming = described.naming ?: bad("The portal can't manage ${described.name} resources")
 			val name = normalizeName(tool, input.name ?: "")
-			if (!rule.matches(name)) bad("A $tool name needs $hint")
+			if (!naming.pattern.matches(name)) bad("A ${described.name} name needs ${naming.hint}")
 			if (existing(chapterId, tool, name) != null) conflict("This chapter already has $name in $tool: attach that one instead")
 			insertResource(chapterId, tool, name, tags(input.tags.orEmpty()), newResourceId ?: UUID.randomUUID())
 		}

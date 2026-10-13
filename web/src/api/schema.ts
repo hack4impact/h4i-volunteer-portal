@@ -1051,7 +1051,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["tools"];
+        get: operations["tools_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1100,6 +1100,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["status_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["tools"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1614,6 +1630,9 @@ export interface components {
             name: string;
             /** Format: uuid */
             personId: string;
+            resources: {
+                [key: string]: components["schemas"]["ResourceRef"];
+            };
         };
         PlannedChange: {
             accountId: string | null;
@@ -1819,6 +1838,10 @@ export interface components {
             tags: string[] | null;
             tool: string | null;
         };
+        ResourceRef: {
+            name: string;
+            tool: string;
+        };
         ResourceSync: {
             /** Format: int32 */
             failing: number;
@@ -1983,6 +2006,21 @@ export interface components {
             dryRun: boolean;
             enabled: boolean;
             reason: string | null;
+        };
+        ToolInfo: {
+            hasAdminLevel: boolean;
+            key: string;
+            name: string;
+            nameExample: string;
+            namePrefix: string;
+            /** Format: int32 */
+            order: number;
+            /** Format: int32 */
+            projectOrder: number;
+            projectResources: boolean;
+            resourceLabel: string;
+            resourcesTitle: string;
+            sensitive: boolean;
         };
         ToolStatus: {
             dryRun: boolean;
@@ -3967,7 +4005,7 @@ export interface operations {
             };
         };
     };
-    tools: {
+    tools_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -4049,6 +4087,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["StatusResponse"];
+                };
+            };
+        };
+    };
+    tools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ToolInfo"][];
                 };
             };
         };

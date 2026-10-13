@@ -41,10 +41,9 @@ class Rules(
 	private val diffs: AccessDiff,
 	private val transactions: PlatformTransactionManager,
 	private val mapper: JsonMapper,
+	private val toolRegistry: org.hack4impact.portal.tools.ToolRegistry,
 ) {
 	companion object {
-		val TOOLS = listOf("slack", "github", "google", "notion", "vaultwarden")
-		private val TOOL_NAME = mapOf("slack" to "Slack", "github" to "GitHub", "google" to "Google", "notion" to "Notion", "vaultwarden" to "Vaultwarden")
 		private val STATUSES = setOf("active", "alumni", "removal_requested")
 		private val ROLES = mapOf("lead" to "Chapter leads", "co_lead" to "co-leads", "viewer" to "viewers")
 		private fun bad(message: String): Nothing = throw ResponseStatusException(HttpStatus.BAD_REQUEST, message)
@@ -56,7 +55,7 @@ class Rules(
 
 	fun page(chapterId: UUID?, canEdit: Boolean): RulesPage {
 		val reach = reach()
-		val names = Names.load(dsl)
+		val names = Names.load(dsl, toolRegistry)
 		fun views(of: UUID?) = dsl.select(RULE.asterisk(), PERSON.FIRST_NAME, PERSON.LAST_NAME).from(RULE).leftJoin(PERSON).on(PERSON.ID.eq(DSL.coalesce(RULE.UPDATED_BY, RULE.CREATED_BY)))
 			.where(scope(of), RULE.DELETED_AT.isNull).orderBy(RULE.CREATED_AT)
 			.fetch { r -> view(r.into(RULE), r.get(PERSON.FIRST_NAME)?.let { "$it ${r.get(PERSON.LAST_NAME)}" }, reach, names) }
@@ -128,16 +127,16 @@ class Rules(
 	/** Names for IDs a rule refers to. */
 	private class Names(val roles: Map<UUID, String>, val people: Map<UUID, String>, val projects: Map<UUID, String>, val resources: Map<UUID, String>) {
 		companion object {
-			fun load(dsl: DSLContext) = Names(
+			fun load(dsl: DSLContext, tools: org.hack4impact.portal.tools.ToolRegistry) = Names(
 				dsl.select(PROJECT_ROLE.ID, PROJECT_ROLE.NAME).from(PROJECT_ROLE).fetch().associate { it.value1()!! to it.value2()!! },
 				dsl.select(PERSON.ID, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME).from(PERSON).fetch().associate { it.value1()!! to ProjectQueries.name(it.value4(), it.value2()!!, it.value3()!!) },
 				dsl.select(PROJECT.ID, PROJECT.NAME).from(PROJECT).fetch().associate { it.value1()!! to it.value2()!! },
-				dsl.select(RESOURCE.ID, RESOURCE.TOOL, RESOURCE.NAME).from(RESOURCE).fetch().associate { it.value1()!! to (if (it.value2() == "slack") "#${it.value3()}" else it.value3()!!) },
+				dsl.select(RESOURCE.ID, RESOURCE.TOOL, RESOURCE.NAME).from(RESOURCE).fetch().associate { it.value1()!! to tools.displayName(it.value2()!!, it.value3()!!) },
 			)
 		}
 	}
 
-	fun sentence(input: RuleInput): String = sentence(input, Names.load(dsl))
+	fun sentence(input: RuleInput): String = sentence(input, Names.load(dsl, toolRegistry))
 
 	private fun sentence(i: RuleInput, n: Names): String {
 		fun list(items: List<String>) = if (items.size <= 1) items.joinToString("") else items.dropLast(1).joinToString(", ") + " and " + items.last()
@@ -165,7 +164,7 @@ class Rules(
 			"tags" -> " in projects tagged ${i.projects.tags.joinToString(" ") { "#$it" }}"
 			else -> ""
 		}
-		val tools = if (i.tools.isEmpty()) "" else " · only ${list(i.tools.mapNotNull { TOOL_NAME[it] })}"
+		val tools = if (i.tools.isEmpty()) "" else " · only ${list(i.tools.mapNotNull { toolRegistry.find(it)?.name })}"
 		return "$who$whoStatus → ${i.access.replaceFirstChar { it.uppercase() }} on $what$where$tools"
 	}
 
@@ -175,7 +174,8 @@ class Rules(
 	private fun validate(chapterId: UUID?, i: RuleInput) {
 		if (i.name.isBlank()) bad("Give the rule a name, e.g. “Tech leads get the repos”")
 		if (i.access !in setOf("read", "write", "admin")) bad("Access is read, write or admin")
-		if (i.tools.any { it !in TOOLS }) bad("Unknown tool: ${i.tools.first { it !in TOOLS }}")
+		val known = toolRegistry.resourceTools.map { it.key }.toSet()
+		if (i.tools.any { it !in known }) bad("Unknown tool: ${i.tools.first { it !in known }}")
 		val w = i.who
 		if (w.statuses.isEmpty() || w.statuses.any { it !in STATUSES }) bad("Statuses are active, alumni or removal_requested")
 		if (w.chapterRoles.any { it !in ROLES }) bad("Chapter roles are lead, co_lead or viewer")
@@ -220,8 +220,12 @@ class Rules(
 			i.projects.tags.filter { it.isNotBlank() && it.lowercase() !in tags }.forEach { add("No project is tagged #$it yet") }
 		}
 		// GitHub (maintainer), Google groups (manager) and Vaultwarden (manage) have an admin level; these don't.
-		if (i.access == "admin" && (i.tools.isEmpty() || i.tools.any { it in setOf("slack", "notion") })) {
-			add("Slack and Notion have no admin level: there people just get added")
+		// Which tools have no admin level comes from the registry; named in the warning.
+		val noAdmin = toolRegistry.resourceTools.filter { !it.hasAdminLevel && (i.tools.isEmpty() || it.key in i.tools) }
+		if (i.access == "admin" && noAdmin.isNotEmpty()) {
+			val names = noAdmin.map { it.name }
+			val listed = if (names.size == 1) names[0] else names.dropLast(1).joinToString(", ") + " and " + names.last()
+			add("$listed ${if (names.size == 1) "has" else "have"} no admin level: there people just get added")
 		}
 	}
 

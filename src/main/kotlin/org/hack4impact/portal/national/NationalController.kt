@@ -87,6 +87,7 @@ class NationalController(
 	private val syncs: SyncRequests,
 	private val queue: AdminQueue,
 	private val adapters: org.hack4impact.portal.adapters.AdapterProperties,
+	private val tools: org.hack4impact.portal.tools.ToolRegistry,
 ) {
 	private val json = JsonMapper.builder().build()
 
@@ -98,7 +99,8 @@ class NationalController(
 		national(user)
 		val writable = writable()
 		val runs = dsl.selectFrom(SYNC_RUN).orderBy(SYNC_RUN.STARTED_AT.desc()).limit(500).fetch().filter { it.tool != null }.distinctBy { it.tool }.associateBy { it.tool }
-		return dsl.selectFrom(TOOL_SETTING).orderBy(TOOL_SETTING.TOOL).fetch().map { s ->
+		// In the tools' order (tool registry), any unregistered ones last.
+		return dsl.selectFrom(TOOL_SETTING).orderBy(TOOL_SETTING.TOOL).fetch().sortedBy { tools.find(it.tool)?.order ?: Int.MAX_VALUE }.map { s ->
 			val run = runs[s.tool]
 			ToolStatus(
 				s.tool!!, s.enabled!!, s.dryRun!!, s.tool in writable, s.pauseReason, s.maxRemovals!!,

@@ -43,12 +43,17 @@ class SchemaTests(@Autowired private val dsl: DSLContext) {
 	}
 
 	@Test
-	fun `tool names are limited to the managed tools`() {
+	fun `tool names are well-formed (which tools exist is the app's tool registry, V15)`() {
 		val person = dsl.insertInto(PERSON).set(PERSON.FIRST_NAME, "A").set(PERSON.LAST_NAME, "B")
 			.returningResult(PERSON.ID).fetchSingle().value1()!!
+		// A plugin's tool needs no migration (checked first: the refused insert at the end aborts the transaction).
+		dsl.insertInto(TOOL_ACCOUNT).set(TOOL_ACCOUNT.PERSON_ID, person).set(TOOL_ACCOUNT.TOOL, "figma").set(TOOL_ACCOUNT.EXTERNAL_LOGIN, "x").execute()
+		// Asked without inserting: a refused insert would abort the test's transaction for the rest.
+		for (bad in listOf("LinkedIn", "linked in", "", "1password")) {
+			assertEquals(false, dsl.fetchValue("SELECT pg_input_is_valid(?, 'portal.tool_name')", bad), bad)
+		}
 		assertFailsWith<DataIntegrityViolationException> {
-			dsl.insertInto(TOOL_ACCOUNT).set(TOOL_ACCOUNT.PERSON_ID, person).set(TOOL_ACCOUNT.TOOL, "linkedin")
-				.set(TOOL_ACCOUNT.EXTERNAL_LOGIN, "x").execute()
+			dsl.insertInto(TOOL_ACCOUNT).set(TOOL_ACCOUNT.PERSON_ID, person).set(TOOL_ACCOUNT.TOOL, "Bad Tool").set(TOOL_ACCOUNT.EXTERNAL_LOGIN, "x").execute()
 		}
 	}
 }

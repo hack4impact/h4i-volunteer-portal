@@ -47,7 +47,15 @@ data class PersonAccessChange(
 	val loses: List<String>,
 	/** Gated resources they'd get once they sign the project agreement. */
 	val afterAgreement: List<String>,
+	/**
+	 * What each resource label in [gains], [loses] and [afterAgreement] names ("umd-rise (Slack)" → slack, umd-rise), so
+	 * screens show the tool without reading the label (tool plugins review). Empty in summaries stored before it existed.
+	 */
+	val resources: Map<String, ResourceRef> = emptyMap(),
 )
+
+/** A resource by its tool key and name. */
+data class ResourceRef(val tool: String, val name: String)
 
 /** "Adds 34 people to 12 resources, removes 6" (PRD), with each person's changes. */
 data class DraftPreview(

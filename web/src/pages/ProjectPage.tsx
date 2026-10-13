@@ -7,8 +7,8 @@ import {
 } from '../api/client'
 import { CHANGE_LABEL, PROJECT_STATUS, STATUS_LABEL, Status, TOOL_NAME, resourceName } from '../components/Status'
 import { ToolIcon } from '../components/ToolIcon'
+import { resourceTools, toolInfo } from '../api/tools'
 
-const TOOL_ORDER = ['slack', 'google', 'github', 'vaultwarden']
 /** Change pills (design guide): green add, red remove, blue change. */
 const CHANGE_VARIANT: Record<string, 'success' | 'danger' | 'accent' | 'attention' | 'secondary'> = {
   add: 'success', create_resource: 'success', remove: 'danger', change: 'accent', drift: 'attention', missing_resource: 'attention',
@@ -76,8 +76,7 @@ export function ProjectPage({ code, slug }: { code: string; slug: string }) {
   const [statusLabel, statusTone] = PROJECT_STATUS[project.status] ?? [project.status, 'off']
   const edit = project.canEdit && project.status !== 'closed'
   const gated = project.resources.some((r) => r.requiresAgreement)
-  const tools = [...TOOL_ORDER, ...project.resources.map((r) => r.tool).filter((t) => !TOOL_ORDER.includes(t))]
-    .filter((t, i, all) => all.indexOf(t) === i && project.resources.some((r) => r.tool === t))
+  const tools = project.resources.map((r) => r.tool).filter((t, i, all) => all.indexOf(t) === i)
 
   return (
     <div className="page-body">
@@ -286,13 +285,6 @@ function AccessFields({ value, onChange, roles }: { value: ResourceBody; onChang
   )
 }
 
-const GROUP: [string, string, string][] = [
-  ['slack', 'Slack channels', 'Slack channel'],
-  ['github', 'GitHub teams', 'GitHub team'],
-  ['vaultwarden', 'Vaultwarden collections', 'Vaultwarden collection'],
-  ['notion', 'Notion page', 'Notion page'],
-  ['google', 'Google groups', 'Google group'],
-]
 
 /** How the sync stands for one resource, in words; a dot only when someone has to act or something failed. */
 function syncState(r: ProjectResourceRow, draft: boolean): [string, 'ok' | 'warn' | 'off' | 'danger'] {
@@ -317,11 +309,13 @@ function ResourceGroups({ project, tools, roles, edit, code, onAdd, onSave, onDe
   const [editing, setEditing] = useState<{ id: string; body: ResourceBody } | null>(null)
   const [adding, setAdding] = useState<string | null>(null)
   const draft = project.preview.asIfActive
-  const order = [...GROUP.map(([t]) => t), ...tools.filter((t) => !GROUP.some(([g]) => g === t))]
+  // One box per tool chapters attach to projects, in the project page's order (tool registry); then any other tool the project has.
+  const boxes = [...resourceTools()].sort((a, b) => a.projectOrder - b.projectOrder).map((t) => t.key)
+  const order = [...boxes, ...tools.filter((t) => !boxes.includes(t))]
   return (
     <>
       {order.map((tool) => {
-        const [, plural] = GROUP.find(([t]) => t === tool) ?? [tool, TOOL_NAME[tool] ?? tool, tool]
+        const plural = toolInfo(tool)?.resourcesTitle ?? TOOL_NAME[tool] ?? tool
         if (tool === 'notion') return <NotionBox key={tool} project={project} code={code} edit={edit} />
         const rows = project.resources.filter((r) => r.tool === tool)
         return (
@@ -415,7 +409,7 @@ function NotionBox({ project, code, edit }: { project: ProjectDetail; code: stri
 function AddResource({ code, project, roles, tool, onAdd, onClose }: {
   code: string; project: ProjectDetail; roles: ProjectRoleOption[]; tool: string; onAdd: (b: ResourceBody) => Promise<boolean>; onClose: () => void
 }) {
-  const empty: ResourceBody = { resourceId: null, tool, name: '', audience: 'team', roleId: null, access: 'write', requiresAgreement: tool === 'github' || tool === 'vaultwarden', tags: [] }
+  const empty: ResourceBody = { resourceId: null, tool, name: '', audience: 'team', roleId: null, access: 'write', requiresAgreement: toolInfo(tool)?.sensitive ?? false, tags: [] }
   const open = true
   const [mode, setMode] = useState<'new' | 'existing'>('new')
   const [body, setBody] = useState<ResourceBody>(empty)
@@ -433,7 +427,7 @@ function AddResource({ code, project, roles, tool, onAdd, onClose }: {
         </Select>
         {mode === 'new' ? (
           <>
-            <TextInput aria-label="Name" placeholder={body.tool === 'google' ? `${code}-${project.slug}-eng@hack4impact.org` : `${code}-${project.slug}-eng`}
+            <TextInput aria-label="Name" placeholder={(toolInfo(body.tool ?? '')?.nameExample ?? '{chapter}-{project}-eng').replace('{chapter}', code).replace('{project}', project.slug)}
               value={body.name ?? ''} onChange={(e) => setBody({ ...body, name: e.target.value })} />
           </>
         ) : (

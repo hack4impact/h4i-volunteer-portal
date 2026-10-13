@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { TOOLS } from './test/tools'
 import { App } from './App'
 
 /** Answers API calls from a table of URL path (or "METHOD path", which wins) → [status, body]. */
@@ -8,7 +9,7 @@ function api(routes: Record<string, [number, unknown]>) {
   vi.stubGlobal('fetch', vi.fn(async (input: Request | string) => {
     const path = new URL(typeof input === 'string' ? input : input.url, 'http://localhost').pathname
     const method = typeof input === 'string' ? 'GET' : input.method
-    const [status, body] = routes[`${method} ${path}`] ?? routes[path] ?? [404, {}]
+    const [status, body] = routes[`${method} ${path}`] ?? routes[path] ?? (path === '/api/tools' ? [200, TOOLS] : [404, {}])
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
   }))
 }
@@ -22,6 +23,18 @@ afterEach(() => {
 })
 
 describe('App', () => {
+  it('still opens pages when only the tool list fails to load, and says so', async () => {
+    window.history.pushState({}, '', '/me')
+    api({
+      '/api/me': [200, { ...me([]), email: 'marcus@hack4impact.org', name: 'Marcus Chen' }],
+      '/api/tools': [500, {}],
+      '/api/me/home': [200, { name: 'Marcus Chen', status: 'active', chapters: [], projects: [], access: [], agreements: [] }],
+    })
+    render(<App />)
+    expect(await screen.findByText('Tool names didn’t load')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Marcus Chen' })).toBeInTheDocument()
+  })
+
   it('asks a signed-out visitor to sign in with Google', async () => {
     api({ '/api/me': [401, {}] })
     render(<App />)

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api, reason, type DraftPreview, type RuleInput, type RulePreview, type RulePreviewInput, type RuleView, type RulesPage } from '../api/client'
 import { useActiveDraft } from '../api/drafts'
 import { TOOL_NAME } from '../components/Status'
+import { resourceName, resourceTools } from '../api/tools'
 import { ToolIcon } from '../components/ToolIcon'
 import { PeopleChanges, previewSentence } from './Drafts'
 
@@ -35,7 +36,6 @@ function rulesApi(scope: RuleScope) {
   }
 }
 
-const TOOLS = ['slack', 'google', 'github', 'notion', 'vaultwarden']
 
 const EMPTY: RuleInput = {
   name: '', description: null, enabled: true, access: 'read', tools: [],
@@ -374,7 +374,7 @@ function RuleEditor({ scope, page, rule, inDraft, onClose, onSaved }: {
                   {options.resources.map((r) => (
                     <label key={r.id} className="check">
                       <Checkbox checked={form.resources.ids.includes(r.id)} onChange={(e) => set({ resources: { ...form.resources, ids: toggle(form.resources.ids, r.id, e.target.checked) } })} />
-                      {r.tool && <ToolIcon tool={r.tool} size={14} />}{r.tool === 'slack' ? `#${r.name}` : r.name}{r.detail && <span className="muted">{r.detail}</span>}
+                      {r.tool && <ToolIcon tool={r.tool} size={14} />}{resourceName(r.tool ?? '', r.name)}{r.detail && <span className="muted">{r.detail}</span>}
                     </label>
                   ))}
                 </div>
@@ -407,7 +407,7 @@ function RuleEditor({ scope, page, rule, inDraft, onClose, onSaved }: {
         <fieldset className="rule-section">
           <legend>Tools <span className="muted">(none ticked: every tool)</span></legend>
           <div className="rule-choice-options">
-            {TOOLS.map((t) => (
+            {resourceTools().map(({ key: t }) => (
               <label key={t} className="check"><Checkbox checked={form.tools.includes(t)} onChange={(e) => set({ tools: toggle(form.tools, t, e.target.checked) })} /><ToolIcon tool={t} size={14} />{TOOL_NAME[t] ?? t}</label>
             ))}
           </div>

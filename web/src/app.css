@@ -323,3 +323,4 @@ a.res-name:hover { text-decoration-color: currentColor; }
 .mascot { display: block; flex-shrink: 0; overflow: visible; }
 .center > .mascot { margin: 0 auto 4px; }
 .mascot-row { display: flex; align-items: center; gap: 12px; }
+.tools-missing { max-width: 1180px; margin: 12px auto 0; padding: 0 16px; }

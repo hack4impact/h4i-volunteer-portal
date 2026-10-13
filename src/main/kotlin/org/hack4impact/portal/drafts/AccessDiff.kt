@@ -18,13 +18,9 @@ import java.util.UUID
  * person by person. Drafts preview with it (step 12), and so do rule edits (step 14).
  */
 @Component
-class AccessDiff(private val dsl: DSLContext, private val worlds: WorldLoader) {
-	companion object {
-		private val TOOL_LABEL = mapOf("slack" to "Slack", "github" to "GitHub", "google" to "Google group", "notion" to "Notion", "vaultwarden" to "Vaultwarden")
-
-		/** "umd-rise-dc (Slack)": the screens turn this back into a chip with the tool's icon. */
-		fun label(tool: String, name: String) = "$name (${TOOL_LABEL[tool] ?: tool})"
-	}
+class AccessDiff(private val dsl: DSLContext, private val worlds: WorldLoader, private val tools: org.hack4impact.portal.tools.ToolRegistry) {
+	/** "umd-rise-dc (Slack)": the screens turn this back into a chip with the tool's icon (labels from the tool registry). */
+	fun label(tool: String, name: String) = tools.label(tool, name)
 
 	/** Who gets what, who waits on an agreement, and who's on which project: before or after the draft. */
 	data class Snapshot(val grants: Map<Pair<UUID, UUID>, Access>, val awaiting: Set<Pair<UUID, UUID>>, val members: Set<Pair<UUID, UUID>>)
@@ -49,8 +45,10 @@ class AccessDiff(private val dsl: DSLContext, private val worlds: WorldLoader) {
 		val leaves = before.members - after.members
 		val people = (added + removed + changed + waiting + joins + leaves).map { it.first }.toSet()
 		val resourceIds = (added + removed + changed + waiting).map { it.second }.toSet()
-		val resources = if (resourceIds.isEmpty()) emptyMap() else
-			dsl.select(RESOURCE.ID, RESOURCE.TOOL, RESOURCE.NAME).from(RESOURCE).where(RESOURCE.ID.`in`(resourceIds)).fetch().associate { it.value1()!! to label(it.value2()!!, it.value3()!!) }
+		val rows = if (resourceIds.isEmpty()) emptyList() else
+			dsl.select(RESOURCE.ID, RESOURCE.TOOL, RESOURCE.NAME).from(RESOURCE).where(RESOURCE.ID.`in`(resourceIds)).fetch().map { Triple(it.value1()!!, it.value2()!!, it.value3()!!) }
+		val resources = rows.associate { (id, tool, name) -> id to label(tool, name) }
+		val refs = rows.associate { (_, tool, name) -> label(tool, name) to ResourceRef(tool, name) }
 		val projectIds = (joins + leaves).map { it.second }.toSet()
 		val projectNames = if (projectIds.isEmpty()) emptyMap() else dsl.select(PROJECT.ID, PROJECT.NAME).from(PROJECT).where(PROJECT.ID.`in`(projectIds)).fetch().associate { it.value1()!! to it.value2()!! }
 		val names = if (people.isEmpty()) emptyMap() else dsl.select(PERSON.ID, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME).from(PERSON).where(PERSON.ID.`in`(people)).fetch()
@@ -61,7 +59,7 @@ class AccessDiff(private val dsl: DSLContext, private val worlds: WorldLoader) {
 				p, names[p] ?: "someone", named(joins, p, projectNames), named(leaves, p, projectNames),
 				named(added, p, resources) + changed.filter { it.first == p }.mapNotNull { k -> resources[k.second]?.let { "$it, now ${after.grants[k]!!.name.lowercase()}" } },
 				named(removed, p, resources), named(waiting, p, resources),
-			)
+			).let { c -> c.copy(resources = refs.filterKeys { label -> (c.gains + c.loses + c.afterAgreement).any { it == label || it.startsWith("$label, now ") } }) }
 		}.sortedBy { it.name }
 		return DraftPreview(added.size, removed.size, changed.size, people.size, resourceIds.size, waiting.size, perPerson)
 	}

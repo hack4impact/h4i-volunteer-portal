@@ -65,14 +65,14 @@ class Worlds(seed: Long) {
 			val resourceScope = if (chance(0.5)) ResourceScope.Ids(some(res.map { it.id }, 0.4)) else ResourceScope.Tags(some(tags, 0.5))
 			Rule(id(), if (chance(0.3)) null else pick(chapters), who, projectScope, resourceScope, pick(Access.entries), some(Tool.entries, 0.3), chance(0.85))
 		}
-		return World(persons, projs, roles, members, res, projectResources, chapterResources, ruleList)
+		return World(persons, projs, roles, members, res, projectResources, chapterResources, ruleList, sensitiveTools = setOf(Tool.GITHUB, Tool.VAULTWARDEN))
 	}
 
 	/** The same world with every list in a different order. */
 	fun shuffled(world: World) = World(
 		world.people.shuffled(random), world.projects.shuffled(random), world.projectRoles.shuffled(random),
 		world.members.shuffled(random), world.resources.shuffled(random), world.projectResources.shuffled(random),
-		world.chapterResources.shuffled(random), world.rules.shuffled(random),
+		world.chapterResources.shuffled(random), world.rules.shuffled(random), world.sensitiveTools,
 	)
 
 	/** Random actual tool state and sync records: some of the desired grants, some other pairs, some stale reasons. */

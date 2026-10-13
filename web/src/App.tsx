@@ -2,6 +2,7 @@ import { Banner, BaseStyles, Button, Spinner, ThemeProvider } from '@primer/reac
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
 import { api, type Me, signIn } from './api/client'
+import { loadTools } from './api/tools'
 import logo from './assets/logo.svg'
 import { Mascot } from './components/Mascot'
 import { TopBar } from './components/TopBar'
@@ -11,7 +12,7 @@ import { MemberHome } from './pages/MemberHome'
 import { National } from './pages/National'
 import { ProjectPage } from './pages/ProjectPage'
 
-type Session = { state: 'loading' } | { state: 'signed-out' } | { state: 'unavailable' } | { state: 'signed-in'; me: Me }
+type Session = { state: 'loading' } | { state: 'signed-out' } | { state: 'unavailable' } | { state: 'signed-in'; me: Me; toolsMissing: boolean }
 
 /** Applicants (no Google account yet) use their own pages and session (build plan step 10). */
 const isApplicantPage = () => /^\/(join|claim|apply)(\/|$)/.test(window.location.pathname)
@@ -33,8 +34,13 @@ function MemberApp() {
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     // Only "not signed in" shows the sign-in page; a server error or a lost connection says so (review L12).
-    api.GET('/api/me')
-      .then(({ data, response }) => setSession(data ? { state: 'signed-in', me: data } : response.status === 401 ? { state: 'signed-out' } : { state: 'unavailable' }))
+    // Who's signed in and the tools (names, order, boxes) load together, before any page renders. Without the tools the
+    // pages still work, with tool keys for names and only the boxes a project has: a banner says so.
+    Promise.all([api.GET('/api/me'), loadTools()])
+      .then(([{ data, response }, tools]) => {
+        if (!data) return setSession(response.status === 401 ? { state: 'signed-out' } : { state: 'unavailable' })
+        setSession({ state: 'signed-in', me: data, toolsMissing: !tools })
+      })
       .catch(() => setSession({ state: 'unavailable' }))
   }, [attempt])
 
@@ -52,6 +58,10 @@ function MemberApp() {
           </div>
         ) : (
           <BrowserRouter>
+            {session.toolsMissing && (
+              <div className="tools-missing"><Banner title="Tool names didn’t load" variant="warning"
+                description="Pages work, but some show tool keys instead of names and leave out empty tool boxes. Reload to try again." /></div>
+            )}
             <Routes>
               <Route path="/chapters/:code" element={<ChapterPage me={session.me} tab="overview" />} />
               <Route path="/chapters/:code/members" element={<ChapterPage me={session.me} tab="members" />} />

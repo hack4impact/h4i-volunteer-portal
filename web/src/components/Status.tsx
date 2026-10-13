@@ -26,14 +26,8 @@ export const ROLE_LABEL: Record<string, string> = {
   national: 'National admin',
 }
 
-export const TOOL_NAME: Record<string, string> = {
-  google: 'Google',
-  github: 'GitHub',
-  slack: 'Slack',
-  notion: 'Notion',
-  vaultwarden: 'Vaultwarden',
-  documenso: 'Documenso',
-}
+/** Tool names come from the tool registry (`api/tools.ts`). */
+export { TOOL_NAME } from '../api/tools'
 
 /** Planned sync changes, in words. */
 export const CHANGE_LABEL: Record<string, string> = {
@@ -53,5 +47,5 @@ export const PROJECT_STATUS: Record<string, [string, 'ok' | 'warn' | 'off' | 'da
   closed: ['Closed', 'off'],
 }
 
-/** A resource's name as people see it in the tool: Slack channels with #. */
-export const resourceName = (tool: string, name: string) => (tool === 'slack' ? `#${name}` : name)
+/** A resource's name as people see it in the tool: Slack channels with # (tool registry). */
+export { resourceName } from '../api/tools'

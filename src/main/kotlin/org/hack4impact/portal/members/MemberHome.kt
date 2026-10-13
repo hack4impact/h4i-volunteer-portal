@@ -95,6 +95,7 @@ class MemberHomeQueries(
 	private val worlds: WorldLoader,
 	private val links: org.hack4impact.portal.adapters.ToolLinks,
 	private val agreements: AgreementService,
+	private val tools: org.hack4impact.portal.tools.ToolRegistry,
 ) {
 	fun home(person: UUID, viewer: Viewer): MemberHome {
 		val p = dsl.selectFrom(PERSON).where(PERSON.ID.eq(person)).fetchSingle()
@@ -155,8 +156,7 @@ class MemberHomeQueries(
 			val project = (w.why as WithheldReason.AwaitingAgreement).projectId
 			MyAccess(r.tool!!, r.name!!, null, "after_agreement", "write", listOf("After ${if (own) "you sign" else "they sign"} the ${projectNames[project] ?: "project"} agreement"))
 		}
-		val order = listOf("slack", "google", "github", "notion", "vaultwarden")
-		return (granted + later).sortedWith(compareBy({ order.indexOf(it.tool).let { i -> if (i < 0) 99 else i } }, { it.name }))
+		return (granted + later).sortedWith(compareBy({ tools.find(it.tool)?.order ?: 99 }, { it.name }))
 	}
 
 	private fun agreements(person: UUID): List<MyAgreement> {

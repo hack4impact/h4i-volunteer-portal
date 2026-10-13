@@ -33,7 +33,7 @@ class ResolverTests {
 		projectResources: List<ProjectResource> = emptyList(),
 		chapterResources: List<ChapterResource> = emptyList(),
 		rules: List<Rule> = emptyList(),
-	) = World(people, projects, listOf(dev, techLead), members, resources, projectResources, chapterResources, rules)
+	) = World(people, projects, listOf(dev, techLead), members, resources, projectResources, chapterResources, rules, sensitiveTools = setOf(Tool.GITHUB, Tool.VAULTWARDEN))
 
 	private fun Resolution.grant(person: Person, resource: Resource) = grants.singleOrNull { it.personId == person.id && it.resourceId == resource.id }
 	private fun Resolution.withheld(person: Person, resource: Resource) = withheld.singleOrNull { it.personId == person.id && it.resourceId == resource.id }?.why

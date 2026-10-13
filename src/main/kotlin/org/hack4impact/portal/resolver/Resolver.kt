@@ -19,7 +19,6 @@ import java.util.UUID
 object Resolver {
 
 	private val LIVE = setOf(ProjectStatus.ACTIVE, ProjectStatus.PAUSED)
-	private val SENSITIVE = setOf(Tool.GITHUB, Tool.VAULTWARDEN)
 	private val NO_ACCESS = setOf(PersonStatus.APPLICANT, PersonStatus.REMOVED)
 
 	private data class Candidate(
@@ -35,7 +34,7 @@ object Resolver {
 		val accepted = mutableListOf<Candidate>()
 		val withheld = mutableSetOf<Withheld>()
 		for (candidate in chapterCandidates(index) + projectCandidates(index) + ruleCandidates(index)) {
-			when (val verdict = guard(candidate)) {
+			when (val verdict = guard(candidate, world.sensitiveTools)) {
 				Verdict.Accept -> accepted += candidate
 				Verdict.Drop -> {}
 				is Verdict.Withhold -> withheld += Withheld(candidate.person.id, candidate.resource.id, verdict.why)
@@ -64,12 +63,12 @@ object Resolver {
 		data class Withhold(val why: WithheldReason) : Verdict
 	}
 
-	private fun guard(c: Candidate): Verdict {
+	private fun guard(c: Candidate, sensitive: Set<Tool>): Verdict {
 		val chapter = c.resource.chapterId
 		return when {
 			c.person.status in NO_ACCESS || c.resource.archived -> Verdict.Drop
 			chapter != null && chapter !in c.person.chapters -> Verdict.Withhold(WithheldReason.OtherChapter(chapter))
-			c.resource.tool in SENSITIVE && c.person.accessStatus != PersonStatus.ACTIVE && c.reason !is Reason.ProjectMember ->
+			c.resource.tool in sensitive && c.person.accessStatus != PersonStatus.ACTIVE && c.reason !is Reason.ProjectMember ->
 				Verdict.Withhold(WithheldReason.SensitiveNeedsProject)
 			c.awaitingAgreement != null -> Verdict.Withhold(WithheldReason.AwaitingAgreement(c.awaitingAgreement))
 			else -> Verdict.Accept

@@ -45,7 +45,7 @@ data class LoadedWorld(val world: org.hack4impact.portal.resolver.World, val war
  * warning rather than failing the whole sync.
  */
 @Component
-class WorldLoader(private val dsl: DSLContext) {
+class WorldLoader(private val dsl: DSLContext, private val tools: org.hack4impact.portal.tools.ToolRegistry) {
 	private val json = JsonMapper.builder().build()
 
 	fun load(): LoadedWorld {
@@ -75,8 +75,10 @@ class WorldLoader(private val dsl: DSLContext) {
 		// National's own projects' resources belong to no one chapter, so the resolver's chapter guard lets anyone in the org
 		// on the project have them (decision 141).
 		val national = dsl.select(CHAPTER.ID).from(CHAPTER).where(CHAPTER.KIND.eq("national")).fetch().map { it.value1()!! }.toSet()
-		val resources = dsl.select(RESOURCE.ID, RESOURCE.TOOL, RESOURCE.CHAPTER_ID, RESOURCE.TAGS, RESOURCE.ARCHIVED_AT).from(RESOURCE).fetch {
-			Resource(it.value1()!!, Tool.valueOf(it.value2()!!.uppercase()), it.value3()?.takeUnless { c -> c in national }, it.value4().orEmpty().filterNotNull().toSet(), it.value5() != null)
+		val resources = dsl.select(RESOURCE.ID, RESOURCE.TOOL, RESOURCE.CHAPTER_ID, RESOURCE.TAGS, RESOURCE.ARCHIVED_AT).from(RESOURCE).fetch().mapNotNull {
+			// A tool no code knows (a removed plugin): its resources are left out with a warning, not the whole sync.
+			val tool = Tool.fromKey(it.value2()) ?: run { warnings += "resource ${it.value1()} skipped: unknown tool '${it.value2()}'"; return@mapNotNull null }
+			Resource(it.value1()!!, tool, it.value3()?.takeUnless { c -> c in national }, it.value4().orEmpty().filterNotNull().toSet(), it.value5() != null)
 		}
 		val projectResources = dsl.selectFrom(PROJECT_RESOURCE).fetch().mapNotNull { pr ->
 			val access = access(pr.accessLevel, "project resource ${pr.projectId}/${pr.resourceId}", warnings) ?: return@mapNotNull null
@@ -100,7 +102,8 @@ class WorldLoader(private val dsl: DSLContext) {
 					projects = projectScope(json.readTree(r.projects!!.data())),
 					resources = resourceScope(json.readTree(r.resources!!.data())),
 					access = access(r.accessLevel, "rule ${r.name}", warnings) ?: return@mapNotNull null,
-					tools = r.tools.orEmpty().filterNotNull().map { Tool.valueOf(it.uppercase()) }.toSet(),
+					// An unknown tool skips the whole rule (below): dropping it from the filter would widen the rule.
+					tools = r.tools.orEmpty().filterNotNull().map { Tool.fromKey(it) ?: error("unknown tool '$it'") }.toSet(),
 					enabled = r.enabled == true,
 				)
 			} catch (e: RuntimeException) {
@@ -108,7 +111,7 @@ class WorldLoader(private val dsl: DSLContext) {
 				null
 			}
 		}
-		return LoadedWorld(org.hack4impact.portal.resolver.World(people, projects, projectRoles, members, resources, projectResources, chapterResources, rules), warnings)
+		return LoadedWorld(org.hack4impact.portal.resolver.World(people, projects, projectRoles, members, resources, projectResources, chapterResources, rules, tools.sensitive), warnings)
 	}
 
 	private fun access(value: String?, what: String, warnings: MutableList<String>): Access? =

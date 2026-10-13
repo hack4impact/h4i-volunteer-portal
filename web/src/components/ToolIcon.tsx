@@ -1,4 +1,4 @@
-import { FileBadgeIcon } from '@primer/octicons-react'
+import { FileBadgeIcon, PlugIcon } from '@primer/octicons-react'
 import { siGithub, siGoogle, siNotion, siVaultwarden } from 'simple-icons'
 import { TOOL_NAME } from './Status'
 
@@ -20,7 +20,8 @@ export function ToolIcon({ tool, size = 16, label }: { tool: string; size?: numb
   // Documenso has no published mark: a signed-document icon in the same single color.
   if (tool === 'documenso') return <FileBadgeIcon size={size} className="tool-icon" aria-label={label ? name : undefined} aria-hidden={label ? undefined : true} />
   const d = PATHS[tool]
-  if (!d) return null
+  // A plugin tool without a mark of its own (wiki: tool plugins): a plug, in the same single color.
+  if (!d) return <PlugIcon size={size} className="tool-icon" aria-label={label ? name : undefined} aria-hidden={label ? undefined : true} />
   return (
     <svg className="tool-icon" viewBox="0 0 24 24" width={size} height={size} fill="currentColor"
       role={label ? 'img' : undefined} aria-label={label ? name : undefined} aria-hidden={label ? undefined : true}>

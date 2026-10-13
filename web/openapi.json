@@ -1350,6 +1350,12 @@
           "personId" : {
             "format" : "uuid",
             "type" : "string"
+          },
+          "resources" : {
+            "additionalProperties" : {
+              "$ref" : "#/components/schemas/ResourceRef"
+            },
+            "type" : "object"
           }
         },
         "type" : "object"
@@ -1942,6 +1948,17 @@
         },
         "type" : "object"
       },
+      "ResourceRef" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "tool" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "ResourceSync" : {
         "properties" : {
           "failing" : {
@@ -2447,6 +2464,46 @@
           },
           "reason" : {
             "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "ToolInfo" : {
+        "properties" : {
+          "hasAdminLevel" : {
+            "type" : "boolean"
+          },
+          "key" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "nameExample" : {
+            "type" : "string"
+          },
+          "namePrefix" : {
+            "type" : "string"
+          },
+          "order" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "projectOrder" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "projectResources" : {
+            "type" : "boolean"
+          },
+          "resourceLabel" : {
+            "type" : "string"
+          },
+          "resourcesTitle" : {
+            "type" : "string"
+          },
+          "sensitive" : {
+            "type" : "boolean"
           }
         },
         "type" : "object"
@@ -5230,7 +5287,7 @@
     },
     "/api/national/tools" : {
       "get" : {
-        "operationId" : "tools",
+        "operationId" : "tools_1",
         "responses" : {
           "200" : {
             "content" : {
@@ -5325,6 +5382,27 @@
           }
         },
         "tags" : [ "status-controller" ]
+      }
+    },
+    "/api/tools" : {
+      "get" : {
+        "operationId" : "tools",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/ToolInfo"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "tool-controller" ]
       }
     },
     "/api/webhooks/documenso" : {

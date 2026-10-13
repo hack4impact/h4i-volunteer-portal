@@ -104,7 +104,8 @@ class AdoptionController(
 				.where(DISCOVERED_RESOURCE.ID.eq(id)).execute()
 			"reset" -> {
 				val (chapterNames, projectNames) = names(dsl)
-				applyConvention(dsl, id, NamingConvention.match(Tool.valueOf(row.tool!!.uppercase()), row.externalId!!, row.name!!, chapterNames, projectNames))
+				val tool = Tool.fromKey(row.tool) ?: throw ResponseStatusException(HttpStatus.CONFLICT, "No tool '${row.tool}' is registered any more")
+				applyConvention(dsl, id, NamingConvention.match(tool, row.externalId!!, row.name!!, chapterNames, projectNames))
 			}
 			else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "action must be link, unmanaged or reset")
 		}

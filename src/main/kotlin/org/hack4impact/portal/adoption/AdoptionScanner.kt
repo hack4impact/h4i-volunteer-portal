@@ -44,11 +44,8 @@ class AdoptionScanner(
 	private val dsl: DSLContext,
 	private val adapters: List<ReadAdapter>,
 	private val transactions: TransactionTemplate,
+	private val tools: org.hack4impact.portal.tools.ToolRegistry,
 ) {
-	companion object {
-		/** Vaultwarden collection names are encrypted and Notion has no member API, so they're linked by hand. */
-		val DISCOVERABLE = setOf(Tool.GOOGLE, Tool.GITHUB, Tool.SLACK)
-	}
 
 	/** Scans every discoverable tool; [chapterCodes] are the chapters whose resources' members are read. */
 	fun scan(chapterCodes: Set<String>, tools: Set<Tool>? = null): List<ScanReport> {
@@ -57,7 +54,8 @@ class AdoptionScanner(
 		require(unknown.isEmpty()) { "No chapter ${unknown.joinToString()}" }
 		val snapshotChapters = chapterCodes.map { chapters[it.lowercase()]!! }.toSet()
 		return adapters
-			.filter { it.tool in DISCOVERABLE && (tools == null || it.tool in tools) }
+			// Discoverable tools only (registry): Vaultwarden collection names are encrypted and Notion has no member API.
+			.filter { this.tools[it.tool].discoverable && (tools == null || it.tool in tools) }
 			.sortedBy { it.tool }
 			.map { scanTool(it, snapshotChapters, chapterCodes.map { c -> c.lowercase() }.sorted()) }
 	}

@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { TOOLS } from '../test/tools'
 import { App } from '../App'
 
 /** Answers API calls from a table of URL path (or "METHOD path", which wins) → [status, body]. */
@@ -8,7 +9,7 @@ function api(routes: Record<string, [number, unknown]>) {
   vi.stubGlobal('fetch', vi.fn(async (input: Request | string) => {
     const path = new URL(typeof input === 'string' ? input : input.url, 'http://localhost').pathname
     const method = typeof input === 'string' ? 'GET' : input.method
-    const [status, body] = routes[`${method} ${path}`] ?? routes[path] ?? [404, {}]
+    const [status, body] = routes[`${method} ${path}`] ?? routes[path] ?? (path === '/api/tools' ? [200, TOOLS] : [404, {}])
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
   }))
 }

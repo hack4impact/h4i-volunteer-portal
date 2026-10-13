@@ -61,7 +61,7 @@ class AdminQueue(private val dsl: DSLContext, private val syncs: org.hack4impact
 			"remove_member" -> dsl.update(SYNC_RECORD).set(SYNC_RECORD.ACTUAL, "absent").set(SYNC_RECORD.STATUS, "in_sync")
 				.setNull(SYNC_RECORD.APPLIED_AT).setNull(SYNC_RECORD.APPLIED_ACCESS_LEVEL).where(record).execute()
 			// The held removals go ahead now rather than at the next scheduled run (review M9).
-			"confirm_removals" -> syncs.request("manual", setOf(Tool.valueOf(task.tool!!.uppercase())))
+			"confirm_removals" -> Tool.fromKey(task.tool)?.let { syncs.request("manual", setOf(it)) }
 		}
 		audit(viewer, "queue.done", id, task.description)
 	}

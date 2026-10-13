@@ -145,6 +145,9 @@ class DraftTests(
 			val adaChange = path("perPerson").toList().single { it.path("name").asString() == "Ada Test" }
 			assertEquals(listOf("RISE DC"), adaChange.path("joins").toList().map { it.asString() })
 			assertEquals(listOf("umd-rise-dc (Slack)", "umd-rise-dc@hack4impact.org (Google group)"), adaChange.path("gains").toList().map { it.asString() })
+			// Each label's tool and name, so screens don't read them out of the label (tool plugins review).
+			assertEquals("slack", adaChange.path("resources").path("umd-rise-dc (Slack)").path("tool").asString())
+			assertEquals("umd-rise-dc@hack4impact.org", adaChange.path("resources").path("umd-rise-dc@hack4impact.org (Google group)").path("name").asString())
 		}
 
 		post("/api/chapters/umd/drafts/$draft/release", "{}").andExpect {

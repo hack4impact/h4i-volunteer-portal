@@ -34,7 +34,7 @@ data class ActivityPage(val items: List<ActivityItem>, val more: Boolean)
  * and agreements signed or declined. Newest first.
  */
 @Component
-class ProjectActivity(private val dsl: DSLContext) {
+class ProjectActivity(private val dsl: DSLContext, private val tools: org.hack4impact.portal.tools.ToolRegistry) {
 	private val json = JsonMapper.builder().build()
 
 	companion object {
@@ -104,10 +104,9 @@ class ProjectActivity(private val dsl: DSLContext) {
 			val created = run.filter { it.value3() == "create_resource" }.map { label(it.value5()!!, it.value6()!!) }
 			val byPerson = run.filter { it.value7() != null }.groupBy { ProjectQueries.name(it.value9(), it.value7()!!, it.value8()!!) }
 				.mapValues { (_, changes) ->
-					// Always in the same order: added, invited, changed, removed; Slack, Google, GitHub, Notion, the vault.
-					val tools = listOf("slack", "google", "github", "notion", "vaultwarden")
+					// Always in the same order: added, invited, changed, removed; then the tools' order (registry).
 					fun verb(kind: String?, outcome: String?) = when { kind == "remove" -> 3; kind == "change" -> 2; outcome == "invited" -> 1; else -> 0 }
-					list(changes.sortedWith(compareBy({ verb(it.value3(), it.value4()) }, { tools.indexOf(it.value5()) })).map {
+					list(changes.sortedWith(compareBy({ verb(it.value3(), it.value4()) }, { tools.find(it.value5())?.order ?: 99 })).map {
 						val what = label(it.value5()!!, it.value6()!!)
 						when {
 							it.value3() == "remove" -> "removed from $what"
@@ -127,7 +126,7 @@ class ProjectActivity(private val dsl: DSLContext) {
 	}
 
 	/** Slack channels with a #, the rest by name. */
-	private fun label(tool: String, name: String) = if (tool == "slack") "#$name" else name
+	private fun label(tool: String, name: String) = tools.displayName(tool, name)
 
 	private fun agreements(projectId: UUID, before: OffsetDateTime?, limit: Int): List<ActivityItem> =
 		dsl.select(AGREEMENT.STATUS, AGREEMENT.SIGNED_AT, AGREEMENT.UPDATED_AT, AGREEMENT.DECLINE_REASON, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME)

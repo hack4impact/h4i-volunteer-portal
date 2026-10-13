@@ -7,7 +7,17 @@ import java.util.UUID
 
 enum class PersonStatus { APPLICANT, ACTIVE, ALUMNI, REMOVAL_REQUESTED, REMOVED }
 
-enum class Tool { GOOGLE, GITHUB, SLACK, NOTION, VAULTWARDEN, DOCUMENSO }
+enum class Tool {
+	GOOGLE, GITHUB, SLACK, NOTION, VAULTWARDEN, DOCUMENSO;
+
+	companion object {
+		/**
+		 * The tool a stored name means, or null for one the code doesn't know (a removed plugin's rows): the database
+		 * only checks the name's format (V15), so callers skip such rows rather than fail.
+		 */
+		fun fromKey(key: String?): Tool? = key?.let { k -> entries.firstOrNull { it.name.equals(k, ignoreCase = true) } }
+	}
+}
 
 /** Ordered: a stronger grant wins. Adapters map these onto each tool's own levels. */
 enum class Access { READ, WRITE, ADMIN }
@@ -113,6 +123,8 @@ data class World(
 	val projectResources: List<ProjectResource> = emptyList(),
 	val chapterResources: List<ChapterResource> = emptyList(),
 	val rules: List<Rule> = emptyList(),
+	/** Repositories and vaults: non-active people get them only through a live project they're on (the tool registry). */
+	val sensitiveTools: Set<Tool>,
 )
 
 // Output -----------------------------------------------------------------------------------------

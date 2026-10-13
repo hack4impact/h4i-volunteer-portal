@@ -78,6 +78,7 @@ class SyncEngine(
 	private val notionPages: NotionPages,
 	private val transactions: TransactionTemplate,
 	private val locks: RunLocks,
+	private val tools: org.hack4impact.portal.tools.ToolRegistry,
 ) {
 	private val log = LoggerFactory.getLogger(javaClass)
 	private val json = JsonMapper.builder().build()
@@ -101,10 +102,6 @@ class SyncEngine(
 		val implicit: Set<Pair<UUID, UUID>> = emptySet(),
 	)
 
-	companion object {
-		/** PRD: closing a project archives its channels. GitHub teams, Google groups and vault collections are only emptied. */
-		val ARCHIVE_ON_CLOSE = setOf(Tool.SLACK)
-	}
 
 	/**
 	 * A sync of every tool: tools whose setting is out of dry run (`tool_setting.dry_run = false`) and that have a
@@ -232,7 +229,8 @@ class SyncEngine(
 					.or(DSL.exists(DSL.selectOne().from(CHAPTER_RESOURCE).where(CHAPTER_RESOURCE.RESOURCE_ID.eq(RESOURCE.ID)))),
 			)
 			.fetch(RESOURCE.ID).filterNotNull()
-		val toArchive = if (adapter.tool !in ARCHIVE_ON_CLOSE) emptyList() else dsl.select(RESOURCE.ID).from(RESOURCE)
+		// PRD: closing a project archives its channels (registry: archiveOnClose); teams, groups and collections are only emptied.
+		val toArchive = if (!tools[adapter.tool].archiveOnClose) emptyList() else dsl.select(RESOURCE.ID).from(RESOURCE)
 			.where(
 				RESOURCE.TOOL.eq(tool), RESOURCE.EXTERNAL_ID.isNotNull, RESOURCE.ARCHIVED_AT.isNull, RESOURCE.MANAGED.ne("unmanaged"),
 				DSL.exists(DSL.selectOne().from(PROJECT_RESOURCE).where(PROJECT_RESOURCE.RESOURCE_ID.eq(RESOURCE.ID))),
