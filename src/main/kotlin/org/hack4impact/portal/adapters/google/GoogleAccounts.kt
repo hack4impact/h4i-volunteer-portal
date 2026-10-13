@@ -27,10 +27,13 @@ class GoogleAccounts(
 	private val users get() = "$baseUrl/admin/directory/v1/users"
 	private val random = SecureRandom()
 
-	fun create(firstName: String, lastName: String, domain: String, orgUnit: String, recoveryEmail: String?): NewAccount {
+	fun create(firstName: String, lastName: String, domain: String, orgUnit: String, recoveryEmail: String?): NewAccount =
+		createAt(freeAddress(localPart(firstName), domain.lowercase()), firstName, lastName, orgUnit, recoveryEmail)
+
+	/** An account at exactly [email] (the staging demo's persona accounts), inside the org-unit scope. */
+	fun createAt(email: String, firstName: String, lastName: String, orgUnit: String, recoveryEmail: String?): NewAccount {
 		val orgUnit = orgUnitPath(orgUnit)
 		inScope(orgUnit)
-		val email = freeAddress(localPart(firstName), domain.lowercase())
 		val password = (1..16).map { PASSWORD_CHARS[random.nextInt(PASSWORD_CHARS.length)] }.joinToString("")
 		val body = buildMap {
 			put("primaryEmail", email)
@@ -43,6 +46,9 @@ class GoogleAccounts(
 		val id = http.postJson(users, body, headers()).body.text("id")!!
 		return NewAccount(id, email, password)
 	}
+
+	/** Whether an account or alias already uses [email]. */
+	fun exists(email: String): Boolean = try { http.get("$users/${HttpJson.encode(email)}", headers()); true } catch (e: NotFound) { false }
 
 	/** Deletes an account, only inside the org-unit scope (the sandbox suite's cleanup). Gone already counts as done. */
 	fun delete(userKey: String) {

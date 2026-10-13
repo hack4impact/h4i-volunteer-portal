@@ -171,7 +171,7 @@ function Roster({ code }: { code: string }) {
                   <div className="adopt-name"><span className="name-text">{i.name}</span><span className="muted">{i.schoolEmail}</span></div>
                   <div className="adopt-meta">Sent {new Date(i.createdAt).toLocaleDateString()} · link works until {new Date(i.expiresAt).toLocaleDateString()}</div>
                 </div>
-                <Status tone={i.status === 'completed' ? 'ok' : i.status === 'expired' ? 'off' : 'warn'}>
+                <Status tone={i.status === 'completed' ? 'ok' : 'off'}>
                   {{ sent: 'Invited', started: 'Started', completed: 'Joined', expired: 'Expired' }[i.status] ?? i.status}
                 </Status>
               </div>

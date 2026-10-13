@@ -1,7 +1,8 @@
 import { Banner, Link as PrimerLink } from '@primer/react'
 import { Link } from 'react-router'
 import { type ChapterOverview, type ChapterSync, type MemberRow } from '../api/client'
-import { CHANGE_LABEL, ROLE_LABEL, Status, TOOL_NAME } from '../components/Status'
+import { CHANGE_LABEL, ROLE_LABEL, Status } from '../components/Status'
+import { ToolName } from '../components/ToolIcon'
 
 const TOOLS = ['google', 'github', 'slack', 'notion', 'vaultwarden']
 
@@ -41,8 +42,8 @@ export function Overview({ chapter, members, sync }: { chapter: ChapterOverview;
             const linked = active.filter((m) => m.accounts.some((a) => a.tool === tool)).length
             return (
               <div className="box-row" key={tool} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>{TOOL_NAME[tool] ?? tool}</span>
-                <Status tone={linked === active.length && active.length > 0 ? 'ok' : linked > 0 ? 'warn' : 'off'}>
+                <ToolName tool={tool} />
+                <Status tone={linked === active.length && active.length > 0 ? 'ok' : 'off'}>
                   {linked} of {active.length} linked
                 </Status>
               </div>
@@ -94,7 +95,7 @@ function SyncBox({ sync }: { sync: ChapterSync | null }) {
         <>
           {sync.tools.map((t) => (
             <div className="box-row" key={t.tool} style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
-              <span>{TOOL_NAME[t.tool] ?? t.tool}</span>
+              <ToolName tool={t.tool} />
               <span>
                 <Status tone={t.status === 'completed' ? 'ok' : t.status === 'paused' ? 'warn' : 'danger'}>
                   {t.status === 'completed' ? 'Dry run' : t.status === 'paused' ? 'Paused' : 'Failed'}

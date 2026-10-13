@@ -1,705 +1,2313 @@
 {
-  "openapi" : "3.1.0",
+  "components" : {
+    "schemas" : {
+      "AccessPreview" : {
+        "properties" : {
+          "asIfActive" : {
+            "type" : "boolean"
+          },
+          "awaitingAgreement" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "grants" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "people" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AccountSummary" : {
+        "properties" : {
+          "state" : {
+            "type" : "string"
+          },
+          "tool" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ActivityItem" : {
+        "properties" : {
+          "actor" : {
+            "type" : [ "string", "null" ]
+          },
+          "at" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "details" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "text" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ActivityPage" : {
+        "properties" : {
+          "items" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ActivityItem"
+            },
+            "type" : "array"
+          },
+          "more" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "AdoptionDecision" : {
+        "properties" : {
+          "action" : {
+            "type" : "string"
+          },
+          "projectId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "target" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "AdoptionPerson" : {
+        "properties" : {
+          "access" : {
+            "type" : [ "string", "null" ]
+          },
+          "login" : {
+            "type" : [ "string", "null" ]
+          },
+          "matchedBy" : {
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "type" : [ "string", "null" ]
+          },
+          "personId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "verdict" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AdoptionReport" : {
+        "properties" : {
+          "canEdit" : {
+            "type" : "boolean"
+          },
+          "grandfatheredUntil" : {
+            "format" : "date",
+            "type" : [ "string", "null" ]
+          },
+          "projects" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ProjectOption"
+            },
+            "type" : "array"
+          },
+          "resources" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AdoptionResource"
+            },
+            "type" : "array"
+          },
+          "scans" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ScanStatus"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "AdoptionResource" : {
+        "properties" : {
+          "archived" : {
+            "type" : "boolean"
+          },
+          "expected" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "gone" : {
+            "type" : "boolean"
+          },
+          "grandfathered" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "matchMethod" : {
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "projectId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "projectName" : {
+            "type" : [ "string", "null" ]
+          },
+          "snapshotAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "suggestedSlug" : {
+            "type" : [ "string", "null" ]
+          },
+          "target" : {
+            "type" : [ "string", "null" ]
+          },
+          "tool" : {
+            "type" : "string"
+          },
+          "unknownAccounts" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "wouldAdd" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "AgreementStart" : {
+        "properties" : {
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AgreementTemplateInput" : {
+        "properties" : {
+          "documensoTemplateId" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AgreementTemplateView" : {
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "documensoTemplateId" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "sent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "version" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "AgreementTemplates" : {
+        "properties" : {
+          "connected" : {
+            "type" : "boolean"
+          },
+          "sending" : {
+            "type" : "boolean"
+          },
+          "templates" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AgreementTemplateView"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "ApplicantAgreement" : {
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "signUrl" : {
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ApplicantView" : {
+        "properties" : {
+          "account" : {
+            "type" : [ "string", "null" ]
+          },
+          "agreements" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ApplicantAgreement"
+            },
+            "type" : "array"
+          },
+          "answers" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "chapter" : {
+            "$ref" : "#/components/schemas/ApplyChapter"
+          },
+          "declineReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "details" : {
+            "$ref" : "#/components/schemas/Details"
+          },
+          "emailVerified" : {
+            "type" : "boolean"
+          },
+          "githubConfigured" : {
+            "type" : "boolean"
+          },
+          "githubLogin" : {
+            "type" : [ "string", "null" ]
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "missing" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "schoolEmail" : {
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ApplyChapter" : {
+        "properties" : {
+          "applicationUrl" : {
+            "type" : [ "string", "null" ]
+          },
+          "applicationsOpen" : {
+            "type" : "boolean"
+          },
+          "code" : {
+            "type" : "string"
+          },
+          "emailDomains" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "questions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/QuestionView"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "ApproveInput" : {
+        "properties" : {
+          "personId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "ChapterOverview" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "notionProblems" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "registrationLink" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "stats" : {
+            "$ref" : "#/components/schemas/ChapterStats"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ChapterRef" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ChapterResourceOption" : {
+        "properties" : {
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "projects" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "tool" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ChapterStats" : {
+        "properties" : {
+          "activeMembers" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "alumni" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "leads" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "liveProjects" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ChapterSync" : {
+        "properties" : {
+          "changes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PlannedChange"
+            },
+            "type" : "array"
+          },
+          "tools" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ToolSync"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "ClaimPreview" : {
+        "properties" : {
+          "alreadySent" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "eligible" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "withoutEmail" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ClaimSend" : {
+        "properties" : {
+          "chapter" : {
+            "type" : [ "string", "null" ]
+          },
+          "limit" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "CodeRequest" : {
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "DeadLetter" : {
+        "properties" : {
+          "attempts" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "lastAttemptAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "lastError" : {
+            "type" : [ "string", "null" ]
+          },
+          "person" : {
+            "type" : "string"
+          },
+          "personId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "resource" : {
+            "type" : "string"
+          },
+          "resourceId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "tool" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "DeadLetterRef" : {
+        "properties" : {
+          "personId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "resourceId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "DeclineInput" : {
+        "properties" : {
+          "reason" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "Details" : {
+        "properties" : {
+          "firstName" : {
+            "type" : [ "string", "null" ]
+          },
+          "graduationYear" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "lastName" : {
+            "type" : [ "string", "null" ]
+          },
+          "personalEmail" : {
+            "type" : [ "string", "null" ]
+          },
+          "preferredName" : {
+            "type" : [ "string", "null" ]
+          },
+          "roleInterest" : {
+            "type" : [ "string", "null" ]
+          },
+          "stillActive" : {
+            "type" : [ "boolean", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "DetailsInput" : {
+        "properties" : {
+          "answers" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "details" : {
+            "$ref" : "#/components/schemas/Details"
+          }
+        },
+        "type" : "object"
+      },
+      "DraftChange" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "createdBy" : {
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "operation" : {
+            "type" : "string"
+          },
+          "position" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "projectId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "summary" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "DraftConflict" : {
+        "properties" : {
+          "changeId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "position" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "problem" : {
+            "type" : "string"
+          },
+          "summary" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "DraftDetail" : {
+        "properties" : {
+          "canEdit" : {
+            "type" : "boolean"
+          },
+          "changes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DraftChange"
+            },
+            "type" : "array"
+          },
+          "conflicts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DraftConflict"
+            },
+            "type" : "array"
+          },
+          "draft" : {
+            "$ref" : "#/components/schemas/DraftSummary"
+          },
+          "preview" : {
+            "$ref" : "#/components/schemas/DraftPreview"
+          }
+        },
+        "type" : "object"
+      },
+      "DraftInput" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "DraftPreview" : {
+        "properties" : {
+          "accessChanges" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "adds" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "afterAgreement" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "people" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "perPerson" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PersonAccessChange"
+            },
+            "type" : "array"
+          },
+          "removes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "resources" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "DraftSummary" : {
+        "properties" : {
+          "changes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "createdBy" : {
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "releaseError" : {
+            "type" : [ "string", "null" ]
+          },
+          "releasedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "releasedBy" : {
+            "type" : [ "string", "null" ]
+          },
+          "scheduledFor" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "JsonNode" : {
+        "properties" : {
+          "array" : {
+            "type" : "boolean"
+          },
+          "bigDecimal" : {
+            "type" : "boolean"
+          },
+          "bigInteger" : {
+            "type" : "boolean"
+          },
+          "binary" : {
+            "type" : "boolean"
+          },
+          "boolean" : {
+            "type" : "boolean"
+          },
+          "container" : {
+            "type" : "boolean"
+          },
+          "double" : {
+            "type" : "boolean"
+          },
+          "embeddedValue" : {
+            "type" : "boolean"
+          },
+          "empty" : {
+            "type" : "boolean"
+          },
+          "float" : {
+            "type" : "boolean"
+          },
+          "floatingPointNumber" : {
+            "type" : "boolean"
+          },
+          "int" : {
+            "type" : "boolean"
+          },
+          "integralNumber" : {
+            "type" : "boolean"
+          },
+          "long" : {
+            "type" : "boolean"
+          },
+          "missingNode" : {
+            "type" : "boolean"
+          },
+          "nodeType" : {
+            "enum" : [ "ARRAY", "BINARY", "BOOLEAN", "MISSING", "NULL", "NUMBER", "OBJECT", "POJO", "STRING" ],
+            "type" : "string"
+          },
+          "null" : {
+            "type" : "boolean"
+          },
+          "number" : {
+            "type" : "boolean"
+          },
+          "object" : {
+            "type" : "boolean"
+          },
+          "pojo" : {
+            "type" : "boolean"
+          },
+          "short" : {
+            "type" : "boolean"
+          },
+          "string" : {
+            "type" : "boolean"
+          },
+          "textual" : {
+            "deprecated" : true,
+            "type" : "boolean"
+          },
+          "valueNode" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "LastRun" : {
+        "properties" : {
+          "applied" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "mode" : {
+            "type" : "string"
+          },
+          "ranAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "removed" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "MatchView" : {
+        "properties" : {
+          "chapters" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "personId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "why" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "Me" : {
+        "properties" : {
+          "chapters" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ChapterRef"
+            },
+            "type" : "array"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : [ "string", "null" ]
+          },
+          "nationalAdmin" : {
+            "type" : "boolean"
+          },
+          "personId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "MemberAgreement" : {
+        "properties" : {
+          "declineReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "hasPdf" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "reminders" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "sentAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "signedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "MemberHome" : {
+        "properties" : {
+          "access" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MyAccess"
+            },
+            "type" : "array"
+          },
+          "agreements" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MyAgreement"
+            },
+            "type" : "array"
+          },
+          "chapters" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MyChapter"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "projects" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MyProject"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "MemberInput" : {
+        "properties" : {
+          "personId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "roleId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "MemberRoleInput" : {
+        "properties" : {
+          "roleId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "MemberRow" : {
+        "properties" : {
+          "accounts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AccountSummary"
+            },
+            "type" : "array"
+          },
+          "chapterRole" : {
+            "type" : [ "string", "null" ]
+          },
+          "claimed" : {
+            "type" : "boolean"
+          },
+          "email" : {
+            "type" : [ "string", "null" ]
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "personId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "projects" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "MyAccess" : {
+        "properties" : {
+          "access" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "reasons" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "tool" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "MyAgreement" : {
+        "properties" : {
+          "canSign" : {
+            "type" : "boolean"
+          },
+          "hasPdf" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "project" : {
+            "type" : [ "string", "null" ]
+          },
+          "sentAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "signedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "MyChapter" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "MyProject" : {
+        "properties" : {
+          "agreementStatus" : {
+            "type" : "string"
+          },
+          "canOpen" : {
+            "type" : "boolean"
+          },
+          "chapter" : {
+            "type" : "string"
+          },
+          "chapterCode" : {
+            "type" : "string"
+          },
+          "leads" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : [ "string", "null" ]
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "NotionPageRef" : {
+        "properties" : {
+          "checkedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "pageId" : {
+            "type" : "string"
+          },
+          "path" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "NotionPlan" : {
+        "properties" : {
+          "matchedBy" : {
+            "type" : [ "string", "null" ]
+          },
+          "pageId" : {
+            "type" : [ "string", "null" ]
+          },
+          "parentPageId" : {
+            "type" : [ "string", "null" ]
+          },
+          "parentPath" : {
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "title" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "NotionRouteInput" : {
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "parent" : {
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "NotionRouteView" : {
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "parent" : {
+            "$ref" : "#/components/schemas/NotionPageRef"
+          },
+          "value" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "NotionSettingsInput" : {
+        "properties" : {
+          "defaultParent" : {
+            "type" : [ "string", "null" ]
+          },
+          "routes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/NotionRouteInput"
+            },
+            "type" : "array"
+          },
+          "teamspaceId" : {
+            "type" : [ "string", "null" ]
+          },
+          "template" : {
+            "type" : [ "string", "null" ]
+          },
+          "titlePattern" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "NotionSettingsView" : {
+        "properties" : {
+          "canEdit" : {
+            "type" : "boolean"
+          },
+          "configured" : {
+            "type" : "boolean"
+          },
+          "defaultParent" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/NotionPageRef"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "problems" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "routes" : {
+            "items" : {
+              "$ref" : "#/components/schemas/NotionRouteView"
+            },
+            "type" : "array"
+          },
+          "teamspaceId" : {
+            "type" : [ "string", "null" ]
+          },
+          "template" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/NotionPageRef"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "titlePattern" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "PersonAccessChange" : {
+        "properties" : {
+          "afterAgreement" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "gains" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "joins" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "leaves" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "loses" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "personId" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "PlannedChange" : {
+        "properties" : {
+          "accountId" : {
+            "type" : [ "string", "null" ]
+          },
+          "fromAccess" : {
+            "type" : [ "string", "null" ]
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "person" : {
+            "type" : [ "string", "null" ]
+          },
+          "resource" : {
+            "type" : "string"
+          },
+          "toAccess" : {
+            "type" : [ "string", "null" ]
+          },
+          "tool" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ProjectDetail" : {
+        "properties" : {
+          "activity" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ActivityItem"
+            },
+            "type" : "array"
+          },
+          "activityMore" : {
+            "type" : "boolean"
+          },
+          "agreementsSigned" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "canEdit" : {
+            "type" : "boolean"
+          },
+          "canEditTeam" : {
+            "type" : "boolean"
+          },
+          "endsOn" : {
+            "format" : "date",
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "lastDryRunAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "members" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ProjectMemberRow"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "notion" : {
+            "$ref" : "#/components/schemas/NotionPlan"
+          },
+          "partner" : {
+            "type" : [ "string", "null" ]
+          },
+          "pendingChanges" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "planned" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PlannedChange"
+            },
+            "type" : "array"
+          },
+          "plannedOutOfDate" : {
+            "type" : "boolean"
+          },
+          "preview" : {
+            "$ref" : "#/components/schemas/AccessPreview"
+          },
+          "resources" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ProjectResourceRow"
+            },
+            "type" : "array"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "startsOn" : {
+            "format" : "date",
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "tags" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "term" : {
+            "type" : [ "string", "null" ]
+          },
+          "termId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "type" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "ProjectInput" : {
+        "properties" : {
+          "endsOn" : {
+            "format" : "date",
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "partner" : {
+            "type" : [ "string", "null" ]
+          },
+          "slug" : {
+            "type" : [ "string", "null" ]
+          },
+          "startsOn" : {
+            "format" : "date",
+            "type" : [ "string", "null" ]
+          },
+          "tags" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "termId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "type" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "ProjectMemberRow" : {
+        "properties" : {
+          "agreement" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/MemberAgreement"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "agreementStatus" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : [ "string", "null" ]
+          },
+          "lead" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "personId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "role" : {
+            "type" : [ "string", "null" ]
+          },
+          "roleId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ProjectOption" : {
+        "properties" : {
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ProjectResourceRow" : {
+        "properties" : {
+          "access" : {
+            "type" : "string"
+          },
+          "audience" : {
+            "type" : "string"
+          },
+          "awaitingAgreement" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "existsInTool" : {
+            "type" : "boolean"
+          },
+          "getting" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "requiresAgreement" : {
+            "type" : "boolean"
+          },
+          "resourceId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "role" : {
+            "type" : [ "string", "null" ]
+          },
+          "roleId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "sharedWith" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "sync" : {
+            "$ref" : "#/components/schemas/ResourceSync"
+          },
+          "tags" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "tool" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "ProjectRoleOption" : {
+        "properties" : {
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "lead" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ProjectSummary" : {
+        "properties" : {
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "members" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "partner" : {
+            "type" : [ "string", "null" ]
+          },
+          "pendingChanges" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "resources" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "slug" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "tags" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "term" : {
+            "type" : [ "string", "null" ]
+          },
+          "type" : {
+            "type" : [ "string", "null" ]
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "QuestionInput" : {
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "options" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "required" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "QuestionView" : {
+        "properties" : {
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "options" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "required" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "QueueTask" : {
+        "properties" : {
+          "action" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "doneAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "doneBy" : {
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "tool" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "RegistrationSettings" : {
+        "properties" : {
+          "applicationUrl" : {
+            "type" : [ "string", "null" ]
+          },
+          "applicationsOpen" : {
+            "type" : "boolean"
+          },
+          "canEditAccounts" : {
+            "type" : "boolean"
+          },
+          "canEditQuestions" : {
+            "type" : "boolean"
+          },
+          "googleDomain" : {
+            "type" : "string"
+          },
+          "googleOrgUnit" : {
+            "type" : [ "string", "null" ]
+          },
+          "questions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/QuestionView"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "RegistrationSettingsInput" : {
+        "properties" : {
+          "applicationUrl" : {
+            "type" : [ "string", "null" ]
+          },
+          "applicationsOpen" : {
+            "type" : [ "boolean", "null" ]
+          },
+          "googleDomain" : {
+            "type" : [ "string", "null" ]
+          },
+          "googleOrgUnit" : {
+            "type" : [ "string", "null" ]
+          },
+          "questions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/QuestionInput"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "RegistrationSummary" : {
+        "properties" : {
+          "answers" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "decidedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "declineReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "githubChanged" : {
+            "type" : "boolean"
+          },
+          "githubLogin" : {
+            "type" : [ "string", "null" ]
+          },
+          "graduationYear" : {
+            "format" : "int32",
+            "type" : [ "integer", "null" ]
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "matchStatus" : {
+            "type" : [ "string", "null" ]
+          },
+          "matches" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MatchView"
+            },
+            "type" : "array"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "roleInterest" : {
+            "type" : [ "string", "null" ]
+          },
+          "schoolEmail" : {
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "submittedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "ReleaseResult" : {
+        "properties" : {
+          "conflicts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DraftConflict"
+            },
+            "type" : "array"
+          },
+          "preview" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/DraftPreview"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "released" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "ResourceInput" : {
+        "properties" : {
+          "access" : {
+            "type" : "string"
+          },
+          "audience" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : [ "string", "null" ]
+          },
+          "requiresAgreement" : {
+            "type" : "boolean"
+          },
+          "resourceId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "roleId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
+          "tags" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "tool" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "ResourceSync" : {
+        "properties" : {
+          "failing" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "inSync" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "manualTask" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "pending" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "waitingOnMember" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "RosterInput" : {
+        "properties" : {
+          "csv" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "RosterInviteView" : {
+        "properties" : {
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "schoolEmail" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "RosterResult" : {
+        "properties" : {
+          "invited" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "invites" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RosterInviteView"
+            },
+            "type" : "array"
+          },
+          "skipped" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "ScanStatus" : {
+        "properties" : {
+          "coversChapter" : {
+            "type" : "boolean"
+          },
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "ranAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "resourcesFound" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "tool" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ScheduleInput" : {
+        "properties" : {
+          "at" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "SignLink" : {
+        "properties" : {
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "StatusChange" : {
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "StatusResponse" : {
+        "properties" : {
+          "service" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "TaskDecision" : {
+        "properties" : {
+          "action" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "TeamCandidate" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "personId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "TermOption" : {
+        "properties" : {
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "TokenRequest" : {
+        "properties" : {
+          "token" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ToolChange" : {
+        "properties" : {
+          "dryRun" : {
+            "type" : "boolean"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "reason" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "ToolStatus" : {
+        "properties" : {
+          "dryRun" : {
+            "type" : "boolean"
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "lastRun" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/LastRun"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "maxRemovals" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "pauseReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "tool" : {
+            "type" : "string"
+          },
+          "writable" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "ToolSync" : {
+        "properties" : {
+          "adds" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "changes" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "creates" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "drift" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "missingResources" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "mode" : {
+            "type" : "string"
+          },
+          "ranAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "removals" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "tool" : {
+            "type" : "string"
+          },
+          "unmatchedAccounts" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "UnmatchedResource" : {
+        "properties" : {
+          "archived" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "tool" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "VerifyRequest" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      }
+    }
+  },
   "info" : {
     "title" : "OpenAPI definition",
     "version" : "v0"
   },
+  "openapi" : "3.1.0",
   "paths" : {
-    "/api/national/tools/{tool}" : {
-      "put" : {
-        "tags" : [ "national-controller" ],
-        "operationId" : "setTool",
-        "parameters" : [ {
-          "name" : "tool",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ToolChange"
-              }
-            }
-          },
-          "required" : true
-        },
+    "/api/adoption/unmatched" : {
+      "get" : {
+        "operationId" : "unmatched",
         "responses" : {
           "200" : {
-            "description" : "OK",
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
                   "items" : {
-                    "$ref" : "#/components/schemas/ToolStatus"
-                  }
+                    "$ref" : "#/components/schemas/UnmatchedResource"
+                  },
+                  "type" : "array"
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/registration-settings" : {
-      "get" : {
-        "tags" : [ "registration-controller" ],
-        "operationId" : "settings",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/RegistrationSettings"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put" : {
-        "tags" : [ "registration-controller" ],
-        "operationId" : "saveSettings",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/RegistrationSettingsInput"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/RegistrationSettings"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/projects/{slug}" : {
-      "get" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "get",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "slug",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProjectDetail"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "update",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "slug",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ProjectInput"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProjectDetail"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/projects/{slug}/resources/{resourceId}" : {
-      "put" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "updateResource",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "slug",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "resourceId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ResourceInput"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProjectDetail"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "detach",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "slug",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "resourceId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProjectDetail"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/projects/{slug}/members/{personId}" : {
-      "put" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "setRole",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "slug",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "personId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/MemberRoleInput"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProjectDetail"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "removeMember",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "slug",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "personId",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProjectDetail"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/notion" : {
-      "get" : {
-        "tags" : [ "notion-settings-controller" ],
-        "operationId" : "get_1",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/NotionSettingsView"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put" : {
-        "tags" : [ "notion-settings-controller" ],
-        "operationId" : "put",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/NotionSettingsInput"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/NotionSettingsView"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/apply/me" : {
-      "get" : {
-        "tags" : [ "apply-controller" ],
-        "operationId" : "me",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApplicantView"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put" : {
-        "tags" : [ "apply-controller" ],
-        "operationId" : "save",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/DetailsInput"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApplicantView"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/webhooks/documenso" : {
-      "post" : {
-        "tags" : [ "documenso-webhook-controller" ],
-        "operationId" : "receive",
-        "parameters" : [ {
-          "name" : "X-Documenso-Secret",
-          "in" : "header",
-          "required" : false,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/JsonNode"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
+            },
             "description" : "OK"
           }
-        }
-      }
-    },
-    "/api/national/sync/run" : {
-      "post" : {
-        "tags" : [ "national-controller" ],
-        "operationId" : "run",
-        "responses" : {
-          "202" : {
-            "description" : "Accepted"
-          }
-        }
-      }
-    },
-    "/api/national/queue/{id}" : {
-      "post" : {
-        "tags" : [ "national-controller" ],
-        "operationId" : "decide",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/TaskDecision"
-              }
-            }
-          },
-          "required" : true
         },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/QueueTask"
-                  }
-                }
-              }
-            }
-          }
-        }
+        "tags" : [ "adoption-controller" ]
       }
     },
-    "/api/national/dead-letters/retry" : {
-      "post" : {
-        "tags" : [ "national-controller" ],
-        "operationId" : "retry",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/DeadLetterRef"
-                }
-              }
-            }
-          }
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/DeadLetter"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/national/claims/send" : {
-      "post" : {
-        "tags" : [ "claim-controller" ],
-        "operationId" : "send",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ClaimSend"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ClaimPreview"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/national/agreement-templates" : {
+    "/api/agreements/{id}/pdf" : {
       "get" : {
-        "tags" : [ "agreement-template-controller" ],
-        "operationId" : "list",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AgreementTemplates"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post" : {
-        "tags" : [ "agreement-template-controller" ],
-        "operationId" : "add",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/AgreementTemplateInput"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AgreementTemplates"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/national/agreement-templates/{id}/deactivate" : {
-      "post" : {
-        "tags" : [ "agreement-template-controller" ],
-        "operationId" : "deactivate",
+        "operationId" : "pdf",
         "parameters" : [ {
+          "in" : "path",
           "name" : "id",
-          "in" : "path",
           "required" : true,
           "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AgreementTemplates"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/sync/run" : {
-      "post" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "runDryRun",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
+            "format" : "uuid",
             "type" : "string"
           }
         } ],
         "responses" : {
-          "202" : {
-            "description" : "Accepted"
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "format" : "byte",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
           }
-        }
+        },
+        "tags" : [ "agreement-pdf-controller" ]
       }
     },
-    "/api/chapters/{code}/roster" : {
+    "/api/apply/chapters/{code}" : {
       "get" : {
-        "tags" : [ "registration-controller" ],
-        "operationId" : "roster",
+        "operationId" : "chapter_1",
         "parameters" : [ {
-          "name" : "code",
           "in" : "path",
+          "name" : "code",
           "required" : true,
           "schema" : {
             "type" : "string"
@@ -707,600 +2315,25 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/RosterInviteView"
-                  }
+                  "$ref" : "#/components/schemas/ApplyChapter"
                 }
               }
-            }
+            },
+            "description" : "OK"
           }
-        }
-      },
-      "post" : {
-        "tags" : [ "registration-controller" ],
-        "operationId" : "upload",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/RosterInput"
-              }
-            }
-          },
-          "required" : true
         },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/RosterResult"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/registrations/{id}/decline" : {
-      "post" : {
-        "tags" : [ "registration-controller" ],
-        "operationId" : "decline",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/DeclineInput"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/RegistrationSummary"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/registrations/{id}/approve" : {
-      "post" : {
-        "tags" : [ "registration-controller" ],
-        "operationId" : "approve",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ApproveInput"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/RegistrationSummary"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/projects" : {
-      "get" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "list_1",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ProjectSummary"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "create",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ProjectInput"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "201" : {
-            "description" : "Created",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProjectDetail"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/projects/{slug}/status" : {
-      "post" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "status",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "slug",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/StatusChange"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProjectDetail"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/projects/{slug}/resources" : {
-      "post" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "attach",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "slug",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/ResourceInput"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProjectDetail"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/projects/{slug}/members" : {
-      "post" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "addMember",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "slug",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/MemberInput"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ProjectDetail"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/notion/check" : {
-      "post" : {
-        "tags" : [ "notion-settings-controller" ],
-        "operationId" : "check",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/NotionSettingsView"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/adoption/resources/{id}" : {
-      "get" : {
-        "tags" : [ "adoption-controller" ],
-        "operationId" : "people",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/AdoptionPerson"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post" : {
-        "tags" : [ "adoption-controller" ],
-        "operationId" : "decide_1",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        }, {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/AdoptionDecision"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AdoptionReport"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/apply/signout" : {
-      "post" : {
-        "tags" : [ "apply-controller" ],
-        "operationId" : "signOut",
-        "responses" : {
-          "204" : {
-            "description" : "No Content"
-          }
-        }
-      }
-    },
-    "/api/apply/roster" : {
-      "post" : {
-        "tags" : [ "apply-controller" ],
-        "operationId" : "roster_1",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/TokenRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApplicantView"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/apply/me/submit" : {
-      "post" : {
-        "tags" : [ "apply-controller" ],
-        "operationId" : "submit",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApplicantView"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/apply/me/agreements/{kind}" : {
-      "post" : {
-        "tags" : [ "apply-controller" ],
-        "operationId" : "startAgreement",
-        "parameters" : [ {
-          "name" : "kind",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/AgreementStart"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/apply/claim" : {
-      "post" : {
-        "tags" : [ "apply-controller" ],
-        "operationId" : "claim",
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/TokenRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApplicantView"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/apply/chapters/{code}/verify" : {
-      "post" : {
-        "tags" : [ "apply-controller" ],
-        "operationId" : "verify",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/VerifyRequest"
-              }
-            }
-          },
-          "required" : true
-        },
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApplicantView"
-                }
-              }
-            }
-          }
-        }
+        "tags" : [ "apply-controller" ]
       }
     },
     "/api/apply/chapters/{code}/code" : {
       "post" : {
-        "tags" : [ "apply-controller" ],
         "operationId" : "code",
         "parameters" : [ {
-          "name" : "code",
           "in" : "path",
+          "name" : "code",
           "required" : true,
           "schema" : {
             "type" : "string"
@@ -1320,118 +2353,87 @@
           "202" : {
             "description" : "Accepted"
           }
-        }
+        },
+        "tags" : [ "apply-controller" ]
       }
     },
-    "/api/status" : {
-      "get" : {
-        "tags" : [ "status-controller" ],
-        "operationId" : "status_1",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/StatusResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/project-roles" : {
-      "get" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "roles",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ProjectRoleOption"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/national/tools" : {
-      "get" : {
-        "tags" : [ "national-controller" ],
-        "operationId" : "tools",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ToolStatus"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/national/queue" : {
-      "get" : {
-        "tags" : [ "national-controller" ],
-        "operationId" : "queue",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/QueueTask"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/national/dead-letters" : {
-      "get" : {
-        "tags" : [ "national-controller" ],
-        "operationId" : "deadLetters",
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/DeadLetter"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/national/claims/preview" : {
-      "get" : {
-        "tags" : [ "claim-controller" ],
-        "operationId" : "preview",
+    "/api/apply/chapters/{code}/verify" : {
+      "post" : {
+        "operationId" : "verify",
         "parameters" : [ {
-          "name" : "chapter",
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/VerifyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApplicantView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "apply-controller" ]
+      }
+    },
+    "/api/apply/claim" : {
+      "post" : {
+        "operationId" : "claim",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TokenRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApplicantView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "apply-controller" ]
+      }
+    },
+    "/api/apply/github/callback" : {
+      "get" : {
+        "operationId" : "githubCallback",
+        "parameters" : [ {
           "in" : "query",
+          "name" : "code",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "state",
           "required" : false,
           "schema" : {
             "type" : "string"
@@ -1439,43 +2441,73 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ClaimPreview"
-                }
-              }
-            }
+            "description" : "OK"
           }
-        }
+        },
+        "tags" : [ "apply-controller" ]
       }
     },
-    "/api/me" : {
+    "/api/apply/github/start" : {
       "get" : {
-        "tags" : [ "chapter-controller" ],
-        "operationId" : "me_1",
+        "operationId" : "githubStart",
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "apply-controller" ]
+      }
+    },
+    "/api/apply/me" : {
+      "get" : {
+        "operationId" : "me",
+        "responses" : {
+          "200" : {
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/Me"
+                  "$ref" : "#/components/schemas/ApplicantView"
                 }
               }
-            }
+            },
+            "description" : "OK"
           }
-        }
+        },
+        "tags" : [ "apply-controller" ]
+      },
+      "put" : {
+        "operationId" : "save",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DetailsInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApplicantView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "apply-controller" ]
       }
     },
-    "/api/chapters/{code}" : {
-      "get" : {
-        "tags" : [ "chapter-controller" ],
-        "operationId" : "chapter",
+    "/api/apply/me/agreements/{kind}" : {
+      "post" : {
+        "operationId" : "startAgreement",
         "parameters" : [ {
-          "name" : "code",
           "in" : "path",
+          "name" : "kind",
           "required" : true,
           "schema" : {
             "type" : "string"
@@ -1483,167 +2515,108 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AgreementStart"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "apply-controller" ]
+      }
+    },
+    "/api/apply/me/submit" : {
+      "post" : {
+        "operationId" : "submit",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApplicantView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "apply-controller" ]
+      }
+    },
+    "/api/apply/roster" : {
+      "post" : {
+        "operationId" : "roster_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TokenRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApplicantView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "apply-controller" ]
+      }
+    },
+    "/api/apply/signout" : {
+      "post" : {
+        "operationId" : "signOut",
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "tags" : [ "apply-controller" ]
+      }
+    },
+    "/api/chapters/{code}" : {
+      "get" : {
+        "operationId" : "chapter",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
             "content" : {
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/ChapterOverview"
                 }
               }
-            }
+            },
+            "description" : "OK"
           }
-        }
-      }
-    },
-    "/api/chapters/{code}/terms" : {
-      "get" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "terms",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/TermOption"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/sync" : {
-      "get" : {
-        "tags" : [ "chapter-controller" ],
-        "operationId" : "sync",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ChapterSync"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/resources" : {
-      "get" : {
-        "tags" : [ "project-controller" ],
-        "operationId" : "resources",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/ChapterResourceOption"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/registrations" : {
-      "get" : {
-        "tags" : [ "registration-controller" ],
-        "operationId" : "list_2",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/RegistrationSummary"
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/chapters/{code}/members" : {
-      "get" : {
-        "tags" : [ "chapter-controller" ],
-        "operationId" : "members",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "$ref" : "#/components/schemas/MemberRow"
-                  }
-                }
-              }
-            }
-          }
-        }
+        },
+        "tags" : [ "chapter-controller" ]
       }
     },
     "/api/chapters/{code}/adoption" : {
       "get" : {
-        "tags" : [ "adoption-controller" ],
         "operationId" : "report",
         "parameters" : [ {
-          "name" : "code",
           "in" : "path",
+          "name" : "code",
           "required" : true,
           "schema" : {
             "type" : "string"
@@ -1651,43 +2624,1649 @@
         } ],
         "responses" : {
           "200" : {
-            "description" : "OK",
             "content" : {
               "*/*" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/AdoptionReport"
                 }
               }
-            }
-          }
-        }
-      }
-    },
-    "/api/apply/github/start" : {
-      "get" : {
-        "tags" : [ "apply-controller" ],
-        "operationId" : "githubStart",
-        "responses" : {
-          "200" : {
+            },
             "description" : "OK"
           }
-        }
+        },
+        "tags" : [ "adoption-controller" ]
       }
     },
-    "/api/apply/github/callback" : {
+    "/api/chapters/{code}/adoption/resources/{id}" : {
       "get" : {
-        "tags" : [ "apply-controller" ],
-        "operationId" : "githubCallback",
+        "operationId" : "people",
         "parameters" : [ {
+          "in" : "path",
           "name" : "code",
-          "in" : "query",
-          "required" : false,
+          "required" : true,
           "schema" : {
             "type" : "string"
           }
         }, {
-          "name" : "state",
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/AdoptionPerson"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "adoption-controller" ]
+      },
+      "post" : {
+        "operationId" : "decide_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AdoptionDecision"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AdoptionReport"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "adoption-controller" ]
+      }
+    },
+    "/api/chapters/{code}/drafts" : {
+      "get" : {
+        "operationId" : "list_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/DraftSummary"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "draft-controller" ]
+      },
+      "post" : {
+        "operationId" : "create_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DraftInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftSummary"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "draft-controller" ]
+      }
+    },
+    "/api/chapters/{code}/drafts/{id}" : {
+      "get" : {
+        "operationId" : "get_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "draft-controller" ]
+      },
+      "put" : {
+        "operationId" : "rename",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DraftInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "draft-controller" ]
+      }
+    },
+    "/api/chapters/{code}/drafts/{id}/changes/{changeId}" : {
+      "delete" : {
+        "operationId" : "removeChange",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "changeId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "draft-controller" ]
+      }
+    },
+    "/api/chapters/{code}/drafts/{id}/discard" : {
+      "post" : {
+        "operationId" : "discard",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "draft-controller" ]
+      }
+    },
+    "/api/chapters/{code}/drafts/{id}/release" : {
+      "post" : {
+        "operationId" : "release",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReleaseResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "draft-controller" ]
+      }
+    },
+    "/api/chapters/{code}/drafts/{id}/schedule" : {
+      "post" : {
+        "operationId" : "schedule",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ScheduleInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "draft-controller" ]
+      }
+    },
+    "/api/chapters/{code}/drafts/{id}/unschedule" : {
+      "post" : {
+        "operationId" : "unschedule",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DraftDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "draft-controller" ]
+      }
+    },
+    "/api/chapters/{code}/members" : {
+      "get" : {
+        "operationId" : "members",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/MemberRow"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "chapter-controller" ]
+      }
+    },
+    "/api/chapters/{code}/notion" : {
+      "get" : {
+        "operationId" : "get_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotionSettingsView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "notion-settings-controller" ]
+      },
+      "put" : {
+        "operationId" : "put",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/NotionSettingsInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotionSettingsView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "notion-settings-controller" ]
+      }
+    },
+    "/api/chapters/{code}/notion/check" : {
+      "post" : {
+        "operationId" : "check",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotionSettingsView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "notion-settings-controller" ]
+      }
+    },
+    "/api/chapters/{code}/projects" : {
+      "get" : {
+        "operationId" : "list_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
           "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/ProjectSummary"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      },
+      "post" : {
+        "operationId" : "create",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProjectInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/projects/{slug}" : {
+      "get" : {
+        "operationId" : "get",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      },
+      "put" : {
+        "operationId" : "update",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ProjectInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/projects/{slug}/activity" : {
+      "get" : {
+        "operationId" : "activity",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "before",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ActivityPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/projects/{slug}/candidates" : {
+      "get" : {
+        "operationId" : "candidates",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/TeamCandidate"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/projects/{slug}/members" : {
+      "post" : {
+        "operationId" : "addMember",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MemberInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/projects/{slug}/members/{personId}" : {
+      "delete" : {
+        "operationId" : "removeMember",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "personId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      },
+      "put" : {
+        "operationId" : "setRole",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "personId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MemberRoleInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/projects/{slug}/resources" : {
+      "post" : {
+        "operationId" : "attach",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResourceInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/projects/{slug}/resources/{resourceId}" : {
+      "delete" : {
+        "operationId" : "detach",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "resourceId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      },
+      "put" : {
+        "operationId" : "updateResource",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "resourceId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResourceInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/projects/{slug}/status" : {
+      "post" : {
+        "operationId" : "status",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/StatusChange"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/registration-settings" : {
+      "get" : {
+        "operationId" : "settings",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RegistrationSettings"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "registration-controller" ]
+      },
+      "put" : {
+        "operationId" : "saveSettings",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegistrationSettingsInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RegistrationSettings"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "registration-controller" ]
+      }
+    },
+    "/api/chapters/{code}/registrations" : {
+      "get" : {
+        "operationId" : "list_3",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/RegistrationSummary"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "registration-controller" ]
+      }
+    },
+    "/api/chapters/{code}/registrations/{id}/approve" : {
+      "post" : {
+        "operationId" : "approve",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ApproveInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/RegistrationSummary"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "registration-controller" ]
+      }
+    },
+    "/api/chapters/{code}/registrations/{id}/decline" : {
+      "post" : {
+        "operationId" : "decline",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeclineInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/RegistrationSummary"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "registration-controller" ]
+      }
+    },
+    "/api/chapters/{code}/resources" : {
+      "get" : {
+        "operationId" : "resources",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/ChapterResourceOption"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/roster" : {
+      "get" : {
+        "operationId" : "roster",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/RosterInviteView"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "registration-controller" ]
+      },
+      "post" : {
+        "operationId" : "upload",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RosterInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RosterResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "registration-controller" ]
+      }
+    },
+    "/api/chapters/{code}/sync" : {
+      "get" : {
+        "operationId" : "sync",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ChapterSync"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "chapter-controller" ]
+      }
+    },
+    "/api/chapters/{code}/sync/run" : {
+      "post" : {
+        "operationId" : "runDryRun",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "202" : {
+            "description" : "Accepted"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/terms" : {
+      "get" : {
+        "operationId" : "terms",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/TermOption"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/me" : {
+      "get" : {
+        "operationId" : "me_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Me"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "chapter-controller" ]
+      }
+    },
+    "/api/me/agreements/{id}/sign" : {
+      "post" : {
+        "operationId" : "sign",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SignLink"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-home-controller" ]
+      }
+    },
+    "/api/me/home" : {
+      "get" : {
+        "operationId" : "home",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberHome"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-home-controller" ]
+      }
+    },
+    "/api/national/agreement-templates" : {
+      "get" : {
+        "operationId" : "list",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AgreementTemplates"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "agreement-template-controller" ]
+      },
+      "post" : {
+        "operationId" : "add",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AgreementTemplateInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AgreementTemplates"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "agreement-template-controller" ]
+      }
+    },
+    "/api/national/agreement-templates/{id}/deactivate" : {
+      "post" : {
+        "operationId" : "deactivate",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AgreementTemplates"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "agreement-template-controller" ]
+      }
+    },
+    "/api/national/claims/preview" : {
+      "get" : {
+        "operationId" : "preview",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "chapter",
           "required" : false,
           "schema" : {
             "type" : "string"
@@ -1695,1873 +4274,299 @@
         } ],
         "responses" : {
           "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClaimPreview"
+                }
+              }
+            },
             "description" : "OK"
           }
-        }
+        },
+        "tags" : [ "claim-controller" ]
       }
     },
-    "/api/apply/chapters/{code}" : {
-      "get" : {
-        "tags" : [ "apply-controller" ],
-        "operationId" : "chapter_1",
-        "parameters" : [ {
-          "name" : "code",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string"
-          }
-        } ],
-        "responses" : {
-          "200" : {
-            "description" : "OK",
-            "content" : {
-              "*/*" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/ApplyChapter"
-                }
+    "/api/national/claims/send" : {
+      "post" : {
+        "operationId" : "send",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ClaimSend"
               }
             }
-          }
-        }
-      }
-    },
-    "/api/agreements/{id}/pdf" : {
-      "get" : {
-        "tags" : [ "agreement-pdf-controller" ],
-        "operationId" : "pdf",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
+          },
+          "required" : true
+        },
         "responses" : {
           "200" : {
-            "description" : "OK",
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "string",
-                  "format" : "byte"
+                  "$ref" : "#/components/schemas/ClaimPreview"
                 }
               }
-            }
+            },
+            "description" : "OK"
           }
-        }
+        },
+        "tags" : [ "claim-controller" ]
       }
     },
-    "/api/adoption/unmatched" : {
+    "/api/national/dead-letters" : {
       "get" : {
-        "tags" : [ "adoption-controller" ],
-        "operationId" : "unmatched",
+        "operationId" : "deadLetters",
         "responses" : {
           "200" : {
-            "description" : "OK",
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "type" : "array",
                   "items" : {
-                    "$ref" : "#/components/schemas/UnmatchedResource"
-                  }
+                    "$ref" : "#/components/schemas/DeadLetter"
+                  },
+                  "type" : "array"
                 }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "national-controller" ]
+      }
+    },
+    "/api/national/dead-letters/retry" : {
+      "post" : {
+        "operationId" : "retry",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "items" : {
+                  "$ref" : "#/components/schemas/DeadLetterRef"
+                },
+                "type" : "array"
               }
             }
           }
-        }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/DeadLetter"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "national-controller" ]
       }
-    }
-  },
-  "components" : {
-    "schemas" : {
-      "ToolChange" : {
-        "type" : "object",
-        "properties" : {
-          "enabled" : {
-            "type" : "boolean"
-          },
-          "dryRun" : {
-            "type" : "boolean"
-          },
-          "reason" : {
-            "type" : [ "string", "null" ]
+    },
+    "/api/national/queue" : {
+      "get" : {
+        "operationId" : "queue",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/QueueTask"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
           }
-        }
-      },
-      "LastRun" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
+        },
+        "tags" : [ "national-controller" ]
+      }
+    },
+    "/api/national/queue/{id}" : {
+      "post" : {
+        "operationId" : "decide",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
             "type" : "string"
-          },
-          "mode" : {
-            "type" : "string"
-          },
-          "ranAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "applied" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "removed" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "error" : {
-            "type" : [ "string", "null" ]
           }
-        }
-      },
-      "ToolStatus" : {
-        "type" : "object",
-        "properties" : {
-          "tool" : {
-            "type" : "string"
-          },
-          "enabled" : {
-            "type" : "boolean"
-          },
-          "dryRun" : {
-            "type" : "boolean"
-          },
-          "writable" : {
-            "type" : "boolean"
-          },
-          "pauseReason" : {
-            "type" : [ "string", "null" ]
-          },
-          "maxRemovals" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "lastRun" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/LastRun"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }
-      },
-      "QuestionInput" : {
-        "type" : "object",
-        "properties" : {
-          "label" : {
-            "type" : "string"
-          },
-          "kind" : {
-            "type" : "string"
-          },
-          "options" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TaskDecision"
+              }
             }
           },
-          "required" : {
-            "type" : "boolean"
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/QueueTask"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
           }
-        }
-      },
-      "RegistrationSettingsInput" : {
-        "type" : "object",
-        "properties" : {
-          "questions" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QuestionInput"
+        },
+        "tags" : [ "national-controller" ]
+      }
+    },
+    "/api/national/sync/run" : {
+      "post" : {
+        "operationId" : "run",
+        "responses" : {
+          "202" : {
+            "description" : "Accepted"
+          }
+        },
+        "tags" : [ "national-controller" ]
+      }
+    },
+    "/api/national/tools" : {
+      "get" : {
+        "operationId" : "tools",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/ToolStatus"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "national-controller" ]
+      }
+    },
+    "/api/national/tools/{tool}" : {
+      "put" : {
+        "operationId" : "setTool",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "tool",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ToolChange"
+              }
             }
           },
-          "googleDomain" : {
-            "type" : [ "string", "null" ]
-          },
-          "googleOrgUnit" : {
-            "type" : [ "string", "null" ]
-          },
-          "applicationsOpen" : {
-            "type" : [ "boolean", "null" ]
-          },
-          "applicationUrl" : {
-            "type" : [ "string", "null" ]
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/ToolStatus"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
           }
-        }
-      },
-      "QuestionView" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "label" : {
+        },
+        "tags" : [ "national-controller" ]
+      }
+    },
+    "/api/project-roles" : {
+      "get" : {
+        "operationId" : "roles",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/ProjectRoleOption"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/status" : {
+      "get" : {
+        "operationId" : "status_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/StatusResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "status-controller" ]
+      }
+    },
+    "/api/webhooks/documenso" : {
+      "post" : {
+        "operationId" : "receive",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "X-Documenso-Secret",
+          "required" : false,
+          "schema" : {
             "type" : "string"
-          },
-          "kind" : {
-            "type" : "string"
-          },
-          "options" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/JsonNode"
+              }
             }
           },
-          "required" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "RegistrationSettings" : {
-        "type" : "object",
-        "properties" : {
-          "questions" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QuestionView"
-            }
-          },
-          "googleDomain" : {
-            "type" : "string"
-          },
-          "googleOrgUnit" : {
-            "type" : [ "string", "null" ]
-          },
-          "applicationsOpen" : {
-            "type" : "boolean"
-          },
-          "applicationUrl" : {
-            "type" : [ "string", "null" ]
-          },
-          "canEditQuestions" : {
-            "type" : "boolean"
-          },
-          "canEditAccounts" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "ProjectInput" : {
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "type" : "string"
-          },
-          "slug" : {
-            "type" : [ "string", "null" ]
-          },
-          "type" : {
-            "type" : [ "string", "null" ]
-          },
-          "tags" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "termId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          },
-          "partner" : {
-            "type" : [ "string", "null" ]
-          },
-          "startsOn" : {
-            "type" : [ "string", "null" ],
-            "format" : "date"
-          },
-          "endsOn" : {
-            "type" : [ "string", "null" ],
-            "format" : "date"
-          }
-        }
-      },
-      "AccessPreview" : {
-        "type" : "object",
-        "properties" : {
-          "people" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "grants" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "awaitingAgreement" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "asIfActive" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "ActivityRow" : {
-        "type" : "object",
-        "properties" : {
-          "at" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "actor" : {
-            "type" : [ "string", "null" ]
-          },
-          "action" : {
-            "type" : "string"
-          },
-          "detail" : {
-            "type" : [ "string", "null" ]
-          }
-        }
-      },
-      "MemberAgreement" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "sentAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          },
-          "signedAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          },
-          "reminders" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "hasPdf" : {
-            "type" : "boolean"
-          },
-          "error" : {
-            "type" : [ "string", "null" ]
-          },
-          "declineReason" : {
-            "type" : [ "string", "null" ]
-          }
-        }
-      },
-      "NotionPlan" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          },
-          "title" : {
-            "type" : "string"
-          },
-          "pageId" : {
-            "type" : [ "string", "null" ]
-          },
-          "parentPageId" : {
-            "type" : [ "string", "null" ]
-          },
-          "parentPath" : {
-            "type" : [ "string", "null" ]
-          },
-          "matchedBy" : {
-            "type" : [ "string", "null" ]
-          }
-        }
-      },
-      "PlannedChange" : {
-        "type" : "object",
-        "properties" : {
-          "kind" : {
-            "type" : "string"
-          },
-          "tool" : {
-            "type" : "string"
-          },
-          "resource" : {
-            "type" : "string"
-          },
-          "person" : {
-            "type" : [ "string", "null" ]
-          },
-          "accountId" : {
-            "type" : [ "string", "null" ]
-          },
-          "fromAccess" : {
-            "type" : [ "string", "null" ]
-          },
-          "toAccess" : {
-            "type" : [ "string", "null" ]
-          }
-        }
-      },
-      "ProjectDetail" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "slug" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "type" : {
-            "type" : [ "string", "null" ]
-          },
-          "tags" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "termId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          },
-          "term" : {
-            "type" : [ "string", "null" ]
-          },
-          "partner" : {
-            "type" : [ "string", "null" ]
-          },
-          "startsOn" : {
-            "type" : [ "string", "null" ],
-            "format" : "date"
-          },
-          "endsOn" : {
-            "type" : [ "string", "null" ],
-            "format" : "date"
-          },
-          "members" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ProjectMemberRow"
-            }
-          },
-          "resources" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ProjectResourceRow"
-            }
-          },
-          "agreementsSigned" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "notion" : {
-            "$ref" : "#/components/schemas/NotionPlan"
-          },
-          "preview" : {
-            "$ref" : "#/components/schemas/AccessPreview"
-          },
-          "planned" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/PlannedChange"
-            }
-          },
-          "lastDryRunAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          },
-          "plannedOutOfDate" : {
-            "type" : "boolean"
-          },
-          "activity" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ActivityRow"
-            }
-          },
-          "canEdit" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "ProjectMemberRow" : {
-        "type" : "object",
-        "properties" : {
-          "personId" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "email" : {
-            "type" : [ "string", "null" ]
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "roleId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          },
-          "role" : {
-            "type" : [ "string", "null" ]
-          },
-          "agreementStatus" : {
-            "type" : "string"
-          },
-          "agreement" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/MemberAgreement"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "lead" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "ProjectResourceRow" : {
-        "type" : "object",
-        "properties" : {
-          "resourceId" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "tool" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "state" : {
-            "type" : "string"
-          },
-          "audience" : {
-            "type" : "string"
-          },
-          "roleId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          },
-          "role" : {
-            "type" : [ "string", "null" ]
-          },
-          "access" : {
-            "type" : "string"
-          },
-          "requiresAgreement" : {
-            "type" : "boolean"
-          },
-          "tags" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "sharedWith" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "existsInTool" : {
-            "type" : "boolean"
-          },
-          "getting" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "awaitingAgreement" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
-      "ResourceInput" : {
-        "type" : "object",
-        "properties" : {
-          "resourceId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          },
-          "tool" : {
-            "type" : [ "string", "null" ]
-          },
-          "name" : {
-            "type" : [ "string", "null" ]
-          },
-          "audience" : {
-            "type" : "string"
-          },
-          "roleId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          },
-          "access" : {
-            "type" : "string"
-          },
-          "requiresAgreement" : {
-            "type" : "boolean"
-          },
-          "tags" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          }
-        }
-      },
-      "MemberRoleInput" : {
-        "type" : "object",
-        "properties" : {
-          "roleId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          }
-        }
-      },
-      "NotionRouteInput" : {
-        "type" : "object",
-        "properties" : {
-          "kind" : {
-            "type" : "string"
-          },
-          "value" : {
-            "type" : "string"
-          },
-          "parent" : {
-            "type" : "string"
-          }
-        }
-      },
-      "NotionSettingsInput" : {
-        "type" : "object",
-        "properties" : {
-          "teamspaceId" : {
-            "type" : [ "string", "null" ]
-          },
-          "defaultParent" : {
-            "type" : [ "string", "null" ]
-          },
-          "template" : {
-            "type" : [ "string", "null" ]
-          },
-          "titlePattern" : {
-            "type" : "string"
-          },
-          "routes" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/NotionRouteInput"
-            }
-          }
-        }
-      },
-      "NotionPageRef" : {
-        "type" : "object",
-        "properties" : {
-          "pageId" : {
-            "type" : "string"
-          },
-          "path" : {
-            "type" : [ "string", "null" ]
-          },
-          "error" : {
-            "type" : [ "string", "null" ]
-          },
-          "checkedAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          }
-        }
-      },
-      "NotionRouteView" : {
-        "type" : "object",
-        "properties" : {
-          "kind" : {
-            "type" : "string"
-          },
-          "value" : {
-            "type" : "string"
-          },
-          "parent" : {
-            "$ref" : "#/components/schemas/NotionPageRef"
-          }
-        }
-      },
-      "NotionSettingsView" : {
-        "type" : "object",
-        "properties" : {
-          "configured" : {
-            "type" : "boolean"
-          },
-          "teamspaceId" : {
-            "type" : [ "string", "null" ]
-          },
-          "defaultParent" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/NotionPageRef"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "template" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/NotionPageRef"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "titlePattern" : {
-            "type" : "string"
-          },
-          "routes" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/NotionRouteView"
-            }
-          },
-          "problems" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "canEdit" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "Details" : {
-        "type" : "object",
-        "properties" : {
-          "firstName" : {
-            "type" : [ "string", "null" ]
-          },
-          "lastName" : {
-            "type" : [ "string", "null" ]
-          },
-          "preferredName" : {
-            "type" : [ "string", "null" ]
-          },
-          "personalEmail" : {
-            "type" : [ "string", "null" ]
-          },
-          "graduationYear" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int32"
-          },
-          "roleInterest" : {
-            "type" : [ "string", "null" ]
-          },
-          "stillActive" : {
-            "type" : [ "boolean", "null" ]
-          }
-        }
-      },
-      "DetailsInput" : {
-        "type" : "object",
-        "properties" : {
-          "details" : {
-            "$ref" : "#/components/schemas/Details"
-          },
-          "answers" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "string"
-            }
-          }
-        }
-      },
-      "ApplicantAgreement" : {
-        "type" : "object",
-        "properties" : {
-          "kind" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "signUrl" : {
-            "type" : [ "string", "null" ]
-          }
-        }
-      },
-      "ApplicantView" : {
-        "type" : "object",
-        "properties" : {
-          "kind" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "chapter" : {
-            "$ref" : "#/components/schemas/ApplyChapter"
-          },
-          "schoolEmail" : {
-            "type" : [ "string", "null" ]
-          },
-          "emailVerified" : {
-            "type" : "boolean"
-          },
-          "githubLogin" : {
-            "type" : [ "string", "null" ]
-          },
-          "githubConfigured" : {
-            "type" : "boolean"
-          },
-          "details" : {
-            "$ref" : "#/components/schemas/Details"
-          },
-          "answers" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "string"
-            }
-          },
-          "missing" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "declineReason" : {
-            "type" : [ "string", "null" ]
-          },
-          "account" : {
-            "type" : [ "string", "null" ]
-          },
-          "agreements" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ApplicantAgreement"
-            }
-          }
-        }
-      },
-      "ApplyChapter" : {
-        "type" : "object",
-        "properties" : {
-          "code" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "emailDomains" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "questions" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/QuestionView"
-            }
-          },
-          "applicationsOpen" : {
-            "type" : "boolean"
-          },
-          "applicationUrl" : {
-            "type" : [ "string", "null" ]
-          }
-        }
-      },
-      "JsonNode" : {
-        "type" : "object",
-        "properties" : {
-          "empty" : {
-            "type" : "boolean"
-          },
-          "array" : {
-            "type" : "boolean"
-          },
-          "null" : {
-            "type" : "boolean"
-          },
-          "object" : {
-            "type" : "boolean"
-          },
-          "float" : {
-            "type" : "boolean"
-          },
-          "container" : {
-            "type" : "boolean"
-          },
-          "string" : {
-            "type" : "boolean"
-          },
-          "boolean" : {
-            "type" : "boolean"
-          },
-          "number" : {
-            "type" : "boolean"
-          },
-          "nodeType" : {
-            "type" : "string",
-            "enum" : [ "ARRAY", "BINARY", "BOOLEAN", "MISSING", "NULL", "NUMBER", "OBJECT", "POJO", "STRING" ]
-          },
-          "integralNumber" : {
-            "type" : "boolean"
-          },
-          "missingNode" : {
-            "type" : "boolean"
-          },
-          "valueNode" : {
-            "type" : "boolean"
-          },
-          "pojo" : {
-            "type" : "boolean"
-          },
-          "floatingPointNumber" : {
-            "type" : "boolean"
-          },
-          "short" : {
-            "type" : "boolean"
-          },
-          "int" : {
-            "type" : "boolean"
-          },
-          "long" : {
-            "type" : "boolean"
-          },
-          "double" : {
-            "type" : "boolean"
-          },
-          "bigDecimal" : {
-            "type" : "boolean"
-          },
-          "bigInteger" : {
-            "type" : "boolean"
-          },
-          "textual" : {
-            "type" : "boolean",
-            "deprecated" : true
-          },
-          "binary" : {
-            "type" : "boolean"
-          },
-          "embeddedValue" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "TaskDecision" : {
-        "type" : "object",
-        "properties" : {
-          "action" : {
-            "type" : "string"
-          },
-          "reason" : {
-            "type" : [ "string", "null" ]
-          }
-        }
-      },
-      "QueueTask" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "tool" : {
-            "type" : "string"
-          },
-          "action" : {
-            "type" : "string"
-          },
-          "description" : {
-            "type" : "string"
-          },
-          "createdAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "doneBy" : {
-            "type" : [ "string", "null" ]
-          },
-          "doneAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          }
-        }
-      },
-      "DeadLetterRef" : {
-        "type" : "object",
-        "properties" : {
-          "personId" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "resourceId" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        }
-      },
-      "DeadLetter" : {
-        "type" : "object",
-        "properties" : {
-          "personId" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "person" : {
-            "type" : "string"
-          },
-          "resourceId" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "tool" : {
-            "type" : "string"
-          },
-          "resource" : {
-            "type" : "string"
-          },
-          "attempts" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "lastError" : {
-            "type" : [ "string", "null" ]
-          },
-          "lastAttemptAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          }
-        }
-      },
-      "ClaimSend" : {
-        "type" : "object",
-        "properties" : {
-          "chapter" : {
-            "type" : [ "string", "null" ]
-          },
-          "limit" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
-      "ClaimPreview" : {
-        "type" : "object",
-        "properties" : {
-          "eligible" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "alreadySent" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "withoutEmail" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
-      "AgreementTemplateInput" : {
-        "type" : "object",
-        "properties" : {
-          "kind" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "documensoTemplateId" : {
-            "type" : "string"
-          }
-        }
-      },
-      "AgreementTemplateView" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "kind" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "documensoTemplateId" : {
-            "type" : "string"
-          },
-          "version" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "active" : {
-            "type" : "boolean"
-          },
-          "createdAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "sent" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
-      "AgreementTemplates" : {
-        "type" : "object",
-        "properties" : {
-          "templates" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/AgreementTemplateView"
-            }
-          },
-          "connected" : {
-            "type" : "boolean"
-          },
-          "sending" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "RosterInput" : {
-        "type" : "object",
-        "properties" : {
-          "csv" : {
-            "type" : "string"
-          }
-        }
-      },
-      "RosterInviteView" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "schoolEmail" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "createdAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "expiresAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          }
-        }
-      },
-      "RosterResult" : {
-        "type" : "object",
-        "properties" : {
-          "invited" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "skipped" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "invites" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/RosterInviteView"
-            }
-          }
-        }
-      },
-      "DeclineInput" : {
-        "type" : "object",
-        "properties" : {
-          "reason" : {
-            "type" : "string"
-          }
-        }
-      },
-      "MatchView" : {
-        "type" : "object",
-        "properties" : {
-          "personId" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "chapters" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "why" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          }
-        }
-      },
-      "RegistrationSummary" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "kind" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "schoolEmail" : {
-            "type" : [ "string", "null" ]
-          },
-          "githubLogin" : {
-            "type" : [ "string", "null" ]
-          },
-          "graduationYear" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int32"
-          },
-          "roleInterest" : {
-            "type" : [ "string", "null" ]
-          },
-          "matchStatus" : {
-            "type" : [ "string", "null" ]
-          },
-          "matches" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/MatchView"
-            }
-          },
-          "answers" : {
-            "type" : "object",
-            "additionalProperties" : {
-              "type" : "string"
-            }
-          },
-          "githubChanged" : {
-            "type" : "boolean"
-          },
-          "submittedAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          },
-          "decidedAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          },
-          "declineReason" : {
-            "type" : [ "string", "null" ]
-          }
-        }
-      },
-      "ApproveInput" : {
-        "type" : "object",
-        "properties" : {
-          "personId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          }
-        }
-      },
-      "StatusChange" : {
-        "type" : "object",
-        "properties" : {
-          "status" : {
-            "type" : "string"
-          }
-        }
-      },
-      "MemberInput" : {
-        "type" : "object",
-        "properties" : {
-          "personId" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "roleId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          }
-        }
-      },
-      "AdoptionDecision" : {
-        "type" : "object",
-        "properties" : {
-          "action" : {
-            "type" : "string"
-          },
-          "target" : {
-            "type" : [ "string", "null" ]
-          },
-          "projectId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          }
-        }
-      },
-      "AdoptionReport" : {
-        "type" : "object",
-        "properties" : {
-          "grandfatheredUntil" : {
-            "type" : [ "string", "null" ],
-            "format" : "date"
-          },
-          "scans" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ScanStatus"
-            }
-          },
-          "resources" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/AdoptionResource"
-            }
-          },
-          "projects" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ProjectOption"
-            }
-          },
-          "canEdit" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "AdoptionResource" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "tool" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "state" : {
-            "type" : "string"
-          },
-          "target" : {
-            "type" : [ "string", "null" ]
-          },
-          "projectId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          },
-          "projectName" : {
-            "type" : [ "string", "null" ]
-          },
-          "suggestedSlug" : {
-            "type" : [ "string", "null" ]
-          },
-          "matchMethod" : {
-            "type" : [ "string", "null" ]
-          },
-          "archived" : {
-            "type" : "boolean"
-          },
-          "gone" : {
-            "type" : "boolean"
-          },
-          "snapshotAt" : {
-            "type" : [ "string", "null" ],
-            "format" : "date-time"
-          },
-          "expected" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "grandfathered" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "unknownAccounts" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "wouldAdd" : {
-            "type" : [ "integer", "null" ],
-            "format" : "int32"
-          }
-        }
-      },
-      "ProjectOption" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "slug" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          }
-        }
-      },
-      "ScanStatus" : {
-        "type" : "object",
-        "properties" : {
-          "tool" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "ranAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "error" : {
-            "type" : [ "string", "null" ]
-          },
-          "resourcesFound" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "coversChapter" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "TokenRequest" : {
-        "type" : "object",
-        "properties" : {
-          "token" : {
-            "type" : "string"
-          }
-        }
-      },
-      "AgreementStart" : {
-        "type" : "object",
-        "properties" : {
-          "url" : {
-            "type" : "string"
-          }
-        }
-      },
-      "VerifyRequest" : {
-        "type" : "object",
-        "properties" : {
-          "email" : {
-            "type" : "string"
-          },
-          "code" : {
-            "type" : "string"
-          }
-        }
-      },
-      "CodeRequest" : {
-        "type" : "object",
-        "properties" : {
-          "email" : {
-            "type" : "string"
-          }
-        }
-      },
-      "StatusResponse" : {
-        "type" : "object",
-        "properties" : {
-          "service" : {
-            "type" : "string"
-          },
-          "version" : {
-            "type" : "string"
-          }
-        }
-      },
-      "ProjectRoleOption" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "lead" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "ChapterRef" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "role" : {
-            "type" : "string"
-          }
-        }
-      },
-      "Me" : {
-        "type" : "object",
-        "properties" : {
-          "email" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : [ "string", "null" ]
-          },
-          "personId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          },
-          "nationalAdmin" : {
-            "type" : "boolean"
-          },
-          "chapters" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ChapterRef"
-            }
-          }
-        }
-      },
-      "ChapterOverview" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "code" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "role" : {
-            "type" : "string"
-          },
-          "stats" : {
-            "$ref" : "#/components/schemas/ChapterStats"
-          },
-          "registrationLink" : {
-            "type" : "string"
-          },
-          "notionProblems" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
-      "ChapterStats" : {
-        "type" : "object",
-        "properties" : {
-          "activeMembers" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "alumni" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "liveProjects" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "leads" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
-      "TermOption" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "label" : {
-            "type" : "string"
-          }
-        }
-      },
-      "ChapterSync" : {
-        "type" : "object",
-        "properties" : {
-          "tools" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/ToolSync"
-            }
-          },
-          "changes" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/PlannedChange"
-            }
-          }
-        }
-      },
-      "ToolSync" : {
-        "type" : "object",
-        "properties" : {
-          "tool" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "mode" : {
-            "type" : "string"
-          },
-          "ranAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          },
-          "error" : {
-            "type" : [ "string", "null" ]
-          },
-          "adds" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "changes" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "removals" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "drift" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "unmatchedAccounts" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "missingResources" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "creates" : {
-            "type" : "integer",
-            "format" : "int32"
-          }
-        }
-      },
-      "ChapterResourceOption" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "tool" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "state" : {
-            "type" : "string"
-          },
-          "projects" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          }
-        }
-      },
-      "ProjectSummary" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "slug" : {
-            "type" : "string"
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "type" : {
-            "type" : [ "string", "null" ]
-          },
-          "tags" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "term" : {
-            "type" : [ "string", "null" ]
-          },
-          "partner" : {
-            "type" : [ "string", "null" ]
-          },
-          "members" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "resources" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "updatedAt" : {
-            "type" : "string",
-            "format" : "date-time"
-          }
-        }
-      },
-      "AccountSummary" : {
-        "type" : "object",
-        "properties" : {
-          "tool" : {
-            "type" : "string"
-          },
-          "state" : {
-            "type" : "string"
-          }
-        }
-      },
-      "MemberRow" : {
-        "type" : "object",
-        "properties" : {
-          "personId" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "email" : {
-            "type" : [ "string", "null" ]
-          },
-          "status" : {
-            "type" : "string"
-          },
-          "kind" : {
-            "type" : "string"
-          },
-          "chapterRole" : {
-            "type" : [ "string", "null" ]
-          },
-          "title" : {
-            "type" : [ "string", "null" ]
-          },
-          "projects" : {
-            "type" : "array",
-            "items" : {
-              "type" : "string"
-            }
-          },
-          "accounts" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/AccountSummary"
-            }
-          },
-          "claimed" : {
-            "type" : "boolean"
-          }
-        }
-      },
-      "AdoptionPerson" : {
-        "type" : "object",
-        "properties" : {
-          "personId" : {
-            "type" : [ "string", "null" ],
-            "format" : "uuid"
-          },
-          "name" : {
-            "type" : [ "string", "null" ]
-          },
-          "login" : {
-            "type" : [ "string", "null" ]
-          },
-          "verdict" : {
-            "type" : "string"
-          },
-          "matchedBy" : {
-            "type" : [ "string", "null" ]
-          },
-          "access" : {
-            "type" : [ "string", "null" ]
-          }
-        }
-      },
-      "UnmatchedResource" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "tool" : {
-            "type" : "string"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "archived" : {
-            "type" : "boolean"
-          }
-        }
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "documenso-webhook-controller" ]
       }
     }
   }

@@ -4,6 +4,9 @@ import org.hack4impact.portal.db.tables.references.CHAPTER
 import org.hack4impact.portal.db.tables.references.CHAPTER_ROLE
 import org.hack4impact.portal.db.tables.references.NATIONAL_ADMIN
 import org.hack4impact.portal.db.tables.references.PERSON
+import org.hack4impact.portal.db.tables.references.PROJECT
+import org.hack4impact.portal.db.tables.references.PROJECT_MEMBER
+import org.hack4impact.portal.db.tables.references.PROJECT_ROLE
 import org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
@@ -21,7 +24,12 @@ data class Viewer(
 	val nationalAdmin: Boolean,
 	/** Chapter ID → role: "lead", "co_lead" or "viewer". */
 	val chapterRoles: Map<UUID, String>,
+	/** Projects (not closed) where they hold a lead project role: they manage those teams (PRD: project lead). */
+	val ledProjects: Set<UUID> = emptySet(),
 ) {
+	/** PRD: a project lead adds and removes their project's members; chapter leads, co-leads and national may too. */
+	fun canManageTeam(chapterId: UUID, projectId: UUID) = canManage(chapterId) || projectId in ledProjects
+
 	fun canSee(chapterId: UUID) = nationalAdmin || chapterId in chapterRoles
 
 	/** Leads and co-leads change their chapter's setup; viewers only read (Q9). */
@@ -47,7 +55,11 @@ class Viewers(private val dsl: DSLContext) {
 			// A person with two roles in one chapter gets the stronger one.
 			.groupBy({ it.value1()!! }, { it.value2()!! })
 			.mapValues { (_, roles) -> ROLE_ORDER.first { it in roles } }
-		return Viewer(personId, email, user.fullName, nationalAdmin, roles)
+		val led = dsl.select(PROJECT_MEMBER.PROJECT_ID).from(PROJECT_MEMBER)
+			.join(PROJECT_ROLE).on(PROJECT_ROLE.ID.eq(PROJECT_MEMBER.PROJECT_ROLE_ID)).join(PROJECT).on(PROJECT.ID.eq(PROJECT_MEMBER.PROJECT_ID))
+			.where(PROJECT_MEMBER.PERSON_ID.eq(personId), PROJECT_MEMBER.REMOVED_AT.isNull, PROJECT_ROLE.IS_LEAD.isTrue, PROJECT.STATUS.ne("closed"))
+			.fetch().map { it.value1()!! }.toSet()
+		return Viewer(personId, email, user.fullName, nationalAdmin, roles, led)
 	}
 
 	/** Remembers the Google user ID for a matched person, so later sign-ins don't depend on the email. */

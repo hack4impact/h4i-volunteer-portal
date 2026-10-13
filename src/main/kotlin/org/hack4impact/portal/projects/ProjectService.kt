@@ -27,8 +27,8 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 /**
- * Changes to projects (build plan step 8). Until drafts exist (step 12) changes apply directly; every tool is still
- * in dry run, so they only change what the next dry run plans. Every change is audited on the project.
+ * Changes to projects (build plan step 8). They apply directly, or a draft records them and replays them here when
+ * it's shown, previewed or released (step 12). Every change is audited on the project.
  */
 @Component
 class ProjectService(private val dsl: DSLContext, private val agreements: org.hack4impact.portal.agreements.AgreementRequests) {
@@ -62,14 +62,16 @@ class ProjectService(private val dsl: DSLContext, private val agreements: org.ha
 		private fun tags(values: List<String>) = values.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.distinct().sorted()
 	}
 
+	/** [id]: chosen by a draft, so its later changes can refer to the project before it exists (step 12). */
 	@Transactional
-	fun create(chapterId: UUID, input: ProjectInput, viewer: Viewer): ProjectRecord {
+	fun create(chapterId: UUID, input: ProjectInput, viewer: Viewer, id: UUID? = null): ProjectRecord {
 		val name = input.name.trim().ifEmpty { bad("A project needs a name") }
 		val slug = (input.slug?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: slugify(name))
 		if (!SLUG.matches(slug)) bad("The short name may only have lowercase letters, digits and dashes")
 		if (dsl.fetchExists(PROJECT, PROJECT.CHAPTER_ID.eq(chapterId), PROJECT.SLUG.eq(slug))) conflict("This chapter already has a project called $slug")
 		checkTerm(chapterId, input.termId)
 		val project = dsl.insertInto(PROJECT)
+			.set(PROJECT.ID, id ?: UUID.randomUUID())
 			.set(PROJECT.CHAPTER_ID, chapterId).set(PROJECT.NAME, name).set(PROJECT.SLUG, slug)
 			.set(PROJECT.TYPE, input.type?.trim()?.lowercase()?.takeIf { it.isNotEmpty() }).set(PROJECT.TAGS, tags(input.tags).toTypedArray())
 			.set(PROJECT.TERM_ID, input.termId).set(PROJECT.PARTNER_ID, partner(input.partner))
@@ -84,7 +86,9 @@ class ProjectService(private val dsl: DSLContext, private val agreements: org.ha
 			.orderBy(RESOURCE_TEMPLATE.POSITION).fetch()
 		for (t in templates) {
 			val resourceName = normalizeName(t.tool!!, t.namePattern!!.replace("{chapter}", code).replace("{project}", slug))
-			val resource = existing(chapterId, t.tool!!, resourceName) ?: insertResource(chapterId, t.tool!!, resourceName, t.tags!!.filterNotNull())
+			// The same ID every time this project is created, so a draft's later changes to it still match.
+			val resource = existing(chapterId, t.tool!!, resourceName)
+				?: insertResource(chapterId, t.tool!!, resourceName, t.tags!!.filterNotNull(), UUID.nameUUIDFromBytes("${project.id}/${t.id}".toByteArray()))
 			dsl.insertInto(PROJECT_RESOURCE).set(PROJECT_RESOURCE.PROJECT_ID, project.id).set(PROJECT_RESOURCE.RESOURCE_ID, resource)
 				.set(PROJECT_RESOURCE.AUDIENCE, t.audience).set(PROJECT_RESOURCE.ACCESS_LEVEL, t.accessLevel)
 				.set(PROJECT_RESOURCE.REQUIRES_AGREEMENT, t.requiresAgreement)
@@ -155,8 +159,9 @@ class ProjectService(private val dsl: DSLContext, private val agreements: org.ha
 		audit(viewer, chapterId, project.id!!, "project.member_remove", "Removed ${personName(personId)}")
 	}
 
+	/** [newResourceId]: for a new resource, the ID a draft chose for it. */
 	@Transactional
-	fun attachResource(chapterId: UUID, project: ProjectRecord, input: ResourceInput, viewer: Viewer): UUID {
+	fun attachResource(chapterId: UUID, project: ProjectRecord, input: ResourceInput, viewer: Viewer, newResourceId: UUID? = null): UUID {
 		checkAudience(input)
 		val resourceId = if (input.resourceId != null) {
 			val r = dsl.selectFrom(RESOURCE).where(RESOURCE.ID.eq(input.resourceId), RESOURCE.CHAPTER_ID.eq(chapterId), RESOURCE.ARCHIVED_AT.isNull).fetchOne()
@@ -171,7 +176,7 @@ class ProjectService(private val dsl: DSLContext, private val agreements: org.ha
 			val name = normalizeName(tool, input.name ?: "")
 			if (!rule.matches(name)) bad("A $tool name needs $hint")
 			if (existing(chapterId, tool, name) != null) conflict("This chapter already has $name in $tool: attach that one instead")
-			insertResource(chapterId, tool, name, tags(input.tags))
+			insertResource(chapterId, tool, name, tags(input.tags), newResourceId ?: UUID.randomUUID())
 		}
 		dsl.insertInto(PROJECT_RESOURCE).set(PROJECT_RESOURCE.PROJECT_ID, project.id).set(PROJECT_RESOURCE.RESOURCE_ID, resourceId)
 			.set(PROJECT_RESOURCE.AUDIENCE, input.audience).set(PROJECT_RESOURCE.AUDIENCE_ROLE_ID, input.roleId)
@@ -214,8 +219,8 @@ class ProjectService(private val dsl: DSLContext, private val agreements: org.ha
 			.where(RESOURCE.CHAPTER_ID.eq(chapterId), RESOURCE.TOOL.eq(tool), DSL.lower(RESOURCE.NAME).eq(name.lowercase()), RESOURCE.ARCHIVED_AT.isNull)
 			.fetchOne()?.value1()
 
-	private fun insertResource(chapterId: UUID, tool: String, name: String, tags: List<String>): UUID =
-		dsl.insertInto(RESOURCE).set(RESOURCE.TOOL, tool).set(RESOURCE.NAME, name).set(RESOURCE.CHAPTER_ID, chapterId)
+	private fun insertResource(chapterId: UUID, tool: String, name: String, tags: List<String>, id: UUID): UUID =
+		dsl.insertInto(RESOURCE).set(RESOURCE.ID, id).set(RESOURCE.TOOL, tool).set(RESOURCE.NAME, name).set(RESOURCE.CHAPTER_ID, chapterId)
 			.set(RESOURCE.TAGS, tags.toTypedArray()).set(RESOURCE.MANAGED, "portal")
 			.returningResult(RESOURCE.ID).fetchSingle().value1()!!
 

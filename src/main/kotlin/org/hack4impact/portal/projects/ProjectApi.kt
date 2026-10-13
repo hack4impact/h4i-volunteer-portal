@@ -20,6 +20,8 @@ data class ProjectSummary(
 	val members: Int,
 	val resources: Int,
 	val updatedAt: OffsetDateTime,
+	/** Viewed in a draft: how many of the draft's changes touch this project. */
+	val pendingChanges: Int = 0,
 )
 
 data class ProjectDetail(
@@ -46,8 +48,14 @@ data class ProjectDetail(
 	val lastDryRunAt: OffsetDateTime?,
 	/** The project changed after the latest dry run, so [planned] may be out of date. */
 	val plannedOutOfDate: Boolean,
-	val activity: List<ActivityRow>,
+	/** The latest few; [activityMore] when there's older (GET …/activity). */
+	val activity: List<ActivityItem>,
+	val activityMore: Boolean,
 	val canEdit: Boolean,
+	/** May change who's on the team: chapter leads and co-leads, national, and the project's own leads. */
+	val canEditTeam: Boolean,
+	/** Viewed in a draft: the draft's changes to this project, in words. */
+	val pendingChanges: List<String> = emptyList(),
 )
 
 data class ProjectMemberRow(
@@ -101,14 +109,19 @@ data class ProjectResourceRow(
 	val getting: Int,
 	/** People waiting on the project agreement for it. */
 	val awaitingAgreement: Int,
+	/** Where to open it in the tool, once it exists there. */
+	val url: String? = null,
+	/** How the sync stands for it, person by person. */
+	val sync: ResourceSync = ResourceSync(),
 )
+
+/** Sync records for one resource, counted by state (in sync, invited and not accepted yet, …). */
+data class ResourceSync(val inSync: Int = 0, val waitingOnMember: Int = 0, val manualTask: Int = 0, val pending: Int = 0, val failing: Int = 0)
 
 /** [status]: has_page, planned, no_route (no route and no default) or not_set_up (no Notion settings). */
 data class NotionPlan(val status: String, val title: String, val pageId: String?, val parentPageId: String?, val parentPath: String?, val matchedBy: String?)
 
 data class AccessPreview(val people: Int, val grants: Int, val awaitingAgreement: Int, val asIfActive: Boolean)
-
-data class ActivityRow(val at: OffsetDateTime, val actor: String?, val action: String, val detail: String?)
 
 data class ProjectRoleOption(val id: UUID, val name: String, val isLead: Boolean)
 
@@ -131,6 +144,9 @@ data class ProjectInput(
 data class StatusChange(val status: String)
 
 data class MemberInput(val personId: UUID, val roleId: UUID? = null)
+
+/** Someone who could join a project's team. */
+data class TeamCandidate(val personId: UUID, val name: String, val status: String)
 
 data class MemberRoleInput(val roleId: UUID? = null)
 

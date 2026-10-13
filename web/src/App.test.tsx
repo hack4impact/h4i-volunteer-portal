@@ -35,10 +35,36 @@ describe('App', () => {
     expect(await screen.findByText(/Use your Hack4Impact Google account/)).toBeInTheDocument()
   })
 
-  it('tells a signed-in person without a role that they have no chapter access', async () => {
-    api({ '/api/me': [200, me([])] })
+  it('tells someone whose Google account isn’t linked to a member that they have no access', async () => {
+    api({ '/api/me': [200, { ...me([]), personId: null }] })
     render(<App />)
     expect(await screen.findByRole('heading', { name: 'No chapter access yet' })).toBeInTheDocument()
+  })
+
+  it('shows a member without a chapter role their projects, access and why, and agreements to sign', async () => {
+    api({
+      '/api/me': [200, { ...me([]), email: 'marcus@hack4impact.org', name: 'Marcus Chen' }],
+      '/api/me/home': [200, {
+        name: 'Marcus Chen', status: 'active', chapters: [{ code: 'demo', name: 'Hack4Impact Demo University', role: null }],
+        projects: [
+          { chapterCode: 'demo', chapter: 'Hack4Impact Demo University', slug: 'food-rescue-network', name: 'Food Rescue Network', status: 'active', role: 'Developer', leads: false, agreementStatus: 'signed', canOpen: false },
+          { chapterCode: 'demo', chapter: 'Hack4Impact Demo University', slug: 'tutor-match', name: 'Tutor Match', status: 'active', role: 'Developer', leads: false, agreementStatus: 'pending', canOpen: false },
+        ],
+        access: [
+          { tool: 'slack', name: 'demo-general', url: 'https://slack.com/app_redirect?channel=C1', state: 'ready', access: 'write', reasons: ['Member of Hack4Impact Demo University'] },
+          { tool: 'github', name: 'demo-tutor-match', url: null, state: 'after_agreement', access: 'write', reasons: ['After you sign the Tutor Match agreement'] },
+        ],
+        agreements: [{ id: 'a1', name: 'Project agreement', project: 'Tutor Match', status: 'sent', sentAt: '2026-10-08T12:00:00Z', signedAt: null, hasPdf: false, canSign: false }],
+      }],
+    })
+    render(<App />)
+    expect(await screen.findByRole('heading', { name: 'Marcus Chen' })).toBeInTheDocument()
+    expect(screen.getByText('An agreement is waiting for your signature')).toBeInTheDocument()
+    const access = screen.getByRole('list', { name: 'Your access' })
+    expect(within(access).getByRole('link', { name: '#demo-general' })).toHaveAttribute('href', 'https://slack.com/app_redirect?channel=C1')
+    expect(within(access).getByText('Why: Member of Hack4Impact Demo University')).toBeInTheDocument()
+    expect(within(access).getByText('After you sign the agreement')).toBeInTheDocument()
+    expect(screen.getByText('Waiting for you: the link is in your email')).toBeInTheDocument()
   })
 
   it("takes a lead to their chapter, and the members tab shows status as words and filters", async () => {
@@ -124,14 +150,18 @@ describe('App', () => {
     })
     const project = {
       id: 'pr1', name: 'RISE DC', slug: 'rise-dc', status: 'draft', type: null, tags: ['lts'], termId: null, term: 'Fall 2026', partner: 'RISE DC Inc',
-      startsOn: null, endsOn: null, agreementsSigned: 0, canEdit: true,
+      startsOn: null, endsOn: null, agreementsSigned: 0, canEdit: true, canEditTeam: true, pendingChanges: [],
       members: [{ personId: 'p2', name: 'Ada Lovelace', email: null, status: 'active', roleId: null, role: null, isLead: false, agreementStatus: 'pending' }],
       resources: [resource('r1', 'slack', 'umd-rise-dc', false), resource('r2', 'github', 'umd-rise-dc', true)],
       notion: { status: 'planned', title: 'RISE DC (Fall 2026)', pageId: null, parentPageId: 'x', parentPath: 'Hack4Impact-UMD / Long Term Success', matchedBy: 'tag lts' },
       preview: { people: 1, grants: 1, awaitingAgreement: 1, asIfActive: true },
       planned: [{ kind: 'create_resource', tool: 'slack', resource: 'umd-rise-dc', person: null, accountId: null, fromAccess: null, toAccess: null }],
       lastDryRunAt: '2026-10-10T12:00:00Z', plannedOutOfDate: true,
-      activity: [{ at: '2026-10-10T12:00:00Z', actor: 'Lena Lead', action: 'project.create', detail: 'Created RISE DC with 4 standard resources' }],
+      activity: [
+        { at: '2026-10-11T12:00:00Z', kind: 'sync', text: 'Updated access for 5 people', actor: null, details: ['Ada Test added to #umd-rise-dc', 'Bo Test added to #umd-rise-dc', 'Cy Test added to #umd-rise-dc', 'Di Test added to #umd-rise-dc', 'Ed Test added to #umd-rise-dc'] },
+        { at: '2026-10-10T12:00:00Z', kind: 'change', text: 'Created RISE DC with 4 standard resources', actor: 'Lena Lead', details: [] },
+      ],
+      activityMore: true,
     }
     api({
       '/api/me': [200, me([umd])],
@@ -144,6 +174,8 @@ describe('App', () => {
       'POST /api/chapters/umd/projects': [201, project],
       '/api/chapters/umd/projects/rise-dc': [200, project],
       '/api/chapters/umd/projects/rise-dc/members': [200, project],
+      '/api/chapters/umd/projects/rise-dc/activity': [200, { items: [{ at: '2026-10-09T12:00:00Z', kind: 'agreement', text: 'Ada Test signed the project agreement', actor: null, details: [] }], more: false }],
+      '/api/chapters/umd/projects/rise-dc/candidates': [200, [{ personId: 'p3', name: 'Alan Alumnus', status: 'alumni' }]],
       '/api/chapters/umd/sync/run': [202, {}],
     })
     render(<App />)
@@ -154,17 +186,23 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: 'RISE DC' })).toBeInTheDocument()
     expect(screen.getByText(/Nobody gets access from a draft/)).toBeInTheDocument()
-    const github = screen.getByRole('region', { name: 'GitHub' })
-    expect(within(github).getByText(/Whole team · write · after agreement/)).toBeInTheDocument()
-    expect(within(github).getByText('To be created')).toBeInTheDocument()
-    expect(within(screen.getByRole('region', { name: 'Slack' })).getByText(/already has something called umd-rise-dc/)).toBeInTheDocument()
-    expect(screen.getByText(/will be created under/)).toBeInTheDocument()
-    expect(screen.getByText('Hack4Impact-UMD / Long Term Success')).toBeInTheDocument()
+    // One box per tool, each with its own Add; each resource with who gets it, the agreement, and how the sync stands.
+    const github = within(screen.getByRole('region', { name: /GitHub teams/ })).getByRole('group', { name: /^GitHub/ })
+    expect(within(github).getByText(/Whole team · Write/)).toBeInTheDocument()
+    expect(within(github).getByText('Needs agreement')).toBeInTheDocument()
+    expect(within(github).getByText(/To be created|Created when the project starts/)).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: /Slack channels/ })).getByText(/already has something called umd-rise-dc/)).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: /Notion page/ })).getByText(/Hack4Impact-UMD \/ Long Term Success/)).toBeInTheDocument()
     expect(screen.getByText(/The project changed since then/)).toBeInTheDocument()
-    expect(within(screen.getByRole('region', { name: /^Team/ })).getByText('Agreement not sent yet')).toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'Team' })).getByText('Ada Lovelace')).toBeInTheDocument() // the team, in the sidebar
+    expect(screen.getByLabelText('Project agreement')).toHaveTextContent('0 of 1 signed')
+    await userEvent.click(screen.getByRole('button', { name: 'Manage team' })) // changes happen in a dialog
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Agreement not sent yet')).toBeInTheDocument()
 
+    await screen.findByRole('option', { name: /Alan Alumnus/ }) // the people who can join load on their own
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Person to add' }), 'p3')
-    await userEvent.click(within(screen.getByRole('region', { name: /^Team/ })).getByRole('button', { name: 'Add' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
     const calls = () => vi.mocked(fetch).mock.calls.map(([r]) => r as Request)
     const add = calls().find((r) => r.method === 'POST' && r.url.endsWith('/members'))!
     expect(await add.clone().json()).toEqual({ personId: 'p3', roleId: null })
@@ -172,6 +210,18 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Run dry run' }))
     await waitFor(() => expect(calls().some((r) => r.method === 'POST' && r.url.endsWith('/sync/run'))).toBe(true))
     expect(screen.getByRole('button', { name: 'Running…' })).toBeDisabled()
+
+    // The activity timeline: a big sync opens to show each person; older activity loads on request.
+    const feed = screen.getByRole('list', { name: 'Activity' })
+    expect(within(feed).getByText(/Lena Lead/)).toBeInTheDocument()
+    expect(within(feed).queryByText('Cy Test added to #umd-rise-dc')).not.toBeInTheDocument()
+    await userEvent.click(within(feed).getByRole('button', { name: 'Show all 5' }))
+    expect(within(feed).getByText('Cy Test added to #umd-rise-dc')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Show all activity' }))
+    expect(await within(feed).findByText('Ada Test signed the project agreement')).toBeInTheDocument()
+    const older = calls().find((r) => r.url.includes('/activity'))!
+    expect(new URL(older.url).searchParams.get('before')).toBe('2026-10-10T12:00:00Z') // older than the last one shown
+    expect(screen.queryByRole('button', { name: 'Show older' })).not.toBeInTheDocument() // nothing older left
   })
 
   it('saves Notion routes in order and shows each page check in words', async () => {
@@ -202,6 +252,44 @@ describe('App', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save and check' }))
     const put = vi.mocked(fetch).mock.calls.map(([r]) => r as Request).find((r) => r.method === 'PUT')!
     expect((await put.clone().json()).routes).toEqual([{ kind: 'type', value: 'new-build', parent: 'cccc' }, { kind: 'tag', value: 'lts', parent: 'bbbb' }])
+  })
+
+  it('plans in a draft: project requests go to the draft, which shows its preview and conflicts', async () => {
+    sessionStorage.setItem('h4i-draft:umd', 'd1')
+    window.history.pushState({}, '', '/chapters/umd/projects')
+    const at = '2026-10-12T12:00:00Z'
+    const draft = { id: 'd1', name: 'Fall 2026 teams', status: 'draft', createdBy: 'Lena Lead', createdAt: at, changes: 2, scheduledFor: null, releasedAt: null, releasedBy: null, releaseError: null }
+    const change = (id: string, position: number, summary: string) => ({ id, position, operation: 'add_member', summary, projectId: 'p1', createdBy: 'Lena Lead', createdAt: at })
+    api({
+      '/api/me': [200, me([umd])],
+      '/api/chapters/umd': [200, { id: 'c1', code: 'umd', name: 'Hack4Impact UMD', status: 'active', role: 'lead', stats: { activeMembers: 2, alumni: 0, liveProjects: 0, leads: 1 }, registrationLink: 'x', notionProblems: 0 }],
+      '/api/chapters/umd/members': [200, []],
+      '/api/chapters/umd/sync': [200, { tools: [], changes: [] }],
+      '/api/chapters/umd/projects': [200, [{ id: 'p1', name: 'RISE DC', slug: 'rise-dc', status: 'active', type: null, tags: [], term: null, partner: null, members: 2, resources: 4, updatedAt: at, pendingChanges: 2 }]],
+      '/api/chapters/umd/drafts/d1': [200, {
+        draft, canEdit: true,
+        changes: [change('c1', 1, 'Add Ada Test to RISE DC'), change('c2', 2, 'Add Bo Test to RISE DC')],
+        conflicts: [{ changeId: 'c2', position: 2, summary: 'Add Bo Test to RISE DC', problem: 'That person isn’t a member of this chapter' }],
+        preview: {
+          adds: 2, removes: 0, accessChanges: 0, people: 1, resources: 2, afterAgreement: 2,
+          perPerson: [{ personId: 'a', name: 'Ada Test', joins: ['RISE DC'], leaves: [], gains: ['umd-rise-dc (Slack)', 'umd-rise-dc@hack4impact.org (Google group)'], loses: [], afterAgreement: ['umd-rise-dc (GitHub)', 'umd-rise-dc (Vaultwarden)'] }],
+        },
+      }],
+    })
+    render(<App />)
+    expect(await screen.findByText(/Planning in the draft/)).toBeInTheDocument()
+    expect(await screen.findByText('2 changes in the draft')).toBeInTheDocument()
+    const list = vi.mocked(fetch).mock.calls.map(([r]) => r as Request).find((r) => new URL(r.url).pathname === '/api/chapters/umd/projects')!
+    expect(new URL(list.url).searchParams.get('draft')).toBe('d1') // the projects as the draft has them
+
+    await userEvent.click(screen.getByRole('link', { name: 'Review and release' }))
+    expect(await screen.findByText('Adds 1 person to 2 resources · 2 more after the project agreement')).toBeInTheDocument()
+    const people = screen.getByRole('list', { name: 'People' })
+    expect(within(people).getByTitle('GitHub: umd-rise-dc')).toBeInTheDocument() // a chip with the tool's icon
+    expect(within(people).getByText('After agreement')).toBeInTheDocument()
+    expect(within(screen.getByRole('list', { name: 'Changes' })).getByText('No longer works')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Release now' })).toBeDisabled() // fix the conflict first
+    sessionStorage.clear()
   })
 
   it('lets national change a tool only after confirming, act on the queue, and retry dead letters', async () => {

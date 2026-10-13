@@ -4,15 +4,15 @@
  */
 
 export interface paths {
-    "/api/national/tools/{tool}": {
+    "/api/adoption/unmatched": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put: operations["setTool"];
+        get: operations["unmatched"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -20,15 +20,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/chapters/{code}/registration-settings": {
+    "/api/agreements/{id}/pdf": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["settings"];
-        put: operations["saveSettings"];
+        get: operations["pdf"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -36,15 +36,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/chapters/{code}/projects/{slug}": {
+    "/api/apply/chapters/{code}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["get"];
-        put: operations["update"];
+        get: operations["chapter_1"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -52,7 +52,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/chapters/{code}/projects/{slug}/resources/{resourceId}": {
+    "/api/apply/chapters/{code}/code": {
         parameters: {
             query?: never;
             header?: never;
@@ -60,15 +60,15 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put: operations["updateResource"];
-        post?: never;
-        delete: operations["detach"];
+        put?: never;
+        post: operations["code"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/chapters/{code}/projects/{slug}/members/{personId}": {
+    "/api/apply/chapters/{code}/verify": {
         parameters: {
             query?: never;
             header?: never;
@@ -76,23 +76,55 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put: operations["setRole"];
-        post?: never;
-        delete: operations["removeMember"];
+        put?: never;
+        post: operations["verify"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/chapters/{code}/notion": {
+    "/api/apply/claim": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["get_1"];
-        put: operations["put"];
+        get?: never;
+        put?: never;
+        post: operations["claim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apply/github/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["githubCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/apply/github/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["githubStart"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -116,7 +148,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/webhooks/documenso": {
+    "/api/apply/me/agreements/{kind}": {
         parameters: {
             query?: never;
             header?: never;
@@ -125,14 +157,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["receive"];
+        post: operations["startAgreement"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/national/sync/run": {
+    "/api/apply/me/submit": {
         parameters: {
             query?: never;
             header?: never;
@@ -141,14 +173,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["run"];
+        post: operations["submit"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/national/queue/{id}": {
+    "/api/apply/roster": {
         parameters: {
             query?: never;
             header?: never;
@@ -157,14 +189,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["decide"];
+        post: operations["roster_1"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/national/dead-letters/retry": {
+    "/api/apply/signout": {
         parameters: {
             query?: never;
             header?: never;
@@ -173,14 +205,94 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["retry"];
+        post: operations["signOut"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/national/claims/send": {
+    "/api/chapters/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["chapter"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/adoption": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/adoption/resources/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["people"];
+        put?: never;
+        post: operations["decide_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_2"];
+        put?: never;
+        post: operations["create_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/drafts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_2"];
+        put: operations["rename"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/drafts/{id}/changes/{changeId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -189,7 +301,455 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["send"];
+        post?: never;
+        delete: operations["removeChange"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/drafts/{id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["discard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/drafts/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["release"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/drafts/{id}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["schedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/drafts/{id}/unschedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["unschedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["members"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/notion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_1"];
+        put: operations["put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/notion/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["check"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_1"];
+        put?: never;
+        post: operations["create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get"];
+        put: operations["update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["activity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["candidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["addMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/members/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["setRole"];
+        post?: never;
+        delete: operations["removeMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["attach"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/resources/{resourceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateResource"];
+        post?: never;
+        delete: operations["detach"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["status"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/registration-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["settings"];
+        put: operations["saveSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/registrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_3"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/registrations/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/registrations/{id}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["decline"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/resources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["resources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["roster"];
+        put?: never;
+        post: operations["upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["sync"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/sync/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["runDryRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["terms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["me_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/agreements/{id}/sign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sign"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/home": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["home"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -228,7 +788,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/chapters/{code}/sync/run": {
+    "/api/national/claims/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/claims/send": {
         parameters: {
             query?: never;
             header?: never;
@@ -237,46 +813,30 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["runDryRun"];
+        post: operations["send"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/chapters/{code}/roster": {
+    "/api/national/dead-letters": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["roster"];
+        get: operations["deadLetters"];
         put?: never;
-        post: operations["upload"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/chapters/{code}/registrations/{id}/decline": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["decline"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/chapters/{code}/registrations/{id}/approve": {
+    "/api/national/dead-letters/retry": {
         parameters: {
             query?: never;
             header?: never;
@@ -285,46 +845,30 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["approve"];
+        post: operations["retry"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/chapters/{code}/projects": {
+    "/api/national/queue": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["list_1"];
+        get: operations["queue"];
         put?: never;
-        post: operations["create"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/chapters/{code}/projects/{slug}/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["status"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/chapters/{code}/projects/{slug}/resources": {
+    "/api/national/queue/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -333,14 +877,14 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["attach"];
+        post: operations["decide"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/chapters/{code}/projects/{slug}/members": {
+    "/api/national/sync/run": {
         parameters: {
             query?: never;
             header?: never;
@@ -349,14 +893,30 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["addMember"];
+        post: operations["run"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/chapters/{code}/notion/check": {
+    "/api/national/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["tools"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/tools/{tool}": {
         parameters: {
             query?: never;
             header?: never;
@@ -364,151 +924,7 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
-        post: operations["check"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/chapters/{code}/adoption/resources/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["people"];
-        put?: never;
-        post: operations["decide_1"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/apply/signout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["signOut"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/apply/roster": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["roster_1"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/apply/me/submit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["submit"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/apply/me/agreements/{kind}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["startAgreement"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/apply/claim": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["claim"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/apply/chapters/{code}/verify": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["verify"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/apply/chapters/{code}/code": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["code"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["status_1"];
-        put?: never;
+        put: operations["setTool"];
         post?: never;
         delete?: never;
         options?: never;
@@ -532,14 +948,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/national/tools": {
+    "/api/status": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["tools"];
+        get: operations["status_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -548,256 +964,16 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/national/queue": {
+    "/api/webhooks/documenso": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["queue"];
+        get?: never;
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/national/dead-letters": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["deadLetters"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/national/claims/preview": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["preview"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["me_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/chapters/{code}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["chapter"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/chapters/{code}/terms": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["terms"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/chapters/{code}/sync": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["sync"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/chapters/{code}/resources": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["resources"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/chapters/{code}/registrations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["list_2"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/chapters/{code}/members": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["members"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/chapters/{code}/adoption": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["report"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/apply/github/start": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["githubStart"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/apply/github/callback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["githubCallback"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/apply/chapters/{code}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["chapter_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/agreements/{id}/pdf": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["pdf"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/adoption/unmatched": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["unmatched"];
-        put?: never;
-        post?: never;
+        post: operations["receive"];
         delete?: never;
         options?: never;
         head?: never;
@@ -808,326 +984,211 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        ToolChange: {
-            enabled: boolean;
-            dryRun: boolean;
-            reason: string | null;
-        };
-        LastRun: {
-            status: string;
-            mode: string;
-            /** Format: date-time */
-            ranAt: string;
-            /** Format: int32 */
-            applied: number;
-            /** Format: int32 */
-            removed: number;
-            error: string | null;
-        };
-        ToolStatus: {
-            tool: string;
-            enabled: boolean;
-            dryRun: boolean;
-            writable: boolean;
-            pauseReason: string | null;
-            /** Format: int32 */
-            maxRemovals: number;
-            lastRun: components["schemas"]["LastRun"] | null;
-        };
-        QuestionInput: {
-            label: string;
-            kind: string;
-            options: string[];
-            required: boolean;
-        };
-        RegistrationSettingsInput: {
-            questions: components["schemas"]["QuestionInput"][];
-            googleDomain: string | null;
-            googleOrgUnit: string | null;
-            applicationsOpen: boolean | null;
-            applicationUrl: string | null;
-        };
-        QuestionView: {
-            /** Format: uuid */
-            id: string;
-            label: string;
-            kind: string;
-            options: string[];
-            required: boolean;
-        };
-        RegistrationSettings: {
-            questions: components["schemas"]["QuestionView"][];
-            googleDomain: string;
-            googleOrgUnit: string | null;
-            applicationsOpen: boolean;
-            applicationUrl: string | null;
-            canEditQuestions: boolean;
-            canEditAccounts: boolean;
-        };
-        ProjectInput: {
-            name: string;
-            slug: string | null;
-            type: string | null;
-            tags: string[];
-            /** Format: uuid */
-            termId: string | null;
-            partner: string | null;
-            /** Format: date */
-            startsOn: string | null;
-            /** Format: date */
-            endsOn: string | null;
-        };
         AccessPreview: {
+            asIfActive: boolean;
             /** Format: int32 */
-            people: number;
+            awaitingAgreement: number;
             /** Format: int32 */
             grants: number;
             /** Format: int32 */
-            awaitingAgreement: number;
-            asIfActive: boolean;
+            people: number;
         };
-        ActivityRow: {
+        AccountSummary: {
+            state: string;
+            tool: string;
+        };
+        ActivityItem: {
+            actor: string | null;
             /** Format: date-time */
             at: string;
-            actor: string | null;
+            details: string[];
+            kind: string;
+            text: string;
+        };
+        ActivityPage: {
+            items: components["schemas"]["ActivityItem"][];
+            more: boolean;
+        };
+        AdoptionDecision: {
             action: string;
-            detail: string | null;
-        };
-        MemberAgreement: {
             /** Format: uuid */
-            id: string;
-            status: string;
-            /** Format: date-time */
-            sentAt: string | null;
-            /** Format: date-time */
-            signedAt: string | null;
-            /** Format: int32 */
-            reminders: number;
-            hasPdf: boolean;
-            error: string | null;
-            declineReason: string | null;
+            projectId: string | null;
+            target: string | null;
         };
-        NotionPlan: {
-            status: string;
-            title: string;
-            pageId: string | null;
-            parentPageId: string | null;
-            parentPath: string | null;
+        AdoptionPerson: {
+            access: string | null;
+            login: string | null;
             matchedBy: string | null;
+            name: string | null;
+            /** Format: uuid */
+            personId: string | null;
+            verdict: string;
         };
-        PlannedChange: {
-            kind: string;
-            tool: string;
-            resource: string;
-            person: string | null;
-            accountId: string | null;
-            fromAccess: string | null;
-            toAccess: string | null;
+        AdoptionReport: {
+            canEdit: boolean;
+            /** Format: date */
+            grandfatheredUntil: string | null;
+            projects: components["schemas"]["ProjectOption"][];
+            resources: components["schemas"]["AdoptionResource"][];
+            scans: components["schemas"]["ScanStatus"][];
         };
-        ProjectDetail: {
+        AdoptionResource: {
+            archived: boolean;
+            /** Format: int32 */
+            expected: number;
+            gone: boolean;
+            /** Format: int32 */
+            grandfathered: number;
             /** Format: uuid */
             id: string;
+            matchMethod: string | null;
             name: string;
-            slug: string;
-            status: string;
-            type: string | null;
-            tags: string[];
             /** Format: uuid */
-            termId: string | null;
-            term: string | null;
-            partner: string | null;
-            /** Format: date */
-            startsOn: string | null;
-            /** Format: date */
-            endsOn: string | null;
-            members: components["schemas"]["ProjectMemberRow"][];
-            resources: components["schemas"]["ProjectResourceRow"][];
-            /** Format: int32 */
-            agreementsSigned: number;
-            notion: components["schemas"]["NotionPlan"];
-            preview: components["schemas"]["AccessPreview"];
-            planned: components["schemas"]["PlannedChange"][];
+            projectId: string | null;
+            projectName: string | null;
             /** Format: date-time */
-            lastDryRunAt: string | null;
-            plannedOutOfDate: boolean;
-            activity: components["schemas"]["ActivityRow"][];
-            canEdit: boolean;
-        };
-        ProjectMemberRow: {
-            /** Format: uuid */
-            personId: string;
-            name: string;
-            email: string | null;
-            status: string;
-            /** Format: uuid */
-            roleId: string | null;
-            role: string | null;
-            agreementStatus: string;
-            agreement: components["schemas"]["MemberAgreement"] | null;
-            lead: boolean;
-        };
-        ProjectResourceRow: {
-            /** Format: uuid */
-            resourceId: string;
-            tool: string;
-            name: string;
+            snapshotAt: string | null;
             state: string;
-            audience: string;
-            /** Format: uuid */
-            roleId: string | null;
-            role: string | null;
-            access: string;
-            requiresAgreement: boolean;
-            tags: string[];
-            sharedWith: string[];
-            existsInTool: boolean;
+            suggestedSlug: string | null;
+            target: string | null;
+            tool: string;
             /** Format: int32 */
-            getting: number;
+            unknownAccounts: number;
             /** Format: int32 */
-            awaitingAgreement: number;
+            wouldAdd: number | null;
         };
-        ResourceInput: {
-            /** Format: uuid */
-            resourceId: string | null;
-            tool: string | null;
-            name: string | null;
-            audience: string;
-            /** Format: uuid */
-            roleId: string | null;
-            access: string;
-            requiresAgreement: boolean;
-            tags: string[];
+        AgreementStart: {
+            url: string;
         };
-        MemberRoleInput: {
-            /** Format: uuid */
-            roleId: string | null;
-        };
-        NotionRouteInput: {
+        AgreementTemplateInput: {
+            documensoTemplateId: string;
             kind: string;
-            value: string;
-            parent: string;
+            name: string;
         };
-        NotionSettingsInput: {
-            teamspaceId: string | null;
-            defaultParent: string | null;
-            template: string | null;
-            titlePattern: string;
-            routes: components["schemas"]["NotionRouteInput"][];
-        };
-        NotionPageRef: {
-            pageId: string;
-            path: string | null;
-            error: string | null;
+        AgreementTemplateView: {
+            active: boolean;
             /** Format: date-time */
-            checkedAt: string | null;
-        };
-        NotionRouteView: {
+            createdAt: string;
+            documensoTemplateId: string;
+            /** Format: uuid */
+            id: string;
             kind: string;
-            value: string;
-            parent: components["schemas"]["NotionPageRef"];
-        };
-        NotionSettingsView: {
-            configured: boolean;
-            teamspaceId: string | null;
-            defaultParent: components["schemas"]["NotionPageRef"] | null;
-            template: components["schemas"]["NotionPageRef"] | null;
-            titlePattern: string;
-            routes: components["schemas"]["NotionRouteView"][];
+            name: string;
             /** Format: int32 */
-            problems: number;
-            canEdit: boolean;
-        };
-        Details: {
-            firstName: string | null;
-            lastName: string | null;
-            preferredName: string | null;
-            personalEmail: string | null;
+            sent: number;
             /** Format: int32 */
-            graduationYear: number | null;
-            roleInterest: string | null;
-            stillActive: boolean | null;
+            version: number;
         };
-        DetailsInput: {
-            details: components["schemas"]["Details"];
-            answers: {
-                [key: string]: string;
-            };
+        AgreementTemplates: {
+            connected: boolean;
+            sending: boolean;
+            templates: components["schemas"]["AgreementTemplateView"][];
         };
         ApplicantAgreement: {
             kind: string;
             name: string;
-            status: string;
             signUrl: string | null;
+            status: string;
         };
         ApplicantView: {
-            kind: string;
-            status: string;
-            chapter: components["schemas"]["ApplyChapter"];
-            schoolEmail: string | null;
-            emailVerified: boolean;
-            githubLogin: string | null;
-            githubConfigured: boolean;
-            details: components["schemas"]["Details"];
+            account: string | null;
+            agreements: components["schemas"]["ApplicantAgreement"][];
             answers: {
                 [key: string]: string;
             };
-            missing: string[];
+            chapter: components["schemas"]["ApplyChapter"];
             declineReason: string | null;
-            account: string | null;
-            agreements: components["schemas"]["ApplicantAgreement"][];
+            details: components["schemas"]["Details"];
+            emailVerified: boolean;
+            githubConfigured: boolean;
+            githubLogin: string | null;
+            kind: string;
+            missing: string[];
+            schoolEmail: string | null;
+            status: string;
         };
         ApplyChapter: {
-            code: string;
-            name: string;
-            emailDomains: string[];
-            questions: components["schemas"]["QuestionView"][];
-            applicationsOpen: boolean;
             applicationUrl: string | null;
+            applicationsOpen: boolean;
+            code: string;
+            emailDomains: string[];
+            name: string;
+            questions: components["schemas"]["QuestionView"][];
         };
-        JsonNode: {
-            empty: boolean;
-            array: boolean;
-            null: boolean;
-            object: boolean;
-            float: boolean;
-            container: boolean;
-            string: boolean;
-            boolean: boolean;
-            number: boolean;
-            /** @enum {string} */
-            nodeType: "ARRAY" | "BINARY" | "BOOLEAN" | "MISSING" | "NULL" | "NUMBER" | "OBJECT" | "POJO" | "STRING";
-            integralNumber: boolean;
-            missingNode: boolean;
-            valueNode: boolean;
-            pojo: boolean;
-            floatingPointNumber: boolean;
-            short: boolean;
-            int: boolean;
-            long: boolean;
-            double: boolean;
-            bigDecimal: boolean;
-            bigInteger: boolean;
-            /** @deprecated */
-            textual: boolean;
-            binary: boolean;
-            embeddedValue: boolean;
+        ApproveInput: {
+            /** Format: uuid */
+            personId: string | null;
         };
-        TaskDecision: {
-            action: string;
-            reason: string | null;
-        };
-        QueueTask: {
+        ChapterOverview: {
+            code: string;
             /** Format: uuid */
             id: string;
-            tool: string;
-            action: string;
-            description: string;
-            /** Format: date-time */
-            createdAt: string;
+            name: string;
+            /** Format: int32 */
+            notionProblems: number;
+            registrationLink: string;
+            role: string;
+            stats: components["schemas"]["ChapterStats"];
             status: string;
-            doneBy: string | null;
+        };
+        ChapterRef: {
+            code: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            role: string;
+        };
+        ChapterResourceOption: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            projects: string[];
+            state: string;
+            tool: string;
+        };
+        ChapterStats: {
+            /** Format: int32 */
+            activeMembers: number;
+            /** Format: int32 */
+            alumni: number;
+            /** Format: int32 */
+            leads: number;
+            /** Format: int32 */
+            liveProjects: number;
+        };
+        ChapterSync: {
+            changes: components["schemas"]["PlannedChange"][];
+            tools: components["schemas"]["ToolSync"][];
+        };
+        ClaimPreview: {
+            /** Format: int32 */
+            alreadySent: number;
+            /** Format: int32 */
+            eligible: number;
+            /** Format: int32 */
+            withoutEmail: number;
+        };
+        ClaimSend: {
+            chapter: string | null;
+            /** Format: int32 */
+            limit: number;
+        };
+        CodeRequest: {
+            email: string;
+        };
+        DeadLetter: {
+            /** Format: int32 */
+            attempts: number;
             /** Format: date-time */
-            doneAt: string | null;
+            lastAttemptAt: string | null;
+            lastError: string | null;
+            person: string;
+            /** Format: uuid */
+            personId: string;
+            resource: string;
+            /** Format: uuid */
+            resourceId: string;
+            tool: string;
         };
         DeadLetterRef: {
             /** Format: uuid */
@@ -1135,116 +1196,163 @@ export interface components {
             /** Format: uuid */
             resourceId: string;
         };
-        DeadLetter: {
-            /** Format: uuid */
-            personId: string;
-            person: string;
-            /** Format: uuid */
-            resourceId: string;
-            tool: string;
-            resource: string;
-            /** Format: int32 */
-            attempts: number;
-            lastError: string | null;
-            /** Format: date-time */
-            lastAttemptAt: string | null;
-        };
-        ClaimSend: {
-            chapter: string | null;
-            /** Format: int32 */
-            limit: number;
-        };
-        ClaimPreview: {
-            /** Format: int32 */
-            eligible: number;
-            /** Format: int32 */
-            alreadySent: number;
-            /** Format: int32 */
-            withoutEmail: number;
-        };
-        AgreementTemplateInput: {
-            kind: string;
-            name: string;
-            documensoTemplateId: string;
-        };
-        AgreementTemplateView: {
-            /** Format: uuid */
-            id: string;
-            kind: string;
-            name: string;
-            documensoTemplateId: string;
-            /** Format: int32 */
-            version: number;
-            active: boolean;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: int32 */
-            sent: number;
-        };
-        AgreementTemplates: {
-            templates: components["schemas"]["AgreementTemplateView"][];
-            connected: boolean;
-            sending: boolean;
-        };
-        RosterInput: {
-            csv: string;
-        };
-        RosterInviteView: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            schoolEmail: string;
-            status: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            expiresAt: string;
-        };
-        RosterResult: {
-            /** Format: int32 */
-            invited: number;
-            skipped: string[];
-            invites: components["schemas"]["RosterInviteView"][];
-        };
         DeclineInput: {
             reason: string;
         };
-        MatchView: {
-            /** Format: uuid */
-            personId: string;
-            name: string;
-            status: string;
-            chapters: string[];
-            why: string[];
-        };
-        RegistrationSummary: {
-            /** Format: uuid */
-            id: string;
-            kind: string;
-            status: string;
-            name: string;
-            schoolEmail: string | null;
-            githubLogin: string | null;
+        Details: {
+            firstName: string | null;
             /** Format: int32 */
             graduationYear: number | null;
+            lastName: string | null;
+            personalEmail: string | null;
+            preferredName: string | null;
             roleInterest: string | null;
-            matchStatus: string | null;
-            matches: components["schemas"]["MatchView"][];
+            stillActive: boolean | null;
+        };
+        DetailsInput: {
             answers: {
                 [key: string]: string;
             };
-            githubChanged: boolean;
-            /** Format: date-time */
-            submittedAt: string | null;
-            /** Format: date-time */
-            decidedAt: string | null;
-            declineReason: string | null;
+            details: components["schemas"]["Details"];
         };
-        ApproveInput: {
+        DraftChange: {
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: string | null;
+            /** Format: uuid */
+            id: string;
+            operation: string;
+            /** Format: int32 */
+            position: number;
+            /** Format: uuid */
+            projectId: string | null;
+            summary: string;
+        };
+        DraftConflict: {
+            /** Format: uuid */
+            changeId: string;
+            /** Format: int32 */
+            position: number;
+            problem: string;
+            summary: string;
+        };
+        DraftDetail: {
+            canEdit: boolean;
+            changes: components["schemas"]["DraftChange"][];
+            conflicts: components["schemas"]["DraftConflict"][];
+            draft: components["schemas"]["DraftSummary"];
+            preview: components["schemas"]["DraftPreview"];
+        };
+        DraftInput: {
+            name: string;
+        };
+        DraftPreview: {
+            /** Format: int32 */
+            accessChanges: number;
+            /** Format: int32 */
+            adds: number;
+            /** Format: int32 */
+            afterAgreement: number;
+            /** Format: int32 */
+            people: number;
+            perPerson: components["schemas"]["PersonAccessChange"][];
+            /** Format: int32 */
+            removes: number;
+            /** Format: int32 */
+            resources: number;
+        };
+        DraftSummary: {
+            /** Format: int32 */
+            changes: number;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: string | null;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            releaseError: string | null;
+            /** Format: date-time */
+            releasedAt: string | null;
+            releasedBy: string | null;
+            /** Format: date-time */
+            scheduledFor: string | null;
+            status: string;
+        };
+        JsonNode: {
+            array: boolean;
+            bigDecimal: boolean;
+            bigInteger: boolean;
+            binary: boolean;
+            boolean: boolean;
+            container: boolean;
+            double: boolean;
+            embeddedValue: boolean;
+            empty: boolean;
+            float: boolean;
+            floatingPointNumber: boolean;
+            int: boolean;
+            integralNumber: boolean;
+            long: boolean;
+            missingNode: boolean;
+            /** @enum {string} */
+            nodeType: "ARRAY" | "BINARY" | "BOOLEAN" | "MISSING" | "NULL" | "NUMBER" | "OBJECT" | "POJO" | "STRING";
+            null: boolean;
+            number: boolean;
+            object: boolean;
+            pojo: boolean;
+            short: boolean;
+            string: boolean;
+            /** @deprecated */
+            textual: boolean;
+            valueNode: boolean;
+        };
+        LastRun: {
+            /** Format: int32 */
+            applied: number;
+            error: string | null;
+            mode: string;
+            /** Format: date-time */
+            ranAt: string;
+            /** Format: int32 */
+            removed: number;
+            status: string;
+        };
+        MatchView: {
+            chapters: string[];
+            name: string;
+            /** Format: uuid */
+            personId: string;
+            status: string;
+            why: string[];
+        };
+        Me: {
+            chapters: components["schemas"]["ChapterRef"][];
+            email: string;
+            name: string | null;
+            nationalAdmin: boolean;
             /** Format: uuid */
             personId: string | null;
         };
-        StatusChange: {
+        MemberAgreement: {
+            declineReason: string | null;
+            error: string | null;
+            hasPdf: boolean;
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            reminders: number;
+            /** Format: date-time */
+            sentAt: string | null;
+            /** Format: date-time */
+            signedAt: string | null;
+            status: string;
+        };
+        MemberHome: {
+            access: components["schemas"]["MyAccess"][];
+            agreements: components["schemas"]["MyAgreement"][];
+            chapters: components["schemas"]["MyChapter"][];
+            name: string;
+            projects: components["schemas"]["MyProject"][];
             status: string;
         };
         MemberInput: {
@@ -1253,44 +1361,179 @@ export interface components {
             /** Format: uuid */
             roleId: string | null;
         };
-        AdoptionDecision: {
-            action: string;
-            target: string | null;
+        MemberRoleInput: {
             /** Format: uuid */
-            projectId: string | null;
+            roleId: string | null;
         };
-        AdoptionReport: {
-            /** Format: date */
-            grandfatheredUntil: string | null;
-            scans: components["schemas"]["ScanStatus"][];
-            resources: components["schemas"]["AdoptionResource"][];
-            projects: components["schemas"]["ProjectOption"][];
-            canEdit: boolean;
+        MemberRow: {
+            accounts: components["schemas"]["AccountSummary"][];
+            chapterRole: string | null;
+            claimed: boolean;
+            email: string | null;
+            kind: string;
+            name: string;
+            /** Format: uuid */
+            personId: string;
+            projects: string[];
+            status: string;
+            title: string | null;
         };
-        AdoptionResource: {
+        MyAccess: {
+            access: string;
+            name: string;
+            reasons: string[];
+            state: string;
+            tool: string;
+            url: string | null;
+        };
+        MyAgreement: {
+            canSign: boolean;
+            hasPdf: boolean;
             /** Format: uuid */
             id: string;
-            tool: string;
             name: string;
-            state: string;
-            target: string | null;
-            /** Format: uuid */
-            projectId: string | null;
-            projectName: string | null;
-            suggestedSlug: string | null;
-            matchMethod: string | null;
-            archived: boolean;
-            gone: boolean;
+            project: string | null;
             /** Format: date-time */
-            snapshotAt: string | null;
+            sentAt: string | null;
+            /** Format: date-time */
+            signedAt: string | null;
+            status: string;
+        };
+        MyChapter: {
+            code: string;
+            name: string;
+            role: string | null;
+        };
+        MyProject: {
+            agreementStatus: string;
+            canOpen: boolean;
+            chapter: string;
+            chapterCode: string;
+            leads: boolean;
+            name: string;
+            role: string | null;
+            slug: string;
+            status: string;
+        };
+        NotionPageRef: {
+            /** Format: date-time */
+            checkedAt: string | null;
+            error: string | null;
+            pageId: string;
+            path: string | null;
+        };
+        NotionPlan: {
+            matchedBy: string | null;
+            pageId: string | null;
+            parentPageId: string | null;
+            parentPath: string | null;
+            status: string;
+            title: string;
+        };
+        NotionRouteInput: {
+            kind: string;
+            parent: string;
+            value: string;
+        };
+        NotionRouteView: {
+            kind: string;
+            parent: components["schemas"]["NotionPageRef"];
+            value: string;
+        };
+        NotionSettingsInput: {
+            defaultParent: string | null;
+            routes: components["schemas"]["NotionRouteInput"][];
+            teamspaceId: string | null;
+            template: string | null;
+            titlePattern: string;
+        };
+        NotionSettingsView: {
+            canEdit: boolean;
+            configured: boolean;
+            defaultParent: components["schemas"]["NotionPageRef"] | null;
             /** Format: int32 */
-            expected: number;
+            problems: number;
+            routes: components["schemas"]["NotionRouteView"][];
+            teamspaceId: string | null;
+            template: components["schemas"]["NotionPageRef"] | null;
+            titlePattern: string;
+        };
+        PersonAccessChange: {
+            afterAgreement: string[];
+            gains: string[];
+            joins: string[];
+            leaves: string[];
+            loses: string[];
+            name: string;
+            /** Format: uuid */
+            personId: string;
+        };
+        PlannedChange: {
+            accountId: string | null;
+            fromAccess: string | null;
+            kind: string;
+            person: string | null;
+            resource: string;
+            toAccess: string | null;
+            tool: string;
+        };
+        ProjectDetail: {
+            activity: components["schemas"]["ActivityItem"][];
+            activityMore: boolean;
             /** Format: int32 */
-            grandfathered: number;
-            /** Format: int32 */
-            unknownAccounts: number;
-            /** Format: int32 */
-            wouldAdd: number | null;
+            agreementsSigned: number;
+            canEdit: boolean;
+            canEditTeam: boolean;
+            /** Format: date */
+            endsOn: string | null;
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            lastDryRunAt: string | null;
+            members: components["schemas"]["ProjectMemberRow"][];
+            name: string;
+            notion: components["schemas"]["NotionPlan"];
+            partner: string | null;
+            pendingChanges: string[];
+            planned: components["schemas"]["PlannedChange"][];
+            plannedOutOfDate: boolean;
+            preview: components["schemas"]["AccessPreview"];
+            resources: components["schemas"]["ProjectResourceRow"][];
+            slug: string;
+            /** Format: date */
+            startsOn: string | null;
+            status: string;
+            tags: string[];
+            term: string | null;
+            /** Format: uuid */
+            termId: string | null;
+            type: string | null;
+        };
+        ProjectInput: {
+            /** Format: date */
+            endsOn: string | null;
+            name: string;
+            partner: string | null;
+            slug: string | null;
+            /** Format: date */
+            startsOn: string | null;
+            tags: string[];
+            /** Format: uuid */
+            termId: string | null;
+            type: string | null;
+        };
+        ProjectMemberRow: {
+            agreement: components["schemas"]["MemberAgreement"] | null;
+            agreementStatus: string;
+            email: string | null;
+            lead: boolean;
+            name: string;
+            /** Format: uuid */
+            personId: string;
+            role: string | null;
+            /** Format: uuid */
+            roleId: string | null;
+            status: string;
         };
         ProjectOption: {
             /** Format: uuid */
@@ -1299,164 +1542,257 @@ export interface components {
             slug: string;
             status: string;
         };
-        ScanStatus: {
+        ProjectResourceRow: {
+            access: string;
+            audience: string;
+            /** Format: int32 */
+            awaitingAgreement: number;
+            existsInTool: boolean;
+            /** Format: int32 */
+            getting: number;
+            name: string;
+            requiresAgreement: boolean;
+            /** Format: uuid */
+            resourceId: string;
+            role: string | null;
+            /** Format: uuid */
+            roleId: string | null;
+            sharedWith: string[];
+            state: string;
+            sync: components["schemas"]["ResourceSync"];
+            tags: string[];
             tool: string;
+            url: string | null;
+        };
+        ProjectRoleOption: {
+            /** Format: uuid */
+            id: string;
+            lead: boolean;
+            name: string;
+        };
+        ProjectSummary: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            members: number;
+            name: string;
+            partner: string | null;
+            /** Format: int32 */
+            pendingChanges: number;
+            /** Format: int32 */
+            resources: number;
+            slug: string;
+            status: string;
+            tags: string[];
+            term: string | null;
+            type: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        QuestionInput: {
+            kind: string;
+            label: string;
+            options: string[];
+            required: boolean;
+        };
+        QuestionView: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            label: string;
+            options: string[];
+            required: boolean;
+        };
+        QueueTask: {
+            action: string;
+            /** Format: date-time */
+            createdAt: string;
+            description: string;
+            /** Format: date-time */
+            doneAt: string | null;
+            doneBy: string | null;
+            /** Format: uuid */
+            id: string;
+            status: string;
+            tool: string;
+        };
+        RegistrationSettings: {
+            applicationUrl: string | null;
+            applicationsOpen: boolean;
+            canEditAccounts: boolean;
+            canEditQuestions: boolean;
+            googleDomain: string;
+            googleOrgUnit: string | null;
+            questions: components["schemas"]["QuestionView"][];
+        };
+        RegistrationSettingsInput: {
+            applicationUrl: string | null;
+            applicationsOpen: boolean | null;
+            googleDomain: string | null;
+            googleOrgUnit: string | null;
+            questions: components["schemas"]["QuestionInput"][];
+        };
+        RegistrationSummary: {
+            answers: {
+                [key: string]: string;
+            };
+            /** Format: date-time */
+            decidedAt: string | null;
+            declineReason: string | null;
+            githubChanged: boolean;
+            githubLogin: string | null;
+            /** Format: int32 */
+            graduationYear: number | null;
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            matchStatus: string | null;
+            matches: components["schemas"]["MatchView"][];
+            name: string;
+            roleInterest: string | null;
+            schoolEmail: string | null;
             status: string;
             /** Format: date-time */
-            ranAt: string;
+            submittedAt: string | null;
+        };
+        ReleaseResult: {
+            conflicts: components["schemas"]["DraftConflict"][];
+            preview: components["schemas"]["DraftPreview"] | null;
+            released: boolean;
+        };
+        ResourceInput: {
+            access: string;
+            audience: string;
+            name: string | null;
+            requiresAgreement: boolean;
+            /** Format: uuid */
+            resourceId: string | null;
+            /** Format: uuid */
+            roleId: string | null;
+            tags: string[];
+            tool: string | null;
+        };
+        ResourceSync: {
+            /** Format: int32 */
+            failing: number;
+            /** Format: int32 */
+            inSync: number;
+            /** Format: int32 */
+            manualTask: number;
+            /** Format: int32 */
+            pending: number;
+            /** Format: int32 */
+            waitingOnMember: number;
+        };
+        RosterInput: {
+            csv: string;
+        };
+        RosterInviteView: {
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            schoolEmail: string;
+            status: string;
+        };
+        RosterResult: {
+            /** Format: int32 */
+            invited: number;
+            invites: components["schemas"]["RosterInviteView"][];
+            skipped: string[];
+        };
+        ScanStatus: {
+            coversChapter: boolean;
             error: string | null;
+            /** Format: date-time */
+            ranAt: string;
             /** Format: int32 */
             resourcesFound: number;
-            coversChapter: boolean;
+            status: string;
+            tool: string;
         };
-        TokenRequest: {
-            token: string;
+        ScheduleInput: {
+            /** Format: date-time */
+            at: string;
         };
-        AgreementStart: {
+        SignLink: {
             url: string;
         };
-        VerifyRequest: {
-            email: string;
-            code: string;
-        };
-        CodeRequest: {
-            email: string;
+        StatusChange: {
+            status: string;
         };
         StatusResponse: {
             service: string;
             version: string;
         };
-        ProjectRoleOption: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            lead: boolean;
+        TaskDecision: {
+            action: string;
+            reason: string | null;
         };
-        ChapterRef: {
-            /** Format: uuid */
-            id: string;
-            code: string;
+        TeamCandidate: {
             name: string;
-            role: string;
-        };
-        Me: {
-            email: string;
-            name: string | null;
             /** Format: uuid */
-            personId: string | null;
-            nationalAdmin: boolean;
-            chapters: components["schemas"]["ChapterRef"][];
-        };
-        ChapterOverview: {
-            /** Format: uuid */
-            id: string;
-            code: string;
-            name: string;
+            personId: string;
             status: string;
-            role: string;
-            stats: components["schemas"]["ChapterStats"];
-            registrationLink: string;
-            /** Format: int32 */
-            notionProblems: number;
-        };
-        ChapterStats: {
-            /** Format: int32 */
-            activeMembers: number;
-            /** Format: int32 */
-            alumni: number;
-            /** Format: int32 */
-            liveProjects: number;
-            /** Format: int32 */
-            leads: number;
         };
         TermOption: {
             /** Format: uuid */
             id: string;
             label: string;
         };
-        ChapterSync: {
-            tools: components["schemas"]["ToolSync"][];
-            changes: components["schemas"]["PlannedChange"][];
+        TokenRequest: {
+            token: string;
+        };
+        ToolChange: {
+            dryRun: boolean;
+            enabled: boolean;
+            reason: string | null;
+        };
+        ToolStatus: {
+            dryRun: boolean;
+            enabled: boolean;
+            lastRun: components["schemas"]["LastRun"] | null;
+            /** Format: int32 */
+            maxRemovals: number;
+            pauseReason: string | null;
+            tool: string;
+            writable: boolean;
         };
         ToolSync: {
-            tool: string;
-            status: string;
-            mode: string;
-            /** Format: date-time */
-            ranAt: string;
-            error: string | null;
             /** Format: int32 */
             adds: number;
             /** Format: int32 */
             changes: number;
             /** Format: int32 */
-            removals: number;
+            creates: number;
             /** Format: int32 */
             drift: number;
-            /** Format: int32 */
-            unmatchedAccounts: number;
+            error: string | null;
             /** Format: int32 */
             missingResources: number;
-            /** Format: int32 */
-            creates: number;
-        };
-        ChapterResourceOption: {
-            /** Format: uuid */
-            id: string;
-            tool: string;
-            name: string;
-            state: string;
-            projects: string[];
-        };
-        ProjectSummary: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            slug: string;
-            status: string;
-            type: string | null;
-            tags: string[];
-            term: string | null;
-            partner: string | null;
-            /** Format: int32 */
-            members: number;
-            /** Format: int32 */
-            resources: number;
+            mode: string;
             /** Format: date-time */
-            updatedAt: string;
-        };
-        AccountSummary: {
-            tool: string;
-            state: string;
-        };
-        MemberRow: {
-            /** Format: uuid */
-            personId: string;
-            name: string;
-            email: string | null;
+            ranAt: string;
+            /** Format: int32 */
+            removals: number;
             status: string;
-            kind: string;
-            chapterRole: string | null;
-            title: string | null;
-            projects: string[];
-            accounts: components["schemas"]["AccountSummary"][];
-            claimed: boolean;
-        };
-        AdoptionPerson: {
-            /** Format: uuid */
-            personId: string | null;
-            name: string | null;
-            login: string | null;
-            verdict: string;
-            matchedBy: string | null;
-            access: string | null;
+            tool: string;
+            /** Format: int32 */
+            unmatchedAccounts: number;
         };
         UnmatchedResource: {
+            archived: boolean;
             /** Format: uuid */
             id: string;
-            tool: string;
             name: string;
-            archived: boolean;
+            tool: string;
+        };
+        VerifyRequest: {
+            code: string;
+            email: string;
         };
     };
     responses: never;
@@ -1467,20 +1803,14 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    setTool: {
+    unmatched: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                tool: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ToolChange"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -1488,12 +1818,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ToolStatus"][];
+                    "*/*": components["schemas"]["UnmatchedResource"][];
                 };
             };
         };
     };
-    settings: {
+    pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
+    chapter_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -1510,12 +1862,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["RegistrationSettings"];
+                    "*/*": components["schemas"]["ApplyChapter"];
                 };
             };
         };
     };
-    saveSettings: {
+    code: {
         parameters: {
             query?: never;
             header?: never;
@@ -1526,7 +1878,31 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RegistrationSettingsInput"];
+                "application/json": components["schemas"]["CodeRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    verify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyRequest"];
             };
         };
         responses: {
@@ -1536,18 +1912,124 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["RegistrationSettings"];
+                    "*/*": components["schemas"]["ApplicantView"];
                 };
             };
         };
     };
-    get: {
+    claim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TokenRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApplicantView"];
+                };
+            };
+        };
+    };
+    githubCallback: {
+        parameters: {
+            query?: {
+                code?: string;
+                state?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    githubStart: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApplicantView"];
+                };
+            };
+        };
+    };
+    save: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DetailsInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApplicantView"];
+                };
+            };
+        };
+    };
+    startAgreement: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                code: string;
-                slug: string;
+                kind: string;
             };
             cookie?: never;
         };
@@ -1559,24 +2041,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ProjectDetail"];
+                    "*/*": components["schemas"]["AgreementStart"];
                 };
             };
         };
     };
-    update: {
+    submit: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                code: string;
-                slug: string;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApplicantView"];
+                };
             };
+        };
+    };
+    roster_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ProjectInput"];
+                "application/json": components["schemas"]["TokenRequest"];
             };
         };
         responses: {
@@ -1586,47 +2085,35 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ProjectDetail"];
+                    "*/*": components["schemas"]["ApplicantView"];
                 };
             };
         };
     };
-    updateResource: {
+    signOut: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                code: string;
-                slug: string;
-                resourceId: string;
-            };
+            path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ResourceInput"];
-            };
-        };
+        requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "*/*": components["schemas"]["ProjectDetail"];
-                };
+                content?: never;
             };
         };
     };
-    detach: {
+    chapter: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 code: string;
-                slug: string;
-                resourceId: string;
             };
             cookie?: never;
         };
@@ -1638,47 +2125,17 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ProjectDetail"];
+                    "*/*": components["schemas"]["ChapterOverview"];
                 };
             };
         };
     };
-    setRole: {
+    report: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 code: string;
-                slug: string;
-                personId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MemberRoleInput"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ProjectDetail"];
-                };
-            };
-        };
-    };
-    removeMember: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-                slug: string;
-                personId: string;
             };
             cookie?: never;
         };
@@ -1690,7 +2147,297 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ProjectDetail"];
+                    "*/*": components["schemas"]["AdoptionReport"];
+                };
+            };
+        };
+    };
+    people: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdoptionPerson"][];
+                };
+            };
+        };
+    };
+    decide_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdoptionDecision"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AdoptionReport"];
+                };
+            };
+        };
+    };
+    list_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftSummary"][];
+                };
+            };
+        };
+    };
+    create_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftSummary"];
+                };
+            };
+        };
+    };
+    get_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftDetail"];
+                };
+            };
+        };
+    };
+    rename: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftDetail"];
+                };
+            };
+        };
+    };
+    removeChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+                changeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftDetail"];
+                };
+            };
+        };
+    };
+    discard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftDetail"];
+                };
+            };
+        };
+    };
+    release: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ReleaseResult"];
+                };
+            };
+        };
+    };
+    schedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftDetail"];
+                };
+            };
+        };
+    };
+    unschedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DraftDetail"];
+                };
+            };
+        };
+    };
+    members: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MemberRow"][];
                 };
             };
         };
@@ -1743,11 +2490,13 @@ export interface operations {
             };
         };
     };
-    me: {
+    check: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                code: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -1758,21 +2507,103 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApplicantView"];
+                    "*/*": components["schemas"]["NotionSettingsView"];
                 };
             };
         };
     };
-    save: {
+    list_1: {
         parameters: {
-            query?: never;
+            query?: {
+                draft?: string;
+            };
             header?: never;
-            path?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectSummary"][];
+                };
+            };
+        };
+    };
+    create: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DetailsInput"];
+                "application/json": components["schemas"]["ProjectInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    get: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    update: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectInput"];
             };
         };
         responses: {
@@ -1782,23 +2613,75 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApplicantView"];
+                    "*/*": components["schemas"]["ProjectDetail"];
                 };
             };
         };
     };
-    receive: {
+    activity: {
+        parameters: {
+            query?: {
+                before?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ActivityPage"];
+                };
+            };
+        };
+    };
+    candidates: {
         parameters: {
             query?: never;
-            header?: {
-                "X-Documenso-Secret"?: string;
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
             };
-            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TeamCandidate"][];
+                };
+            };
+        };
+    };
+    addMember: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+            };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["JsonNode"];
+                "application/json": components["schemas"]["MemberInput"];
             };
         };
         responses: {
@@ -1807,15 +2690,405 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
             };
         };
     };
-    run: {
+    setRole: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberRoleInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    removeMember: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    attach: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResourceInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    updateResource: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResourceInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    detach: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    status: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StatusChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    settings: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RegistrationSettings"];
+                };
+            };
+        };
+    };
+    saveSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrationSettingsInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RegistrationSettings"];
+                };
+            };
+        };
+    };
+    list_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RegistrationSummary"][];
+                };
+            };
+        };
+    };
+    approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RegistrationSummary"][];
+                };
+            };
+        };
+    };
+    decline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeclineInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RegistrationSummary"][];
+                };
+            };
+        };
+    };
+    resources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ChapterResourceOption"][];
+                };
+            };
+        };
+    };
+    roster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RosterInviteView"][];
+                };
+            };
+        };
+    };
+    upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RosterInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RosterResult"];
+                };
+            };
+        };
+    };
+    sync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ChapterSync"];
+                };
+            };
+        };
+    };
+    runDryRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -1829,7 +3102,49 @@ export interface operations {
             };
         };
     };
-    decide: {
+    terms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TermOption"][];
+                };
+            };
+        };
+    };
+    me_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["Me"];
+                };
+            };
+        };
+    };
+    sign: {
         parameters: {
             query?: never;
             header?: never;
@@ -1838,11 +3153,7 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TaskDecision"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -1850,23 +3161,19 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["QueueTask"][];
+                    "*/*": components["schemas"]["SignLink"];
                 };
             };
         };
     };
-    retry: {
+    home: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["DeadLetterRef"][];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -1874,31 +3181,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["DeadLetter"][];
-                };
-            };
-        };
-    };
-    send: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ClaimSend"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ClaimPreview"];
+                    "*/*": components["schemas"]["MemberHome"];
                 };
             };
         };
@@ -1969,374 +3252,11 @@ export interface operations {
             };
         };
     };
-    runDryRun: {
+    preview: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
+            query?: {
+                chapter?: string;
             };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Accepted */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    roster: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["RosterInviteView"][];
-                };
-            };
-        };
-    };
-    upload: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RosterInput"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["RosterResult"];
-                };
-            };
-        };
-    };
-    decline: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DeclineInput"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["RegistrationSummary"][];
-                };
-            };
-        };
-    };
-    approve: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApproveInput"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["RegistrationSummary"][];
-                };
-            };
-        };
-    };
-    list_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ProjectSummary"][];
-                };
-            };
-        };
-    };
-    create: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProjectInput"];
-            };
-        };
-        responses: {
-            /** @description Created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ProjectDetail"];
-                };
-            };
-        };
-    };
-    status: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["StatusChange"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ProjectDetail"];
-                };
-            };
-        };
-    };
-    attach: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ResourceInput"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ProjectDetail"];
-                };
-            };
-        };
-    };
-    addMember: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MemberInput"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ProjectDetail"];
-                };
-            };
-        };
-    };
-    check: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["NotionSettingsView"];
-                };
-            };
-        };
-    };
-    people: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["AdoptionPerson"][];
-                };
-            };
-        };
-    };
-    decide_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-                id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AdoptionDecision"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["AdoptionReport"];
-                };
-            };
-        };
-    };
-    signOut: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    roster_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TokenRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApplicantView"];
-                };
-            };
-        };
-    };
-    submit: {
-        parameters: {
-            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -2349,34 +3269,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApplicantView"];
+                    "*/*": components["schemas"]["ClaimPreview"];
                 };
             };
         };
     };
-    startAgreement: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                kind: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["AgreementStart"];
-                };
-            };
-        };
-    };
-    claim: {
+    send: {
         parameters: {
             query?: never;
             header?: never;
@@ -2385,7 +3283,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TokenRequest"];
+                "application/json": components["schemas"]["ClaimSend"];
             };
         };
         responses: {
@@ -2395,137 +3293,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApplicantView"];
-                };
-            };
-        };
-    };
-    verify: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["VerifyRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApplicantView"];
-                };
-            };
-        };
-    };
-    code: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CodeRequest"];
-            };
-        };
-        responses: {
-            /** @description Accepted */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    status_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["StatusResponse"];
-                };
-            };
-        };
-    };
-    roles: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ProjectRoleOption"][];
-                };
-            };
-        };
-    };
-    tools: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ToolStatus"][];
-                };
-            };
-        };
-    };
-    queue: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["QueueTask"][];
+                    "*/*": components["schemas"]["ClaimPreview"];
                 };
             };
         };
@@ -2550,36 +3318,18 @@ export interface operations {
             };
         };
     };
-    preview: {
-        parameters: {
-            query?: {
-                chapter?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ClaimPreview"];
-                };
-            };
-        };
-    };
-    me_1: {
+    retry: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DeadLetterRef"][];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -2587,166 +3337,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["Me"];
+                    "*/*": components["schemas"]["DeadLetter"][];
                 };
             };
         };
     };
-    chapter: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ChapterOverview"];
-                };
-            };
-        };
-    };
-    terms: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["TermOption"][];
-                };
-            };
-        };
-    };
-    sync: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ChapterSync"];
-                };
-            };
-        };
-    };
-    resources: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ChapterResourceOption"][];
-                };
-            };
-        };
-    };
-    list_2: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["RegistrationSummary"][];
-                };
-            };
-        };
-    };
-    members: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["MemberRow"][];
-                };
-            };
-        };
-    };
-    report: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["AdoptionReport"];
-                };
-            };
-        };
-    };
-    githubStart: {
+    queue: {
         parameters: {
             query?: never;
             header?: never;
@@ -2760,54 +3356,13 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
-            };
-        };
-    };
-    githubCallback: {
-        parameters: {
-            query?: {
-                code?: string;
-                state?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    chapter_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
                 content: {
-                    "*/*": components["schemas"]["ApplyChapter"];
+                    "*/*": components["schemas"]["QueueTask"][];
                 };
             };
         };
     };
-    pdf: {
+    decide: {
         parameters: {
             query?: never;
             header?: never;
@@ -2816,7 +3371,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskDecision"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -2824,12 +3383,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": string;
+                    "*/*": components["schemas"]["QueueTask"][];
                 };
             };
         };
     };
-    unmatched: {
+    run: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    tools: {
         parameters: {
             query?: never;
             header?: never;
@@ -2844,8 +3421,98 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["UnmatchedResource"][];
+                    "*/*": components["schemas"]["ToolStatus"][];
                 };
+            };
+        };
+    };
+    setTool: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tool: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToolChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ToolStatus"][];
+                };
+            };
+        };
+    };
+    roles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectRoleOption"][];
+                };
+            };
+        };
+    };
+    status_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["StatusResponse"];
+                };
+            };
+        };
+    };
+    receive: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Documenso-Secret"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JsonNode"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -2,9 +2,9 @@ package org.hack4impact.portal.projects
 
 import org.hack4impact.portal.chapters.PlannedChange
 import org.hack4impact.portal.db.tables.records.ProjectRecord
-import org.hack4impact.portal.db.tables.references.AUDIT_EVENT
 import org.hack4impact.portal.db.tables.references.AGREEMENT
 import org.hack4impact.portal.db.tables.references.CHAPTER
+import org.hack4impact.portal.db.tables.references.CHAPTER_MEMBERSHIP
 import org.hack4impact.portal.db.tables.references.DISCOVERED_RESOURCE
 import org.hack4impact.portal.db.tables.references.PARTNER
 import org.hack4impact.portal.db.tables.references.PERSON
@@ -13,6 +13,7 @@ import org.hack4impact.portal.db.tables.references.PROJECT_MEMBER
 import org.hack4impact.portal.db.tables.references.PROJECT_RESOURCE
 import org.hack4impact.portal.db.tables.references.PROJECT_ROLE
 import org.hack4impact.portal.db.tables.references.RESOURCE
+import org.hack4impact.portal.db.tables.references.SYNC_RECORD
 import org.hack4impact.portal.db.tables.references.SYNC_CHANGE
 import org.hack4impact.portal.db.tables.references.SYNC_RUN
 import org.hack4impact.portal.db.tables.references.TERM
@@ -25,12 +26,28 @@ import org.hack4impact.portal.sync.WorldLoader
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Component
-import tools.jackson.databind.json.JsonMapper
 import java.util.UUID
 
 /** Reads for the projects screens. */
 @Component
-class ProjectQueries(private val dsl: DSLContext, private val worlds: WorldLoader, private val notion: NotionSettings) {
+class ProjectQueries(
+	private val dsl: DSLContext, private val worlds: WorldLoader, private val notion: NotionSettings, private val activity: ProjectActivity,
+	private val links: org.hack4impact.portal.adapters.ToolLinks,
+) {
+	/** Who could join the team: the chapter's active members and alumni not on it yet (PRD: alumni can join). */
+	fun candidates(chapterId: UUID, projectId: UUID): List<TeamCandidate> =
+		dsl.selectDistinct(PERSON.ID, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME, PERSON.STATUS).from(PERSON)
+			.join(CHAPTER_MEMBERSHIP).on(CHAPTER_MEMBERSHIP.PERSON_ID.eq(PERSON.ID))
+			.where(
+				CHAPTER_MEMBERSHIP.CHAPTER_ID.eq(chapterId), CHAPTER_MEMBERSHIP.LEFT_ON.isNull, PERSON.DELETED_AT.isNull,
+				PERSON.STATUS.`in`("active", "alumni", "removal_requested"),
+				DSL.notExists(DSL.selectOne().from(PROJECT_MEMBER).where(PROJECT_MEMBER.PROJECT_ID.eq(projectId), PROJECT_MEMBER.PERSON_ID.eq(PERSON.ID), PROJECT_MEMBER.REMOVED_AT.isNull)),
+			)
+			.fetch { TeamCandidate(it.value1()!!, name(it.value4(), it.value2()!!, it.value3()!!), it.value5()!!) }
+			.sortedBy { it.name }
+
+	fun byId(id: UUID): ProjectRecord? = dsl.selectFrom(PROJECT).where(PROJECT.ID.eq(id)).fetchOne()
+
 	fun bySlug(chapterId: UUID, slug: String): ProjectRecord? =
 		dsl.selectFrom(PROJECT).where(PROJECT.CHAPTER_ID.eq(chapterId), PROJECT.SLUG.eq(slug.lowercase())).fetchOne()
 
@@ -50,7 +67,8 @@ class ProjectQueries(private val dsl: DSLContext, private val worlds: WorldLoade
 			}
 	}
 
-	fun detail(chapterId: UUID, project: ProjectRecord, canEdit: Boolean): ProjectDetail {
+	/** [canEditTeam]: may change who's on the team (chapter leads, and the project's own leads). */
+	fun detail(chapterId: UUID, project: ProjectRecord, canEdit: Boolean, canEditTeam: Boolean = canEdit): ProjectDetail {
 		val id = project.id!!
 		val chapterCode = dsl.select(CHAPTER.CODE).from(CHAPTER).where(CHAPTER.ID.eq(chapterId)).fetchSingle().value1()!!
 		val term = project.termId?.let { t -> dsl.select(TERM.SEASON, TERM.YEAR).from(TERM).where(TERM.ID.eq(t)).fetchOne()?.let { termLabel(it.value1(), it.value2()?.toInt()) } }
@@ -96,6 +114,14 @@ class ProjectQueries(private val dsl: DSLContext, private val worlds: WorldLoade
 		val discovered = dsl.select(DISCOVERED_RESOURCE.TOOL, DISCOVERED_RESOURCE.NAME, DISCOVERED_RESOURCE.EXTERNAL_ID).from(DISCOVERED_RESOURCE)
 			.where(DISCOVERED_RESOURCE.GONE_AT.isNull).fetch()
 			.flatMap { listOf(it.value1()!! to it.value2()!!.lowercase(), it.value1()!! to it.value3()!!.lowercase()) }.toSet()
+		val syncCounts = if (resourceIds.isEmpty()) emptyMap() else dsl.select(SYNC_RECORD.RESOURCE_ID, SYNC_RECORD.STATUS, DSL.count()).from(SYNC_RECORD)
+			.where(SYNC_RECORD.RESOURCE_ID.`in`(resourceIds), SYNC_RECORD.DESIRED.eq("present"))
+			.groupBy(SYNC_RECORD.RESOURCE_ID, SYNC_RECORD.STATUS).fetch()
+			.groupBy({ it.value1()!! }, { it.value2()!! to it.value3()!! })
+			.mapValues { (_, counts) ->
+				val c = counts.toMap()
+				ResourceSync(c["in_sync"] ?: 0, c["waiting_on_member"] ?: 0, c["manual_task"] ?: 0, c["pending"] ?: 0, (c["failed"] ?: 0) + (c["dead_letter"] ?: 0))
+			}
 		val resources = resourceRows.map { r ->
 			val rid = r.value1()!!
 			ProjectResourceRow(
@@ -110,6 +136,8 @@ class ProjectQueries(private val dsl: DSLContext, private val worlds: WorldLoade
 				existsInTool = r.value4() == null && (r.value2()!! to r.value3()!!.lowercase()) in discovered,
 				getting = resolution.grants.count { it.resourceId == rid },
 				awaitingAgreement = resolution.withheld.count { it.resourceId == rid && it.why is WithheldReason.AwaitingAgreement },
+				url = links.url(r.value2()!!, r.value3()!!, r.value4()),
+				sync = syncCounts[rid] ?: ResourceSync(),
 			)
 		}
 		val grants = resolution.grants.filter { it.resourceId in resourceIds }
@@ -133,11 +161,7 @@ class ProjectQueries(private val dsl: DSLContext, private val worlds: WorldLoade
 			}
 		val lastRun = latest.mapNotNull { it.startedAt }.maxOrNull()
 
-		val activity = dsl.select(AUDIT_EVENT.AT, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME, AUDIT_EVENT.ACTION, AUDIT_EVENT.AFTER)
-			.from(AUDIT_EVENT).leftJoin(PERSON).on(PERSON.ID.eq(AUDIT_EVENT.ACTOR_PERSON_ID))
-			.where(AUDIT_EVENT.TARGET_TYPE.eq("project"), AUDIT_EVENT.TARGET_ID.eq(id))
-			.orderBy(AUDIT_EVENT.AT.desc()).limit(20)
-			.fetch { ActivityRow(it.value1()!!, it.value2()?.let { f -> name(it.value4(), f, it.value3()!!) }, it.value5()!!, it.value6()?.data()?.let(::detailOf)) }
+		val recent = activity.page(id, null, 5)
 
 		return ProjectDetail(
 			id, project.name!!, project.slug!!, project.status!!, project.type, project.tags!!.filterNotNull(), project.termId, term, partner,
@@ -148,8 +172,10 @@ class ProjectQueries(private val dsl: DSLContext, private val worlds: WorldLoade
 			planned = planned,
 			lastDryRunAt = lastRun,
 			plannedOutOfDate = lastRun == null || project.updatedAt!!.isAfter(lastRun),
-			activity = activity,
+			activity = recent.items,
+			activityMore = recent.more,
 			canEdit = canEdit,
+			canEditTeam = canEditTeam,
 		)
 	}
 
@@ -185,9 +211,5 @@ class ProjectQueries(private val dsl: DSLContext, private val worlds: WorldLoade
 		fun name(preferred: String?, first: String, last: String) = "${preferred?.takeIf { it.isNotBlank() } ?: first} $last"
 
 		fun termLabel(season: String?, year: Int?): String? = if (season == null || year == null) null else "${season.replaceFirstChar { it.uppercase() }} $year"
-
-		/** The audit event's "summary" field, if it has one. */
-		private val json = JsonMapper.builder().build()
-		private fun detailOf(text: String): String? = json.readTree(text).path("summary").takeIf { it.isString }?.asString()
 	}
 }

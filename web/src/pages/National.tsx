@@ -2,6 +2,7 @@ import { Banner, Button, Label, Select, Spinner, TextInput } from '@primer/react
 import { useEffect, useState } from 'react'
 import { api, reason, type AgreementTemplates, type ClaimPreview, type DeadLetter, type Me, type QueueTask, type ToolStatus } from '../api/client'
 import { Status, TOOL_NAME } from '../components/Status'
+import { ToolName } from '../components/ToolIcon'
 import { TopBar } from '../components/TopBar'
 
 /**
@@ -156,7 +157,7 @@ function ToolRow({ t, onSet }: { t: ToolStatus; onSet: (tool: string, enabled: b
   return (
     <li>
       <div className="tool-row">
-        <strong>{name}</strong>
+        <strong><ToolName tool={t.tool} /></strong>
         <div className="adopt-title">
           <div className="adopt-name">
             <Status tone={tone}>{label}</Status>

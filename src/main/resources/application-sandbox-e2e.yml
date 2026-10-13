@@ -14,3 +14,5 @@ portal:
     # Likewise for agreements: the suite runs its own passes.
     on-request: false
     schedule-enabled: false
+  drafts:
+    schedule-enabled: false

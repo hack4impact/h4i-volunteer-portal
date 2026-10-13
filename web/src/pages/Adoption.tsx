@@ -1,16 +1,11 @@
 import { ActionList, ActionMenu, Banner, Button, Checkbox, IconButton, Label, Select, Spinner, TextInput } from '@primer/react'
-import { ChevronDownIcon, HashIcon, KebabHorizontalIcon, MailIcon, PeopleIcon, SearchIcon, type Icon } from '@primer/octicons-react'
+import { ChevronDownIcon, KebabHorizontalIcon, SearchIcon } from '@primer/octicons-react'
 import { useEffect, useMemo, useState } from 'react'
 import { api, type AdoptionPerson, type AdoptionReport, type AdoptionResource, type UnmatchedResource } from '../api/client'
 import { Status, TOOL_NAME } from '../components/Status'
+import { ToolIcon } from '../components/ToolIcon'
 
 const PAGE = 25
-
-const TOOL: Record<string, { icon: Icon; noun: string }> = {
-  slack: { icon: HashIcon, noun: 'Slack channel' },
-  google: { icon: MailIcon, noun: 'Google group' },
-  github: { icon: PeopleIcon, noun: 'GitHub team' },
-}
 
 const VERDICT: Record<string, [string, 'ok' | 'warn' | 'off' | 'danger']> = {
   expected: ['Expected', 'ok'],
@@ -87,10 +82,9 @@ function ScanPane({ report }: { report: AdoptionReport }) {
           <>
             <ul className="pane-list">
               {report.scans.map((s) => {
-                const ToolIcon = TOOL[s.tool]?.icon ?? HashIcon
                 return (
                   <li key={s.tool}>
-                    <ToolIcon size={16} className="muted-icon" />
+                    <ToolIcon tool={s.tool} />
                     <span>{TOOL_NAME[s.tool] ?? s.tool}</span>
                     {s.status === 'completed' ? (
                       <span className="num">{s.resourcesFound.toLocaleString()} found</span>
@@ -202,7 +196,6 @@ function ResourceList({ code, report, onDecide }: { code: string; report: Adopti
 function ResourceRow({ code, r, report, open, onToggle, onDecide }: {
   code: string; r: AdoptionResource; report: AdoptionReport; open: boolean; onToggle: () => void; onDecide: (d: Decision) => void
 }) {
-  const ToolIcon = TOOL[r.tool]?.icon ?? HashIcon
   const target = targetText(r)
   // Matched by name is the usual case, so only the exceptions are spelled out.
   const how = r.state === 'linked' ? 'linked by hand' : r.state === 'adopted' ? 'adopted' : null
@@ -212,7 +205,7 @@ function ResourceRow({ code, r, report, open, onToggle, onDecide }: {
   return (
     <li className={open ? 'open' : undefined}>
       <div className="adopt-row">
-        <ToolIcon size={16} className="muted-icon" aria-label={TOOL[r.tool]?.noun ?? r.tool} />
+        <span className="muted-icon"><ToolIcon tool={r.tool} label /></span>
         <div className="adopt-title">
           <div className="adopt-name">
             {read ? (
@@ -357,11 +350,10 @@ function Unmatched({ resources, report, onDecide }: { resources: UnmatchedResour
       </div>
       <ul className="adopt-list" aria-label="Unmatched resources">
         {rows.slice(0, shown).map((r) => {
-          const ToolIcon = TOOL[r.tool]?.icon ?? HashIcon
-          return (
+                  return (
             <li key={r.id}>
               <div className="unmatched-row">
-                <ToolIcon size={16} className="muted-icon" aria-label={TOOL[r.tool]?.noun ?? r.tool} />
+                <span className="muted-icon"><ToolIcon tool={r.tool} label /></span>
                 <div className="adopt-name"><span className="name-text">{r.name}</span>{r.archived && <Label variant="secondary">Archived</Label>}</div>
                 <DecisionMenu name={r.name} report={report} onDecide={(d) => onDecide(r.id, d)} label="Link to this chapter" />
               </div>

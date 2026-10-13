@@ -78,6 +78,16 @@ class AgreementService(
 		return setting.enabled!! && !setting.dryRun!!
 	}
 
+	/** Documenso is connected, so open agreements can be read and signed. */
+	fun canRead(): Boolean = client() != null
+
+	/** The signer's link for a sent agreement, or null when Documenso can't give one now. */
+	fun signingUrl(agreement: AgreementRecord): String? {
+		val client = client() ?: return null
+		if (agreement.status != "sent" || agreement.documensoDocumentId == null) return null
+		return try { client.envelope(agreement.documensoDocumentId!!).signers.firstOrNull()?.signingUrl } catch (e: AdapterException) { null }
+	}
+
 	fun activeTemplate(kind: String): AgreementTemplateRecord? =
 		dsl.selectFrom(AGREEMENT_TEMPLATE).where(AGREEMENT_TEMPLATE.KIND.eq(kind), AGREEMENT_TEMPLATE.ACTIVE.isTrue).fetchOne()
 

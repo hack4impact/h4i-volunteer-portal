@@ -1,3 +1,4 @@
+import { GearIcon, GitPullRequestDraftIcon, HomeIcon, InboxIcon, LinkIcon, PeopleIcon, ProjectIcon } from '@primer/octicons-react'
 import { Banner, CounterLabel, Spinner, UnderlineNav } from '@primer/react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router'
@@ -5,18 +6,21 @@ import { api, type ChapterOverview, type ChapterSync, type Me, type MemberRow } 
 import { ROLE_LABEL } from '../components/Status'
 import { TopBar } from '../components/TopBar'
 import { Adoption } from './Adoption'
+import { useActiveDraft } from '../api/drafts'
 import { Approvals } from './Approvals'
+import { DraftBanner, Drafts } from './Drafts'
 import { MembersTable } from './MembersTable'
 import { Overview } from './Overview'
 import { ProjectPage } from './ProjectPage'
 import { Projects } from './Projects'
 import { Settings } from './Settings'
 
-export type ChapterTab = 'overview' | 'members' | 'approvals' | 'projects' | 'adoption' | 'settings'
+export type ChapterTab = 'overview' | 'members' | 'approvals' | 'projects' | 'drafts' | 'adoption' | 'settings'
 
 /** One chapter: page header, tabs, and the tab's content. A project's page sits under the Projects tab. */
 export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
-  const { code = '', slug } = useParams()
+  const { code = '', slug, draftId } = useParams()
+  const [draft] = useActiveDraft(code)
   const { pathname } = useLocation()
   const [chapter, setChapter] = useState<ChapterOverview | null>(null)
   const [members, setMembers] = useState<MemberRow[] | null>(null)
@@ -39,12 +43,13 @@ export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
   }, [code])
 
   const tabs = [
-    { key: 'overview', label: 'Overview', to: `/chapters/${code}` },
-    { key: 'members', label: 'Members', to: `/chapters/${code}/members`, count: members?.length },
-    { key: 'approvals', label: 'Approvals', to: `/chapters/${code}/approvals`, count: waiting || undefined },
-    { key: 'projects', label: 'Projects', to: `/chapters/${code}/projects` },
-    { key: 'adoption', label: 'Adoption', to: `/chapters/${code}/adoption` },
-    { key: 'settings', label: 'Settings', to: `/chapters/${code}/settings` },
+    { key: 'overview', label: 'Overview', to: `/chapters/${code}`, icon: HomeIcon },
+    { key: 'members', label: 'Members', to: `/chapters/${code}/members`, count: members?.length, icon: PeopleIcon },
+    { key: 'approvals', label: 'Approvals', to: `/chapters/${code}/approvals`, count: waiting || undefined, icon: InboxIcon },
+    { key: 'projects', label: 'Projects', to: `/chapters/${code}/projects`, icon: ProjectIcon },
+    ...(chapter && ['lead', 'co_lead', 'national'].includes(chapter.role) ? [{ key: 'drafts', label: 'Drafts', to: `/chapters/${code}/drafts`, icon: GitPullRequestDraftIcon }] : []),
+    { key: 'adoption', label: 'Adoption', to: `/chapters/${code}/adoption`, icon: LinkIcon },
+    { key: 'settings', label: 'Settings', to: `/chapters/${code}/settings`, icon: GearIcon },
   ]
 
   return (
@@ -66,7 +71,7 @@ export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
               <h1 className="page-title">{chapter.name}</h1>
               <UnderlineNav aria-label="Chapter sections">
                 {tabs.map((t) => (
-                  <UnderlineNav.Item key={t.key} as={Link} to={t.to} aria-current={pathname === t.to || t.key === tab ? 'page' : undefined}>
+                  <UnderlineNav.Item key={t.key} as={Link} to={t.to} icon={t.icon} aria-current={pathname === t.to || t.key === tab ? 'page' : undefined}>
                     {t.label}
                     {t.count !== undefined && <CounterLabel>{t.count}</CounterLabel>}
                   </UnderlineNav.Item>
@@ -74,14 +79,17 @@ export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
               </UnderlineNav>
             </div>
           </div>
+          {tab === 'projects' && <DraftBanner code={chapter.code} />}
           {tab === 'overview' ? (
             <Overview chapter={chapter} members={members} sync={sync} />
           ) : tab === 'members' ? (
             <MembersTable members={members} />
           ) : tab === 'projects' && slug ? (
-            <ProjectPage code={chapter.code} slug={slug} members={members} />
+            <ProjectPage key={draft ?? 'live'} code={chapter.code} slug={slug} />
           ) : tab === 'projects' ? (
-            <Projects code={chapter.code} canEdit={['lead', 'co_lead', 'national'].includes(chapter.role)} />
+            <Projects key={draft ?? 'live'} code={chapter.code} canEdit={['lead', 'co_lead', 'national'].includes(chapter.role)} />
+          ) : tab === 'drafts' ? (
+            <Drafts code={chapter.code} id={draftId} />
           ) : tab === 'approvals' ? (
             <Approvals code={chapter.code} canEdit={['lead', 'co_lead', 'national'].includes(chapter.role)} />
           ) : tab === 'settings' ? (

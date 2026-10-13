@@ -153,7 +153,7 @@ class ProjectTests(
 			planned,
 		)
 		assertEquals(false, after.path("plannedOutOfDate").asBoolean())
-		assertTrue(after.path("activity").any { it.path("action").asString() == "project.create" && it.path("actor").asString() == "Lena Test" })
+		assertTrue(after.path("activity").any { it.path("kind").asString() == "change" && it.path("text").asString().startsWith("Created") && it.path("actor").asString() == "Lena Test" })
 
 		send("POST", "/api/chapters/umd/sync/run").andExpect { status { isAccepted() } }
 		// The requested run happens in the background; wait for it so it doesn't overlap the next test.

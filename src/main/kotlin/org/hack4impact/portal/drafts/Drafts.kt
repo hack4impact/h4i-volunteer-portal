@@ -1,0 +1,420 @@
+package org.hack4impact.portal.drafts
+
+import org.hack4impact.portal.auth.Viewer
+import org.hack4impact.portal.db.tables.records.ChangeRecord
+import org.hack4impact.portal.db.tables.records.ChangesetRecord
+import org.hack4impact.portal.db.tables.records.ProjectRecord
+import org.hack4impact.portal.db.tables.references.AUDIT_EVENT
+import org.hack4impact.portal.db.tables.references.CHANGE
+import org.hack4impact.portal.db.tables.references.CHANGESET
+import org.hack4impact.portal.db.tables.references.CHAPTER
+import org.hack4impact.portal.db.tables.references.PERSON
+import org.hack4impact.portal.db.tables.references.PROJECT
+import org.hack4impact.portal.db.tables.references.PROJECT_MEMBER
+import org.hack4impact.portal.db.tables.references.PROJECT_ROLE
+import org.hack4impact.portal.db.tables.references.RESOURCE
+import org.hack4impact.portal.projects.MemberInput
+import org.hack4impact.portal.projects.MemberRoleInput
+import org.hack4impact.portal.projects.ProjectInput
+import org.hack4impact.portal.projects.ProjectQueries
+import org.hack4impact.portal.projects.ProjectService
+import org.hack4impact.portal.projects.ResourceInput
+import org.hack4impact.portal.resolver.Access
+import org.hack4impact.portal.resolver.Resolver
+import org.hack4impact.portal.resolver.WithheldReason
+import org.hack4impact.portal.sync.SyncRequests
+import org.hack4impact.portal.sync.WorldLoader
+import org.jooq.DSLContext
+import org.jooq.JSONB
+import org.jooq.impl.DSL
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.dao.DataAccessException
+import org.springframework.http.HttpStatus
+import org.springframework.stereotype.Component
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionStatus
+import org.springframework.transaction.support.TransactionTemplate
+import org.springframework.web.server.ResponseStatusException
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.json.JsonMapper
+import java.time.OffsetDateTime
+import java.util.UUID
+
+/** A chapter's draft was released; members whose access changed get one summary email ([DraftEmails]). */
+data class DraftReleased(val changesetId: UUID, val chapter: String, val draft: String, val people: List<PersonAccessChange>)
+
+/**
+ * Drafts (build plan step 12; PRD drafts and releases). A draft is an ordered list of project operations. They're never
+ * applied while it's a draft: showing it, previewing it and checking a new change all replay them in a transaction
+ * that's rolled back, each in its own savepoint, so one that no longer works on live data becomes a conflict instead
+ * of failing the rest. Releasing replays them for real, in one transaction with the sync request (outbox).
+ */
+@Component
+class Drafts(
+	private val dsl: DSLContext,
+	private val projects: ProjectService,
+	private val worlds: WorldLoader,
+	private val transactions: PlatformTransactionManager,
+	private val mapper: JsonMapper,
+	private val syncs: SyncRequests,
+	private val events: ApplicationEventPublisher,
+) {
+	/** A project operation as a draft records it. [projectId] is chosen up front for a project the draft creates. */
+	data class Operation(val op: String, val projectId: UUID, val payload: JsonNode)
+
+	companion object {
+		private val TOOL_LABEL = mapOf("slack" to "Slack", "github" to "GitHub", "google" to "Google group", "notion" to "Notion", "vaultwarden" to "Vaultwarden")
+		private fun notFound(message: String): Nothing = throw ResponseStatusException(HttpStatus.NOT_FOUND, message)
+		private fun conflict(message: String): Nothing = throw ResponseStatusException(HttpStatus.CONFLICT, message)
+		private fun bad(message: String): Nothing = throw ResponseStatusException(HttpStatus.BAD_REQUEST, message)
+	}
+
+	fun operation(op: String, projectId: UUID, vararg payload: Pair<String, Any?>) = Operation(op, projectId, mapper.valueToTree(mapOf(*payload)))
+
+	// ---- Drafts -------------------------------------------------------------------------------------------------------
+
+	fun create(chapterId: UUID, name: String, viewer: Viewer): DraftSummary {
+		val n = name.trim().ifEmpty { bad("Give the draft a name, e.g. “Fall 2026 teams”") }
+		val id = dsl.insertInto(CHANGESET).set(CHANGESET.CHAPTER_ID, chapterId).set(CHANGESET.NAME, n).set(CHANGESET.CREATED_BY, viewer.personId ?: bad("Only a person can make a draft"))
+			.returningResult(CHANGESET.ID).fetchSingle().value1()!!
+		audit(viewer, chapterId, id, "draft.create", "Started the draft “$n”")
+		return summaries(chapterId, id).single()
+	}
+
+	/** Open drafts, and those released or discarded in the last 60 days. */
+	fun list(chapterId: UUID): List<DraftSummary> = summaries(chapterId, null)
+
+	private fun summaries(chapterId: UUID, only: UUID?): List<DraftSummary> {
+		val creator = PERSON.`as`("creator")
+		val releaser = PERSON.`as`("releaser")
+		val counts = DSL.select(DSL.count()).from(CHANGE).where(CHANGE.CHANGESET_ID.eq(CHANGESET.ID)).asField<Int>("changes")
+		return dsl.select(CHANGESET.asterisk(), creator.FIRST_NAME, creator.LAST_NAME, releaser.FIRST_NAME, releaser.LAST_NAME, counts).from(CHANGESET)
+			.leftJoin(creator).on(creator.ID.eq(CHANGESET.CREATED_BY)).leftJoin(releaser).on(releaser.ID.eq(CHANGESET.RELEASED_BY))
+			.where(
+				CHANGESET.CHAPTER_ID.eq(chapterId),
+				if (only != null) CHANGESET.ID.eq(only)
+				else CHANGESET.STATUS.`in`("draft", "scheduled").or(DSL.coalesce(CHANGESET.RELEASED_AT, CHANGESET.DISCARDED_AT).gt(OffsetDateTime.now().minusDays(60))),
+			)
+			.orderBy(CHANGESET.CREATED_AT.desc())
+			.fetch { r ->
+				val c = r.into(CHANGESET)
+				DraftSummary(
+					c.id!!, c.name!!, c.status!!, r.get(creator.FIRST_NAME)?.let { "$it ${r.get(creator.LAST_NAME)}" }, c.createdAt!!, r.get(counts) ?: 0,
+					c.scheduledFor, c.releasedAt, r.get(releaser.FIRST_NAME)?.let { "$it ${r.get(releaser.LAST_NAME)}" }, c.releaseError,
+				)
+			}
+	}
+
+	fun changeset(chapterId: UUID, id: UUID): ChangesetRecord =
+		dsl.selectFrom(CHANGESET).where(CHANGESET.ID.eq(id), CHANGESET.CHAPTER_ID.eq(chapterId)).fetchOne() ?: notFound("No such draft")
+
+	/** The draft with its changes, conflicts and access preview. */
+	fun detail(chapterId: UUID, id: UUID, viewer: Viewer): DraftDetail {
+		val cs = changeset(chapterId, id)
+		val changes = changes(id)
+		val (conflicts, preview) = if (cs.status in setOf("draft", "scheduled")) {
+			rolledBack { s ->
+				val before = snapshot()
+				val conflicts = replay(chapterId, id, viewer, s)
+				conflicts to diff(before, snapshot())
+			}
+		} else {
+			emptyList<DraftConflict>() to (cs.releasedSummary?.let { mapper.readValue(it.data(), DraftPreview::class.java) } ?: DraftPreview(0, 0, 0, 0, 0, 0, emptyList()))
+		}
+		return DraftDetail(summaries(chapterId, id).single(), changes, conflicts, preview, viewer.canManage(chapterId) && cs.status == "draft")
+	}
+
+	private fun changes(id: UUID): List<DraftChange> = dsl.select(CHANGE.asterisk(), PERSON.FIRST_NAME, PERSON.LAST_NAME).from(CHANGE).leftJoin(PERSON).on(PERSON.ID.eq(CHANGE.CREATED_BY))
+		.where(CHANGE.CHANGESET_ID.eq(id)).orderBy(CHANGE.POSITION)
+		.fetch { r ->
+			val c = r.into(CHANGE)
+			DraftChange(c.id!!, c.position!!, c.operation!!, c.summary!!, c.targetId, r.get(PERSON.FIRST_NAME)?.let { "$it ${r.get(PERSON.LAST_NAME)}" }, c.createdAt!!)
+		}
+
+	/** Pending change summaries per project, for marking them on the chapter's screens. */
+	fun pendingByProject(id: UUID): Map<UUID, List<String>> = dsl.select(CHANGE.TARGET_ID, CHANGE.SUMMARY).from(CHANGE).where(CHANGE.CHANGESET_ID.eq(id))
+		.orderBy(CHANGE.POSITION).fetch().filter { it.value1() != null }.groupBy({ it.value1()!! }, { it.value2()!! })
+
+	// ---- Recording changes --------------------------------------------------------------------------------------------
+
+	/**
+	 * Checks [build]'s operation against the draft as it stands (it must work there, or the lead hears why at once) and
+	 * records it. [slug] finds the project as the draft has it, also one the draft created.
+	 */
+	fun record(chapterId: UUID, id: UUID, viewer: Viewer, slug: String?, build: (ProjectRecord?) -> Operation): Operation {
+		editable(chapterId, id)
+		val (operation, summary) = rolledBack { s ->
+			replay(chapterId, id, viewer, s)
+			val project = slug?.let { bySlug(chapterId, it) ?: notFound("No project $it") }
+			if (project?.status == "closed") conflict("This project is closed")
+			val op = build(project)
+			apply(chapterId, op, viewer)
+			op to describe(op)
+		}
+		TransactionTemplate(transactions).executeWithoutResult {
+			editable(chapterId, id, lock = true)
+			val next = (dsl.select(DSL.max(CHANGE.POSITION)).from(CHANGE).where(CHANGE.CHANGESET_ID.eq(id)).fetchOne()?.value1() ?: 0) + 1
+			dsl.insertInto(CHANGE).set(CHANGE.CHANGESET_ID, id).set(CHANGE.POSITION, next).set(CHANGE.OPERATION, operation.op)
+				.set(CHANGE.TARGET_TYPE, "project").set(CHANGE.TARGET_ID, operation.projectId).set(CHANGE.PAYLOAD, JSONB.valueOf(mapper.writeValueAsString(operation.payload)))
+				.set(CHANGE.CREATED_BY, viewer.personId).set(CHANGE.SUMMARY, summary).execute()
+			dsl.update(CHANGESET).set(CHANGESET.UPDATED_AT, OffsetDateTime.now()).where(CHANGESET.ID.eq(id)).execute()
+		}
+		return operation
+	}
+
+	/** Runs [block] against the chapter as the draft would leave it; nothing is kept. */
+	fun <T> inDraft(chapterId: UUID, id: UUID, viewer: Viewer, block: () -> T): T {
+		changeset(chapterId, id)
+		return rolledBack { s ->
+			replay(chapterId, id, viewer, s)
+			block()
+		}
+	}
+
+	fun bySlug(chapterId: UUID, slug: String): ProjectRecord? = dsl.selectFrom(PROJECT).where(PROJECT.CHAPTER_ID.eq(chapterId), PROJECT.SLUG.eq(slug)).fetchOne()
+
+	fun removeChange(chapterId: UUID, id: UUID, changeId: UUID, viewer: Viewer) {
+		editable(chapterId, id)
+		val deleted = dsl.deleteFrom(CHANGE).where(CHANGE.ID.eq(changeId), CHANGE.CHANGESET_ID.eq(id)).execute()
+		if (deleted == 0) notFound("Not in this draft")
+	}
+
+	fun rename(chapterId: UUID, id: UUID, name: String, viewer: Viewer) {
+		editable(chapterId, id)
+		dsl.update(CHANGESET).set(CHANGESET.NAME, name.trim().ifEmpty { bad("Give the draft a name") }).where(CHANGESET.ID.eq(id)).execute()
+	}
+
+	/** PRD: a discarded draft changes nothing. */
+	fun discard(chapterId: UUID, id: UUID, viewer: Viewer) {
+		val cs = changeset(chapterId, id)
+		if (cs.status !in setOf("draft", "scheduled")) conflict("This draft was already ${cs.status}")
+		dsl.update(CHANGESET).set(CHANGESET.STATUS, "discarded").set(CHANGESET.DISCARDED_AT, OffsetDateTime.now()).setNull(CHANGESET.SCHEDULED_FOR)
+			.where(CHANGESET.ID.eq(id)).execute()
+		audit(viewer, chapterId, id, "draft.discard", "Discarded the draft “${cs.name}”")
+	}
+
+	/** PRD: releases can be scheduled. Only a draft without conflicts; while scheduled it can't change (unschedule first). */
+	fun schedule(chapterId: UUID, id: UUID, at: OffsetDateTime, viewer: Viewer) {
+		editable(chapterId, id)
+		if (!at.isAfter(OffsetDateTime.now().plusMinutes(1))) bad("Pick a time in the future")
+		val detail = detail(chapterId, id, viewer)
+		if (detail.changes.isEmpty()) bad("The draft has no changes")
+		detail.conflicts.firstOrNull()?.let { conflict("Fix the conflicts first: ${it.summary}: ${it.problem}") }
+		dsl.update(CHANGESET).set(CHANGESET.STATUS, "scheduled").set(CHANGESET.SCHEDULED_FOR, at).set(CHANGESET.SCHEDULED_BY, viewer.personId).setNull(CHANGESET.RELEASE_ERROR)
+			.where(CHANGESET.ID.eq(id)).execute()
+		audit(viewer, chapterId, id, "draft.schedule", "Scheduled “${detail.draft.name}” for $at")
+	}
+
+	fun unschedule(chapterId: UUID, id: UUID, viewer: Viewer) {
+		val cs = changeset(chapterId, id)
+		if (cs.status != "scheduled") conflict("It isn't scheduled")
+		dsl.update(CHANGESET).set(CHANGESET.STATUS, "draft").setNull(CHANGESET.SCHEDULED_FOR).where(CHANGESET.ID.eq(id)).execute()
+		audit(viewer, chapterId, id, "draft.unschedule", "Took “${cs.name}” off the schedule")
+	}
+
+	private fun editable(chapterId: UUID, id: UUID, lock: Boolean = false): ChangesetRecord {
+		val query = dsl.selectFrom(CHANGESET).where(CHANGESET.ID.eq(id), CHANGESET.CHAPTER_ID.eq(chapterId))
+		val cs = (if (lock) query.forUpdate() else query).fetchOne() ?: notFound("No such draft")
+		when (cs.status) {
+			"draft" -> return cs
+			"scheduled" -> conflict("This draft is scheduled. Take it off the schedule to change it.")
+			else -> conflict("This draft was already ${cs.status}")
+		}
+	}
+
+	// ---- Release ------------------------------------------------------------------------------------------------------
+
+	/**
+	 * PRD: release applies every change in one database transaction, then queues syncs for everyone affected (through
+	 * the outbox, in the same transaction); members get one summary each. Any conflict releases nothing.
+	 */
+	fun release(chapterId: UUID, id: UUID, viewer: Viewer): ReleaseResult = TransactionTemplate(transactions).execute { s ->
+		val cs = dsl.selectFrom(CHANGESET).where(CHANGESET.ID.eq(id), CHANGESET.CHAPTER_ID.eq(chapterId)).forUpdate().fetchOne() ?: notFound("No such draft")
+		if (cs.status !in setOf("draft", "scheduled")) conflict("This draft was already ${cs.status}")
+		if (!dsl.fetchExists(CHANGE, CHANGE.CHANGESET_ID.eq(id))) bad("The draft has no changes")
+		val before = snapshot()
+		val conflicts = replay(chapterId, id, viewer, s)
+		if (conflicts.isNotEmpty()) {
+			s.setRollbackOnly()
+			return@execute ReleaseResult(false, conflicts, null)
+		}
+		val preview = diff(before, snapshot())
+		dsl.update(CHANGESET).set(CHANGESET.STATUS, "released").set(CHANGESET.RELEASED_AT, OffsetDateTime.now()).set(CHANGESET.RELEASED_BY, viewer.personId)
+			.setNull(CHANGESET.RELEASE_ERROR).set(CHANGESET.RELEASED_SUMMARY, JSONB.valueOf(mapper.writeValueAsString(preview)))
+			.where(CHANGESET.ID.eq(id)).execute()
+		audit(viewer, chapterId, id, "draft.release", "Released “${cs.name}”: ${counts(preview)}")
+		syncs.request("release")
+		val chapter = dsl.select(CHAPTER.NAME).from(CHAPTER).where(CHAPTER.ID.eq(chapterId)).fetchSingle().value1()!!
+		if (preview.perPerson.isNotEmpty()) events.publishEvent(DraftReleased(id, chapter, cs.name!!, preview.perPerson))
+		ReleaseResult(true, emptyList(), preview)
+	}!!
+
+	/** Releases scheduled drafts that are due; one with conflicts goes back to being a draft, and whoever scheduled it hears why. */
+	fun releaseDue(now: OffsetDateTime = OffsetDateTime.now()): List<Pair<UUID, ReleaseResult>> {
+		val due = dsl.selectFrom(CHANGESET).where(CHANGESET.STATUS.eq("scheduled"), CHANGESET.SCHEDULED_FOR.le(now)).fetch()
+		return due.map { cs ->
+			val by = cs.scheduledBy ?: cs.createdBy!!
+			val who = dsl.selectFrom(PERSON).where(PERSON.ID.eq(by)).fetchSingle()
+			val viewer = Viewer(by, who.orgEmail ?: "", "${who.firstName} ${who.lastName}", false, mapOf(cs.chapterId!! to "lead"))
+			val result = try { release(cs.chapterId!!, cs.id!!, viewer) } catch (e: ResponseStatusException) {
+				ReleaseResult(false, listOf(DraftConflict(cs.id!!, 0, cs.name!!, e.reason ?: "couldn't release")), null)
+			}
+			if (!result.released) {
+				val why = result.conflicts.joinToString("; ") { "${it.summary}: ${it.problem}" }.take(1000)
+				// In a transaction, so the email (sent after commit, through the outbox) goes with the change.
+				TransactionTemplate(transactions).executeWithoutResult {
+					dsl.update(CHANGESET).set(CHANGESET.STATUS, "draft").setNull(CHANGESET.SCHEDULED_FOR).set(CHANGESET.RELEASE_ERROR, why)
+						.where(CHANGESET.ID.eq(cs.id), CHANGESET.STATUS.eq("scheduled")).execute()
+					events.publishEvent(ScheduledReleaseFailed(cs.id!!, by, cs.name!!, why))
+				}
+			}
+			cs.id!! to result
+		}
+	}
+
+	// ---- Replay ---------------------------------------------------------------------------------------------------------
+
+	private fun <T> rolledBack(block: (TransactionStatus) -> T): T {
+		var result: Result<T>? = null
+		TransactionTemplate(transactions).executeWithoutResult { s ->
+			result = runCatching { block(s) }
+			s.setRollbackOnly()
+		}
+		return result!!.getOrThrow()
+	}
+
+	/** Applies the draft's changes in order, each in a savepoint; those that fail are the draft's conflicts. */
+	private fun replay(chapterId: UUID, id: UUID, viewer: Viewer, s: TransactionStatus): List<DraftConflict> {
+		val conflicts = mutableListOf<DraftConflict>()
+		for (c in dsl.selectFrom(CHANGE).where(CHANGE.CHANGESET_ID.eq(id)).orderBy(CHANGE.POSITION).fetch()) {
+			val savepoint = s.createSavepoint()
+			try {
+				apply(chapterId, read(c), viewer)
+				s.releaseSavepoint(savepoint)
+			} catch (e: RuntimeException) {
+				s.rollbackToSavepoint(savepoint)
+				conflicts += DraftConflict(c.id!!, c.position!!, c.summary!!, problem(e))
+			}
+		}
+		return conflicts
+	}
+
+	private fun problem(e: RuntimeException) = when (e) {
+		is ResponseStatusException -> e.reason ?: e.statusCode.toString()
+		is DataAccessException -> "the database refused it (${e.mostSpecificCause.message?.take(200)})"
+		else -> e.message ?: e.javaClass.simpleName
+	}
+
+	private fun read(c: ChangeRecord) = Operation(c.operation!!, c.targetId!!, mapper.readTree(c.payload!!.data()))
+
+	private fun <T> input(op: Operation, type: Class<T>): T = mapper.treeToValue(op.payload.path("input"), type)
+
+	private fun uuid(op: Operation, field: String): UUID = UUID.fromString(op.payload.path(field).asString())
+
+	/** The project operations, as the project API does them. */
+	private fun apply(chapterId: UUID, op: Operation, viewer: Viewer) {
+		fun project(): ProjectRecord = dsl.selectFrom(PROJECT).where(PROJECT.ID.eq(op.projectId), PROJECT.CHAPTER_ID.eq(chapterId)).fetchOne()
+			?: conflict("The project isn't there any more")
+		fun open(): ProjectRecord = project().also { if (it.status == "closed") conflict("${it.name} was closed") }
+		when (op.op) {
+			"create_project" -> projects.create(chapterId, input(op, ProjectInput::class.java), viewer, id = op.projectId)
+			"update_project" -> projects.update(chapterId, open(), input(op, ProjectInput::class.java), viewer)
+			"set_status" -> projects.setStatus(chapterId, open(), op.payload.path("status").asString(), viewer)
+			"add_member" -> projects.addMember(chapterId, open(), input(op, MemberInput::class.java), viewer)
+			"set_member_role" -> projects.setMemberRole(chapterId, open(), uuid(op, "personId"), input(op, MemberRoleInput::class.java), viewer)
+			"remove_member" -> projects.removeMember(chapterId, open(), uuid(op, "personId"), viewer)
+			"attach_resource" -> projects.attachResource(chapterId, open(), input(op, ResourceInput::class.java), viewer,
+				newResourceId = op.payload.path("newResourceId").takeIf { it.isString }?.let { UUID.fromString(it.asString()) })
+			"update_resource" -> projects.updateResource(chapterId, open(), uuid(op, "resourceId"), input(op, ResourceInput::class.java), viewer)
+			"detach_resource" -> projects.detachResource(chapterId, open(), uuid(op, "resourceId"), viewer)
+			else -> bad("Unknown change ${op.op}")
+		}
+	}
+
+	/** The change in words, written right after it was applied (so new projects and resources have names). */
+	private fun describe(op: Operation): String {
+		val project = dsl.select(PROJECT.NAME).from(PROJECT).where(PROJECT.ID.eq(op.projectId)).fetchOne()?.value1() ?: "the project"
+		fun person(id: UUID) = dsl.select(PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME).from(PERSON).where(PERSON.ID.eq(id)).fetchOne()
+			?.let { ProjectQueries.name(it.value3(), it.value1()!!, it.value2()!!) } ?: "someone"
+		fun role(id: UUID?) = id?.let { dsl.select(PROJECT_ROLE.NAME).from(PROJECT_ROLE).where(PROJECT_ROLE.ID.eq(it)).fetchOne()?.value1() }
+		fun resource(id: UUID) = dsl.select(RESOURCE.TOOL, RESOURCE.NAME).from(RESOURCE).where(RESOURCE.ID.eq(id)).fetchOne()?.let { label(it.value1()!!, it.value2()!!) } ?: "a resource"
+		return when (op.op) {
+			"create_project" -> "Create $project"
+			"update_project" -> "Edit $project's details"
+			"set_status" -> when (val to = op.payload.path("status").asString()) {
+				"active" -> "Start $project"
+				"paused" -> "Pause $project"
+				"closed" -> "Close $project"
+				else -> "Make $project $to"
+			}
+			"add_member" -> input(op, MemberInput::class.java).let { m -> "Add ${person(m.personId)} to $project" + (role(m.roleId)?.let { " as $it" } ?: "") }
+			"set_member_role" -> "Make ${person(uuid(op, "personId"))} ${role(input(op, MemberRoleInput::class.java).roleId) ?: "a member without a role"} on $project"
+			"remove_member" -> "Remove ${person(uuid(op, "personId"))} from $project"
+			"attach_resource" -> {
+				val i = input(op, ResourceInput::class.java)
+				val id = i.resourceId ?: op.payload.path("newResourceId").takeIf { it.isString }?.let { UUID.fromString(it.asString()) }
+				"Attach ${id?.let(::resource) ?: "${i.name} (${i.tool})"} to $project"
+			}
+			"update_resource" -> "Change who gets ${resource(uuid(op, "resourceId"))} on $project"
+			"detach_resource" -> "Detach ${resource(uuid(op, "resourceId"))} from $project"
+			else -> op.op
+		}
+	}
+
+	// ---- Preview ------------------------------------------------------------------------------------------------------
+
+	/** Who gets what, who waits on an agreement, and who's on which project: before or after the draft. */
+	private data class Snapshot(val grants: Map<Pair<UUID, UUID>, Access>, val awaiting: Set<Pair<UUID, UUID>>, val members: Set<Pair<UUID, UUID>>)
+
+	private fun snapshot(): Snapshot {
+		val resolution = Resolver.resolve(worlds.load().world)
+		val members = dsl.select(PROJECT_MEMBER.PERSON_ID, PROJECT_MEMBER.PROJECT_ID).from(PROJECT_MEMBER).join(PROJECT).on(PROJECT.ID.eq(PROJECT_MEMBER.PROJECT_ID))
+			.where(PROJECT_MEMBER.REMOVED_AT.isNull, PROJECT.STATUS.ne("closed")).fetch().map { it.value1()!! to it.value2()!! }.toSet()
+		return Snapshot(
+			resolution.grants.associate { (it.personId to it.resourceId) to it.access },
+			resolution.withheld.filter { it.why is WithheldReason.AwaitingAgreement }.map { it.personId to it.resourceId }.toSet(),
+			members,
+		)
+	}
+
+	private fun diff(before: Snapshot, after: Snapshot): DraftPreview {
+		val added = after.grants.keys - before.grants.keys
+		val removed = before.grants.keys - after.grants.keys
+		val changed = after.grants.keys.intersect(before.grants.keys).filter { after.grants[it] != before.grants[it] }
+		val waiting = after.awaiting - before.awaiting
+		val joins = after.members - before.members
+		val leaves = before.members - after.members
+		val people = (added + removed + changed + waiting + joins + leaves).map { it.first }.toSet()
+		val resourceIds = (added + removed + changed + waiting).map { it.second }.toSet()
+		val resources = if (resourceIds.isEmpty()) emptyMap() else
+			dsl.select(RESOURCE.ID, RESOURCE.TOOL, RESOURCE.NAME).from(RESOURCE).where(RESOURCE.ID.`in`(resourceIds)).fetch().associate { it.value1()!! to label(it.value2()!!, it.value3()!!) }
+		val projectIds = (joins + leaves).map { it.second }.toSet()
+		val projectNames = if (projectIds.isEmpty()) emptyMap() else dsl.select(PROJECT.ID, PROJECT.NAME).from(PROJECT).where(PROJECT.ID.`in`(projectIds)).fetch().associate { it.value1()!! to it.value2()!! }
+		val names = if (people.isEmpty()) emptyMap() else dsl.select(PERSON.ID, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME).from(PERSON).where(PERSON.ID.`in`(people)).fetch()
+			.associate { it.value1()!! to ProjectQueries.name(it.value4(), it.value2()!!, it.value3()!!) }
+		fun named(keys: Collection<Pair<UUID, UUID>>, person: UUID, labels: Map<UUID, String>) = keys.filter { it.first == person }.mapNotNull { labels[it.second] }.sorted()
+		val perPerson = people.map { p ->
+			PersonAccessChange(
+				p, names[p] ?: "someone", named(joins, p, projectNames), named(leaves, p, projectNames),
+				named(added, p, resources) + changed.filter { it.first == p }.mapNotNull { k -> resources[k.second]?.let { "$it, now ${after.grants[k]!!.name.lowercase()}" } },
+				named(removed, p, resources), named(waiting, p, resources),
+			)
+		}.sortedBy { it.name }
+		return DraftPreview(added.size, removed.size, changed.size, people.size, resourceIds.size, waiting.size, perPerson)
+	}
+
+	private fun label(tool: String, name: String) = "$name (${TOOL_LABEL[tool] ?: tool})"
+
+	private fun counts(p: DraftPreview) = "adds ${p.people} people to ${p.resources} resources (${p.adds} grants), removes ${p.removes}"
+
+	private fun audit(viewer: Viewer, chapterId: UUID, id: UUID, action: String, summary: String) {
+		dsl.insertInto(AUDIT_EVENT)
+			.set(AUDIT_EVENT.ACTOR_TYPE, if (viewer.personId != null) "person" else "system").set(AUDIT_EVENT.ACTOR_PERSON_ID, viewer.personId)
+			.set(AUDIT_EVENT.ACTION, action).set(AUDIT_EVENT.TARGET_TYPE, "changeset").set(AUDIT_EVENT.TARGET_ID, id)
+			.set(AUDIT_EVENT.CHAPTER_ID, chapterId).set(AUDIT_EVENT.AFTER, JSONB.valueOf(mapper.writeValueAsString(mapOf("summary" to summary))))
+			.execute()
+	}
+}
+
+/** A scheduled release found conflicts and went back to being a draft. */
+data class ScheduledReleaseFailed(val changesetId: UUID, val scheduledBy: UUID, val draft: String, val why: String)

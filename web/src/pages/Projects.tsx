@@ -1,3 +1,4 @@
+import { PlusIcon } from '@primer/octicons-react'
 import { Banner, Button, Select, Spinner, TextInput } from '@primer/react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
@@ -22,23 +23,42 @@ export function Projects({ code, canEdit }: { code: string; canEdit: boolean }) 
           Projects
           <span className="muted">{projects.length}</span>
           {canEdit && !creating && (
-            <Button size="small" variant="primary" style={{ marginLeft: 'auto' }} onClick={() => setCreating(true)}>New project</Button>
+            <Button size="small" variant="primary" leadingVisual={PlusIcon} style={{ marginLeft: 'auto' }} onClick={() => setCreating(true)}>New project</Button>
           )}
         </div>
         {projects.length === 0 && <div className="box-row muted">No projects yet.{canEdit ? ' Start one with New project.' : ''}</div>}
-        {projects.map((p) => {
-          const [label, tone] = PROJECT_STATUS[p.status] ?? [p.status, 'off']
-          return (
-            <div className="box-row" key={p.id} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', alignItems: 'baseline' }}>
-              <Link to={`/chapters/${code}/projects/${p.slug}`}><strong>{p.name}</strong></Link>
-              <Status tone={tone}>{label}</Status>
-              <span className="muted">
-                {[p.term, p.partner, p.type, ...p.tags.map((t) => `#${t}`)].filter(Boolean).join(' · ')}
-              </span>
-              <span className="muted" style={{ marginLeft: 'auto' }}>{p.members} members · {p.resources} resources</span>
-            </div>
-          )
-        })}
+        {projects.length > 0 && (
+          <table className="list-table" aria-label="Projects">
+            <colgroup><col /><col className="col-status" /><col className="wide-only" style={{ width: 130 }} /><col className="wide-only" style={{ width: 90 }} /><col className="wide-only" style={{ width: 100 }} /></colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Project</th><th scope="col">Status</th>
+                <th scope="col" className="wide-only">Semester</th><th scope="col" className="num wide-only">Members</th><th scope="col" className="num wide-only">Resources</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projects.map((p) => {
+                const [label, tone] = PROJECT_STATUS[p.status] ?? [p.status, 'off']
+                const about = [p.partner, p.type, ...p.tags.map((t) => `#${t}`)].filter(Boolean).join(' · ')
+                return (
+                  <tr key={p.id}>
+                    <td>
+                      <Link to={`/chapters/${code}/projects/${p.slug}`}><strong>{p.name}</strong></Link>
+                      {about && <div className="muted list-sub">{about}</div>}
+                    </td>
+                    <td>
+                      <Status tone={tone}>{label}</Status>
+                      {p.pendingChanges > 0 && <div className="muted list-sub">{p.pendingChanges} {p.pendingChanges === 1 ? 'change' : 'changes'} in the draft</div>}
+                    </td>
+                    <td className="wide-only">{p.term ?? <span className="muted">—</span>}</td>
+                    <td className="num wide-only">{p.members}</td>
+                    <td className="num wide-only">{p.resources}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
       </section>
     </div>
   )

@@ -31,6 +31,13 @@ export type AgreementTemplates = components['schemas']['AgreementTemplates']
 export type AgreementTemplateView = components['schemas']['AgreementTemplateView']
 export type MemberAgreement = components['schemas']['MemberAgreement']
 export type ApplicantAgreement = components['schemas']['ApplicantAgreement']
+export type DraftSummary = components['schemas']['DraftSummary']
+export type DraftDetail = components['schemas']['DraftDetail']
+export type DraftPreview = components['schemas']['DraftPreview']
+export type TeamCandidate = components['schemas']['TeamCandidate']
+export type ActivityItem = components['schemas']['ActivityItem']
+export type MemberHome = components['schemas']['MemberHome']
+export type ReleaseResult = components['schemas']['ReleaseResult']
 
 /** Typed client for the portal API; types come from web/openapi.json (`npm run gen:api`). */
 export const api = createClient<paths>({

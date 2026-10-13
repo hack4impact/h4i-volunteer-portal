@@ -1,11 +1,14 @@
 import { Banner, BaseStyles, Button, Spinner, ThemeProvider } from '@primer/react'
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
 import { api, type Me, signIn } from './api/client'
+import logo from './assets/logo.svg'
 import { TopBar } from './components/TopBar'
 import { ApplyApp } from './pages/Apply'
 import { ChapterPage } from './pages/ChapterPage'
+import { MemberHome } from './pages/MemberHome'
 import { National } from './pages/National'
+import { ProjectPage } from './pages/ProjectPage'
 
 type Session = { state: 'loading' } | { state: 'signed-out' } | { state: 'signed-in'; me: Me }
 
@@ -45,12 +48,17 @@ function MemberApp() {
               <Route path="/chapters/:code/approvals" element={<ChapterPage me={session.me} tab="approvals" />} />
               <Route path="/chapters/:code/projects" element={<ChapterPage me={session.me} tab="projects" />} />
               <Route path="/chapters/:code/projects/:slug" element={<ChapterPage me={session.me} tab="projects" />} />
+              <Route path="/chapters/:code/drafts" element={<ChapterPage me={session.me} tab="drafts" />} />
+              <Route path="/chapters/:code/drafts/:draftId" element={<ChapterPage me={session.me} tab="drafts" />} />
               <Route path="/chapters/:code/adoption" element={<ChapterPage me={session.me} tab="adoption" />} />
               <Route path="/chapters/:code/settings" element={<ChapterPage me={session.me} tab="settings" />} />
               <Route path="/national" element={<National me={session.me} />} />
+              <Route path="/me" element={<MemberHome me={session.me} />} />
+              <Route path="/projects/:code/:slug" element={<LeadProject me={session.me} />} />
               <Route
                 path="*"
-                element={session.me.chapters.length > 0 ? <Navigate to={`/chapters/${session.me.chapters[0]!.code}`} replace /> : <NoAccess me={session.me} />}
+                element={session.me.chapters.length > 0 ? <Navigate to={`/chapters/${session.me.chapters[0]!.code}`} replace />
+                  : session.me.personId ? <MemberHome me={session.me} /> : <NoAccess me={session.me} />}
               />
             </Routes>
           </BrowserRouter>
@@ -60,18 +68,49 @@ function MemberApp() {
   )
 }
 
+/** Google's "G", for the sign-in button (Google's branding asks for the mark on a white square). */
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
+  )
+}
+
+/** The sign-in page: one button, which account to use, and where applicants go instead. */
 function SignIn({ denied }: { denied: boolean }) {
   return (
-    <div className="center">
-      <h1 className="page-title">H4I Portal</h1>
-      {denied && (
-        <div style={{ marginBottom: 16, textAlign: 'left' }}>
-          <Banner title="That account can't sign in" description="Use your Hack4Impact Google account: an @hack4impact.org address or a chapter one like @umd.hack4impact.org." variant="critical" />
+    <main className="signin">
+      <section className="signin-brand" aria-label="Hack4Impact">
+        <img src={logo} alt="Hack4Impact" className="signin-logo" />
+        <p className="signin-tagline">Your projects and access, in one place.</p>
+      </section>
+      <section className="signin-panel" aria-labelledby="signin-title">
+        <div className="signin-card">
+          <h1 id="signin-title" className="signin-title">Sign in</h1>
+          {denied && <Banner title="That account can’t sign in" description="Use your Hack4Impact Google account." variant="critical" />}
+          <Button variant="primary" size="large" block onClick={signIn} leadingVisual={() => <span className="google-mark"><GoogleMark /></span>}>
+            Sign in with Google
+          </Button>
+          {!denied && <p className="signin-hint">Use your @hack4impact.org account.</p>}
+          <p className="signin-other">Applying? Use your chapter’s link.</p>
         </div>
-      )}
-      <p className="muted">Chapter leads and national sign in with their Hack4Impact Google account.</p>
-      <Button variant="primary" size="large" onClick={signIn}>Sign in with Google</Button>
-    </div>
+      </section>
+    </main>
+  )
+}
+
+/** A project's page for its leads who have no role in the chapter (PRD project lead: they manage the team). */
+function LeadProject({ me }: { me: Me }) {
+  const { code = '', slug = '' } = useParams()
+  return (
+    <>
+      <TopBar me={me} />
+      <ProjectPage code={code} slug={slug} />
+    </>
   )
 }
 
@@ -82,9 +121,9 @@ function NoAccess({ me }: { me: Me }) {
       <div className="center">
         <h1 className="page-title">No chapter access yet</h1>
         <p>
-          You're signed in as <strong>{me.email}</strong>, but you don't have a lead or viewer role in any chapter.
+          You're signed in as <strong>{me.email}</strong>, but this account isn't linked to a member yet.
         </p>
-        <p className="muted">Ask your chapter lead or the national team to add you.</p>
+        <p className="muted">Sign in with the Hack4Impact address your chapter gave you, or ask your chapter lead or the national team.</p>
       </div>
     </>
   )

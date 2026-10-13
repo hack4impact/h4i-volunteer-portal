@@ -75,6 +75,7 @@ class SandboxE2E(
 	private val accounts: org.springframework.beans.factory.ObjectProvider<org.hack4impact.portal.adapters.google.GoogleAccounts>,
 	private val adapterProperties: org.hack4impact.portal.adapters.AdapterProperties,
 	private val agreements: org.hack4impact.portal.agreements.AgreementService,
+	private val drafts: org.hack4impact.portal.drafts.Drafts,
 	private val documenso: org.springframework.beans.factory.ObjectProvider<org.hack4impact.portal.adapters.documenso.DocumensoClient>,
 	private val context: ConfigurableApplicationContext,
 ) : ApplicationRunner {
@@ -82,9 +83,11 @@ class SandboxE2E(
 	private val report = StringBuilder()
 	private var failures = 0
 
-	private fun check(tool: Tool, step: String, ok: Boolean, detail: String = "") {
+	private fun check(tool: Tool, step: String, ok: Boolean, detail: String = "") = check(tool.name, step, ok, detail)
+
+	private fun check(label: String, step: String, ok: Boolean, detail: String = "") {
 		if (!ok) failures++
-		report.appendLine("${if (ok) "PASS" else "FAIL"}  ${tool.name.padEnd(6)} $step${if (detail.isNotEmpty()) "  ($detail)" else ""}")
+		report.appendLine("${if (ok) "PASS" else "FAIL"}  ${label.padEnd(6)} $step${if (detail.isNotEmpty()) "  ($detail)" else ""}")
 	}
 
 	override fun run(args: ApplicationArguments) {
@@ -118,12 +121,10 @@ class SandboxE2E(
 		val people = loadFixturePeople(dsl, fixture, readerOf, chapterId, skipDisabledTools = true)
 		val run = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyMMddHHmmss"))
 		val slug = "e2e-$run"
-		val project = dsl.insertInto(PROJECT).set(PROJECT.CHAPTER_ID, chapterId).set(PROJECT.NAME, "E2E $run").set(PROJECT.SLUG, slug).set(PROJECT.STATUS, "active")
+		// A project not started yet and without its team: the team plan comes through a draft (1b).
+		val project = dsl.insertInto(PROJECT).set(PROJECT.CHAPTER_ID, chapterId).set(PROJECT.NAME, "E2E $run").set(PROJECT.SLUG, slug).set(PROJECT.STATUS, "draft")
 			.returningResult(PROJECT.ID).fetchSingle().value1()!!
 		val active = people.filterKeys { name -> (fixture["people"] as List<Map<String, Any?>>).first { it["name"] == name }["status"].let { it == null || it == "active" } }
-		active.values.forEach {
-			dsl.insertInto(PROJECT_MEMBER).set(PROJECT_MEMBER.PROJECT_ID, project).set(PROJECT_MEMBER.PERSON_ID, it).set(PROJECT_MEMBER.AGREEMENT_STATUS, "signed").execute()
-		}
 		val resources = tools.associateWith { tool ->
 			if (tool == Tool.NOTION) {
 				// A teamspace exists already (the portal can't create one); its members come through the queue.
@@ -151,10 +152,13 @@ class SandboxE2E(
 		}
 		dsl.update(TOOL_SETTING).set(TOOL_SETTING.DRY_RUN, false).where(TOOL_SETTING.TOOL.`in`(tools.map { it.name.lowercase() })).execute()
 
-		// 1b. Registration (step 10): a returning applicant is approved and gets a real Google account, which the
+		// 1b. The semester's team plan (step 12): everyone onto the project and the project started, in a draft that's
+		// previewed and then released in one transaction.
+		releasePhase(chapterId, project, slug, active.values.toList(), run)
+		// 1c. Registration (step 10): a returning applicant is approved and gets a real Google account, which the
 		// apply phase below then gives the chapter's access. Needs PORTAL_ADAPTERS_GOOGLE_CREATEACCOUNTS and USERSCOPE.
 		val createdAccount = registrationPhase(chapterId, active.values.toList(), run)
-		// 1c. Agreements (step 11): one member's project agreement goes out through staging Documenso, and the GitHub
+		// 1d. Agreements (step 11): one member's project agreement goes out through staging Documenso, and the GitHub
 		// team waits for their signature.
 		val signer = agreementPhase(project, active.values.toList(), resources, run)
 		report.appendLine("Run $run: ${tools.joinToString { it.name.lowercase() }}, ${active.size} people, resources named $code-$slug")
@@ -294,6 +298,32 @@ class SandboxE2E(
 		report.appendLine(if (failures == 0) "ALL PASSED" else "$failures FAILED")
 		log.info("Sandbox suite:\n{}", report)
 		return failures == 0
+	}
+
+	/** The step 12 finish line: a semester's team plan goes through a draft and releases in one transaction. */
+	private fun releasePhase(chapterId: UUID, project: UUID, slug: String, people: List<UUID>, run: String) {
+		val leadId = people.first()
+		val lead = dsl.selectFrom(org.hack4impact.portal.db.tables.references.PERSON).where(org.hack4impact.portal.db.tables.references.PERSON.ID.eq(leadId)).fetchSingle()
+		val viewer = org.hack4impact.portal.auth.Viewer(leadId, lead.orgEmail ?: "", "${lead.firstName} ${lead.lastName}", false, mapOf(chapterId to "lead"))
+		val draft = drafts.create(chapterId, "E2E $run teams", viewer).id
+		people.forEach { person ->
+			drafts.record(chapterId, draft, viewer, slug) { p -> drafts.operation("add_member", p!!.id!!, "input" to org.hack4impact.portal.projects.MemberInput(person)) }
+		}
+		drafts.record(chapterId, draft, viewer, slug) { p -> drafts.operation("set_status", p!!.id!!, "status" to "active") }
+		fun members() = dsl.fetchCount(PROJECT_MEMBER, PROJECT_MEMBER.PROJECT_ID.eq(project), PROJECT_MEMBER.REMOVED_AT.isNull)
+		fun status() = dsl.select(PROJECT.STATUS).from(PROJECT).where(PROJECT.ID.eq(project)).fetchSingle().value1()
+		check("DRAFT", "planned: ${people.size + 1} changes, nothing live yet", members() == 0 && status() == "draft")
+		val detail = drafts.detail(chapterId, draft, viewer)
+		val p = detail.preview
+		check("DRAFT", "preview: adds ${p.people} people to ${p.resources} resources", detail.conflicts.isEmpty() && p.perPerson.size == people.size && p.adds > 0,
+			detail.conflicts.joinToString { it.problem }.ifEmpty { "${p.adds} grants" })
+		val queued = { dsl.fetchCount(dsl.selectFrom("portal.event_publication").where("serialized_event LIKE '%\"trigger\":\"release\"%'")) }
+		val before = queued()
+		val result = drafts.release(chapterId, draft, viewer)
+		check("DRAFT", "released in one transaction: ${members()} people on the project, project ${status()}, sync queued",
+			result.released && members() == people.size && status() == "active" && queued() > before, result.conflicts.joinToString { it.problem })
+		// The suite runs the syncs itself. Everyone counts as having signed; the agreement phase un-signs one person.
+		dsl.update(PROJECT_MEMBER).set(PROJECT_MEMBER.AGREEMENT_STATUS, "signed").where(PROJECT_MEMBER.PROJECT_ID.eq(project)).execute()
 	}
 
 	private data class AgreementRun(val person: UUID, val email: String, val envelopeId: String, val signingUrl: String?)

@@ -137,6 +137,26 @@ object Emails {
 		},
 	)
 
+	/** PRD: after a release, each member whose projects or access changed gets one summary. */
+	fun releaseSummary(name: String, chapter: String, draft: String, joins: List<String>, leaves: List<String>, gains: List<String>, loses: List<String>, afterAgreement: List<String>, portal: String) = Email(
+		"release_summary", "Your $chapter projects and access",
+		buildString {
+			append("Hi $name,\n\n$chapter just released “$draft”. Here's what changes for you:\n")
+			if (joins.isNotEmpty()) append("\nYou're on: ${joins.joinToString(", ")}\n")
+			if (leaves.isNotEmpty()) append("\nYou're no longer on: ${leaves.joinToString(", ")}\n")
+			if (gains.isNotEmpty()) append("\nYou now get:\n${gains.joinToString("\n") { "  - $it" }}\n")
+			if (afterAgreement.isNotEmpty()) append("\nOnce you sign the project agreement (Documenso emails it to you):\n${afterAgreement.joinToString("\n") { "  - $it" }}\n")
+			if (loses.isNotEmpty()) append("\nYou no longer get:\n${loses.joinToString("\n") { "  - $it" }}\n")
+			append("\nThe tools follow within the hour. Your projects: $portal")
+		},
+	)
+
+	fun scheduledReleaseFailed(name: String, draft: String, why: String, link: String) = Email(
+		"release_failed", "“$draft” wasn't released",
+		"Hi $name,\n\nThe draft “$draft” was scheduled for release, but some of its changes no longer work, so nothing was changed:\n\n  $why\n\n" +
+			"It's a draft again. Fix those changes, then release or schedule it: $link",
+	)
+
 	fun agreementOverdue(lead: String, person: String, project: String, days: Long) = Email(
 		"agreement_overdue", "$person hasn't signed the $project agreement",
 		"Hi $lead,\n\n$person was sent the project agreement for $project $days days ago and hasn't signed it yet. " +

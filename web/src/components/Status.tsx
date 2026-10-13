@@ -12,7 +12,7 @@ export const STATUS_LABEL: Record<string, string> = {
 }
 
 export const STATUS_TONE: Record<string, 'ok' | 'warn' | 'off' | 'danger'> = {
-  applicant: 'warn',
+  applicant: 'off',
   active: 'ok',
   alumni: 'off',
   removal_requested: 'danger',
@@ -47,7 +47,7 @@ export const CHANGE_LABEL: Record<string, string> = {
 }
 
 export const PROJECT_STATUS: Record<string, [string, 'ok' | 'warn' | 'off' | 'danger']> = {
-  draft: ['Draft', 'warn'],
+  draft: ['Draft', 'off'],
   active: ['Active', 'ok'],
   paused: ['Paused', 'off'],
   closed: ['Closed', 'off'],

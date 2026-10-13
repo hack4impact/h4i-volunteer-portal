@@ -1,3 +1,4 @@
+import { PersonIcon, SignOutIcon } from '@primer/octicons-react'
 import { ActionList, ActionMenu } from '@primer/react'
 import { Link, useNavigate } from 'react-router'
 import { type Me, signOut } from '../api/client'
@@ -50,7 +51,14 @@ export function TopBar({ me, chapterCode }: { me: Me; chapterCode?: string }) {
               <ActionList.GroupHeading>{me.email}</ActionList.GroupHeading>
             </ActionList.Group>
             <ActionList.Divider />
-            <ActionList.Item onSelect={() => void signOut()}>Sign out</ActionList.Item>
+            {me.personId && (
+              <ActionList.Item onSelect={() => navigate('/me')}>
+                <ActionList.LeadingVisual><PersonIcon /></ActionList.LeadingVisual>My projects and access
+              </ActionList.Item>
+            )}
+            <ActionList.Item onSelect={() => void signOut()}>
+              <ActionList.LeadingVisual><SignOutIcon /></ActionList.LeadingVisual>Sign out
+            </ActionList.Item>
           </ActionList>
         </ActionMenu.Overlay>
       </ActionMenu>

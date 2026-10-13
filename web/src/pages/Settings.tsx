@@ -2,6 +2,7 @@ import { Banner, Button, Select, Spinner, TextInput } from '@primer/react'
 import { useEffect, useState } from 'react'
 import { api, reason, type NotionPageRef, type NotionSettingsView } from '../api/client'
 import { Status } from '../components/Status'
+import { ToolIcon } from '../components/ToolIcon'
 import { RegistrationSettings } from './RegistrationSettings'
 
 type RouteForm = { kind: string; value: string; parent: string }
@@ -62,7 +63,7 @@ export function Settings({ code }: { code: string }) {
   return (
     <div className="page-body" style={{ gridTemplateColumns: '1fr' }}>
       <form className="box" aria-labelledby="notion-routes" onSubmit={save}>
-        <div className="box-head" id="notion-routes">Notion routes</div>
+        <div className="box-head" id="notion-routes"><span className="tool-name"><ToolIcon tool="notion" />Notion routes</span></div>
         <div className="box-row muted">
           Where each project's Notion page is created. The first route whose tag or type matches the project wins; otherwise the default page.
           Changing a route only affects new projects.

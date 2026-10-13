@@ -1,4 +1,6 @@
 /* Layout and the few H4I-specific patterns. Colors only through tokens (h4i-theme.css). */
+/* Room for the scrollbar on every page, so switching between short and long tabs doesn't shift the layout sideways. */
+html { scrollbar-gutter: stable; }
 body { margin: 0; }
 .app { min-height: 100vh; font-size: 14px; line-height: 21px; }
 
@@ -32,7 +34,9 @@ body { margin: 0; }
 .status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); flex: none; }
 .status.ok { --dot: var(--h4i-ok); }
 .status.warn { --dot: var(--h4i-warn); }
-.status.off { --dot: var(--h4i-off); }
+.status.off { --dot: var(--h4i-off); color: var(--h4i-fg-muted); }
+/* A dot means "look at this": only states that need someone or went wrong get one; normal and inactive ones are words. */
+.status.ok::before, .status.off::before { display: none; }
 .status.danger { --dot: var(--h4i-danger); }
 
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--h4i-border); }
@@ -54,6 +58,8 @@ body { margin: 0; }
 .inline-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 8px; }
 
 .project-title { font-size: 22px; line-height: 30px; font-weight: 700; color: var(--h4i-fg-strong); margin: 2px 0 0; }
+.project-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 2px; }
+.project-title-row .project-title { margin: 0; }
 .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0 0 12px; }
 .facts dt { color: var(--h4i-fg-muted); font-size: 13px; }
 .facts dd { margin: 0; }
@@ -153,3 +159,125 @@ body { margin: 0; }
 .registration { padding: 16px; display: grid; gap: 12px; }
 .registration .facts { grid-template-columns: minmax(120px, 220px) 1fr; margin: 0; }
 .registration .facts dd { overflow-wrap: anywhere; }
+
+/* A draft open on the Projects tab (step 12): planning, not live. */
+.draft-banner-wrap { max-width: 1280px; margin: 24px auto -8px; padding: 0 32px; }
+@media (max-width: 600px) { .draft-banner-wrap { padding: 0 16px; } }
+.draft-banner {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 16px;
+  border: 1px solid var(--borderColor-attention-emphasis, #9a6700); border-radius: 6px;
+  background: var(--bgColor-attention-muted, #fff8c5); color: var(--fgColor-default);
+}
+.pending-changes { margin: 0; padding-left: 20px; }
+
+/* A member's own page. */
+.member-chapters { display: flex; flex-wrap: wrap; gap: 4px 16px; padding-bottom: 16px; color: var(--h4i-fg-muted); }
+.member-row { display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; }
+
+
+/* Sign-in: a brand panel (navy, halftone dots, logo) beside the sign-in card; stacked on narrow screens. */
+.signin { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+.signin-brand {
+  position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; gap: 32px;
+  padding: 48px; background: #172a3a; color: #e6edf3;
+}
+.signin-brand::after {
+  content: ""; position: absolute; right: -28px; top: -28px; width: 300px; height: 220px; pointer-events: none;
+  background-image: radial-gradient(rgb(166 237 252 / 0.28) 2px, transparent 2.5px); background-size: 14px 14px;
+}
+.signin-logo { height: 32px; width: auto; align-self: flex-start; filter: brightness(0) invert(1); }
+.signin-tagline { position: relative; font-size: 28px; line-height: 36px; font-weight: 700; color: #fff; margin: 0; max-width: 420px; }
+.signin-panel { display: flex; align-items: center; justify-content: center; padding: 48px 32px; background: var(--h4i-bg); }
+.signin-card { width: 100%; max-width: 340px; display: grid; gap: 16px; }
+.signin-card p { margin: 0; }
+.signin-title { font-size: 24px; line-height: 32px; font-weight: 700; color: var(--h4i-fg-strong); margin: 0; }
+.google-mark { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 4px; background: #fff; }
+.signin-hint { font-size: 13px; line-height: 20px; color: var(--h4i-fg-muted); }
+.signin-other { padding-top: 16px; border-top: 1px solid var(--h4i-border-muted); font-size: 13px; line-height: 20px; color: var(--h4i-fg-muted); }
+@media (max-width: 800px) {
+  .signin { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .signin-brand { padding: 24px 16px; gap: 16px; }
+  .signin-brand::after { display: none; }
+  .signin-tagline { font-size: 20px; line-height: 28px; margin-bottom: 0; }
+  .signin-panel { align-items: flex-start; padding: 32px 16px; }
+}
+
+/* Activity timeline: hollow markers on a line, the latest first. */
+.timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+.timeline::before { content: ""; position: absolute; left: 6px; top: 10px; bottom: 14px; width: 2px; background: var(--h4i-border-muted); }
+.timeline-item { position: relative; padding: 0 0 18px 28px; }
+.timeline-item:last-child { padding-bottom: 0; }
+.timeline-dot {
+  position: absolute; left: 0; top: 4px; width: 14px; height: 14px; box-sizing: border-box; border-radius: 50%;
+  border: 2px solid var(--h4i-fg-strong); background: var(--h4i-bg);
+}
+.timeline-sync .timeline-dot { border-color: var(--h4i-link); }
+.timeline-agreement .timeline-dot { border-color: var(--h4i-ok); }
+.timeline-text { color: var(--h4i-fg); }
+.timeline-meta { font-size: 13px; line-height: 20px; color: var(--h4i-fg-muted); margin-top: 2px; }
+.timeline-toggle { border: 0; background: none; padding: 0; font: inherit; font-size: 13px; color: var(--h4i-link); cursor: pointer; }
+.timeline-toggle:hover { text-decoration: underline; }
+.timeline-toggle:disabled { color: var(--h4i-fg-muted); cursor: default; }
+.timeline-details { margin: 6px 0 2px; padding-left: 16px; font-size: 13px; line-height: 20px; color: var(--h4i-fg-2); }
+.timeline-more { display: flex; gap: 16px; margin-top: 16px; }
+
+/* Tool marks: monochrome, in the text's color, beside the tool's name. */
+.tool-name { display: inline-flex; align-items: center; gap: 6px; }
+.tool-icon { flex: none; }
+.account-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+
+/* A list as a table: every column starts in the same place, whatever the names' lengths. */
+.list-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.list-table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--h4i-fg-muted); padding: 8px 16px; background: var(--h4i-bg-subtle); border-bottom: 1px solid var(--h4i-border-muted); }
+.list-table td { padding: 10px 16px; border-top: 1px solid var(--h4i-border-muted); vertical-align: top; overflow-wrap: anywhere; }
+.list-table tbody tr:first-child td { border-top: 0; }
+.list-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.list-sub { font-size: 13px; line-height: 20px; margin-top: 2px; }
+.list-table .col-status { width: 200px; }
+@media (max-width: 700px) { .list-table .wide-only { display: none; } .list-table .col-status { width: 110px; } }
+.list-table .count { font-size: 16px; font-weight: 600; color: var(--h4i-fg-strong); }
+.list-table tr.list-edit td { background: var(--h4i-bg-subtle); border-top: 0; }
+.stat-of { font-size: 14px; font-weight: 400; color: var(--h4i-fg-muted); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Project sidebar (mockup): the agreement card and the team. */
+.side-card { border: 1px solid var(--h4i-border); border-radius: 6px; padding: 12px 16px; margin-bottom: 8px; display: grid; gap: 8px; background: var(--h4i-bg); }
+.side-card .pane-label { margin-bottom: 0; }
+.progress { height: 8px; border-radius: 4px; background: var(--h4i-border-muted); overflow: hidden; }
+.progress span { display: block; height: 100%; background: var(--h4i-primary-bg); border-radius: 4px; }
+.pane-count { font-weight: 400; margin-left: 4px; }
+.team-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.team-list li { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center; }
+.team-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.initials.small { width: 24px; height: 24px; font-size: 10px; }
+.team-editor .list-table { border: 1px solid var(--h4i-border); border-radius: 6px; border-collapse: separate; border-spacing: 0; overflow: hidden; }
+.team-add { margin-top: 16px; }
+
+/* Resource rows (per-tool boxes): name and details on the left, sync state on the right, then actions. */
+.res-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 16px; align-items: start; }
+.res-name { font-weight: 600; color: var(--h4i-fg-strong); }
+a.res-name { color: var(--h4i-fg-strong); text-decoration: underline; text-decoration-color: var(--h4i-border); text-underline-offset: 3px; }
+a.res-name:hover { text-decoration-color: currentColor; }
+.res-state { padding-top: 1px; white-space: nowrap; font-size: 13px; }
+.add-resource { background: var(--h4i-bg-subtle); border-bottom: 1px solid var(--h4i-border-muted); }
+.add-resource .box-row { border-top: 0; }
+@media (max-width: 700px) { .res-row { grid-template-columns: minmax(0, 1fr) auto; } .res-state { grid-column: 1; } }
+
+/* Member page access rows: icon column, then the name, tool and state on one line and why beneath. */
+.access-row { display: grid; grid-template-columns: 16px minmax(0, 1fr); column-gap: 10px; padding: 10px 16px; }
+.access-icon { display: flex; height: 21px; align-items: center; }
+.access-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.access-state { margin-left: auto; font-size: 13px; }
+
+/* Drafts: what changes for each person, a label column and resource chips. */
+.person-change { padding: 12px 16px; display: grid; gap: 8px; }
+.person-change-head { display: flex; align-items: center; gap: 8px; }
+.person-change-sum { margin-left: auto; font-size: 13px; }
+.change-grid { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 6px 16px; margin: 0; padding-left: 32px; }
+.change-grid dt { font-size: 13px; color: var(--h4i-fg-muted); padding-top: 3px; }
+.change-grid dt.add { color: var(--h4i-ok); }
+.change-grid dt.remove { color: var(--h4i-danger); }
+.change-grid dd { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid var(--h4i-border); border-radius: 12px; font-size: 13px; line-height: 20px; background: var(--h4i-bg); }
+.chip-remove { text-decoration: line-through; text-decoration-color: var(--h4i-danger); }
+@media (max-width: 700px) { .change-grid { grid-template-columns: 1fr; padding-left: 0; } }

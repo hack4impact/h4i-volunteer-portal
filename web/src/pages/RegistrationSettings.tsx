@@ -57,24 +57,26 @@ export function RegistrationSettings({ code }: { code: string }) {
       <div className="box-head" id="registration-settings">Registration</div>
       {error && <div className="box-row"><Banner title="Not saved" description={error} variant="critical" /></div>}
       {saved && !error && <div className="box-row"><Banner title="Saved" variant="success" /></div>}
-      <fieldset className="box-row choice">
-        <legend>How people apply</legend>
-        <label className="check">
-          <Radio name="applications" value="open" disabled={!edit} checked={open} onChange={() => { setOpen(true); setSaved(false) }} />
-          Through the portal: anyone with the chapter’s link applies, and you approve them on the Approvals tab
-        </label>
-        <label className="check">
-          <Radio name="applications" value="own" disabled={!edit} checked={!open} onChange={() => { setOpen(false); setSaved(false) }} />
-          We run our own application process, then invite the people we accept with a roster
-        </label>
-        {!open && (
-          <label>
-            Where to apply instead
-            <TextInput disabled={!edit} value={url} onChange={(e) => { setUrl(e.target.value); setSaved(false) }} placeholder="https://forms.gle/… (optional)" />
-            <span className="muted">The chapter’s link shows this instead of the portal’s application.</span>
+      <div className="box-row">
+        <fieldset className="choice">
+          <legend>How people apply</legend>
+          <label className="check">
+            <Radio name="applications" value="open" disabled={!edit} checked={open} onChange={() => { setOpen(true); setSaved(false) }} />
+            Through the portal: anyone with the chapter’s link applies, and you approve them on the Approvals tab
           </label>
-        )}
-      </fieldset>
+          <label className="check">
+            <Radio name="applications" value="own" disabled={!edit} checked={!open} onChange={() => { setOpen(false); setSaved(false) }} />
+            We run our own application process, then invite the people we accept with a roster
+          </label>
+          {!open && (
+            <label>
+              Where to apply instead
+              <TextInput disabled={!edit} value={url} onChange={(e) => { setUrl(e.target.value); setSaved(false) }} placeholder="https://forms.gle/… (optional)" />
+              <span className="muted">The chapter’s link shows this instead of the portal’s application.</span>
+            </label>
+          )}
+        </fieldset>
+      </div>
       {open && (
         <div className="box-row muted">
           Everyone answers name, personal email, graduation year and role. Add your chapter’s own questions below; applicants see them after verifying their school email.

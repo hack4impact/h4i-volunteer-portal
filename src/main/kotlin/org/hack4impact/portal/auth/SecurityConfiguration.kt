@@ -31,6 +31,8 @@ data class AuthProperties(val allowedDomain: String = "hack4impact.org")
 @ConditionalOnWebApplication
 @EnableConfigurationProperties(AuthProperties::class)
 class SecurityConfiguration {
+	private val log = org.slf4j.LoggerFactory.getLogger(javaClass)
+
 
 	@Bean
 	fun portalSecurity(
@@ -72,6 +74,10 @@ class SecurityConfiguration {
 			val user = google.loadUser(request)
 			DomainCheck.rejection(user.claims, properties.allowedDomain)?.let { throw OAuth2AuthenticationException(OAuth2Error("domain_not_allowed", it, null)) }
 			viewers.linkGoogleAccount(user)
+			// One line per sign-in, so "not linked to a member" can be traced (the address, never tokens).
+			val email = user.email
+			if (email.isNullOrBlank()) log.warn("Sign-in without an email claim (claims: {})", user.claims.keys.sorted())
+			else log.info("Sign-in: {} ({})", email, if (viewers.of(user).personId != null) "member" else "not linked to a member")
 			user
 		}
 	}

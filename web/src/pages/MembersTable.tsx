@@ -2,16 +2,8 @@ import { Select, Spinner, TextInput } from '@primer/react'
 import { DataTable, Table } from '@primer/react/experimental'
 import { useMemo, useState } from 'react'
 import { type MemberRow } from '../api/client'
-import { ROLE_LABEL, STATUS_LABEL, STATUS_TONE, Status } from '../components/Status'
-
-const STATE_TONE: Record<string, 'ok' | 'warn' | 'off'> = {
-  confirmed: 'ok',
-  unverified: 'warn',
-  invited: 'warn',
-  accepted: 'warn',
-  suspended: 'off',
-  removed: 'off',
-}
+import { ROLE_LABEL, STATUS_LABEL, STATUS_TONE, Status, TOOL_NAME } from '../components/Status'
+import { ToolIcon } from '../components/ToolIcon'
 
 /** Filters a chapter's members by text (name or email), status and chapter role ("none" = no role). */
 export function filterMembers(members: MemberRow[], query: string, status: string, role: string) {
@@ -89,7 +81,9 @@ export function MembersTable({ members }: { members: MemberRow[] | null }) {
                     ) : (
                       <span style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
                         {m.accounts.map((a, i) => (
-                          <Status key={i} tone={STATE_TONE[a.state] ?? 'off'}>{a.tool} {a.state === 'confirmed' ? '' : `(${a.state})`}</Status>
+                          <span key={i} className={`account-chip ${a.state === 'confirmed' ? '' : 'muted'}`} title={`${TOOL_NAME[a.tool] ?? a.tool}: ${a.state}`}>
+                            <ToolIcon tool={a.tool} label />{a.state === 'confirmed' ? '' : <span>{a.state}</span>}
+                          </span>
                         ))}
                       </span>
                     ),
