@@ -56,6 +56,10 @@ portal:
 
 server:
   shutdown: graceful
+  # Behind the Cloudflare Tunnel or a proxy: the visitor's address and scheme come from X-Forwarded-*, trusted only when
+  # the request comes from an internal address (Tomcat's default list), so rate limits and the Google redirect URI see
+  # the real visitor and https (code review H6).
+  forward-headers-strategy: native
 
 management:
   endpoints:

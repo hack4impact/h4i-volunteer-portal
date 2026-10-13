@@ -19,14 +19,23 @@ import kotlin.system.exitProcess
 /**
  * Asks for a sync. Published inside a transaction, so Spring Modulith stores it in the outbox (event_publication)
  * together with whatever data change caused it, and retries it if the app stops before the sync finishes.
- * [trigger] is schedule, release or manual (sync_run.trigger).
+ * [trigger] is one of [SyncTriggers.ALL] (sync_run.trigger).
  */
 data class SyncRequested(val trigger: String, val tools: Set<Tool>? = null)
+
+object SyncTriggers {
+	/** What may start a sync; `sync_run_trigger_check` (V14) allows exactly these (a test keeps them in step). */
+	val ALL = setOf("schedule", "release", "manual", "agreement", "rule", "change")
+}
 
 @Component
 class SyncRequests(private val events: ApplicationEventPublisher) {
 	@Transactional
-	fun request(trigger: String, tools: Set<Tool>? = null) = events.publishEvent(SyncRequested(trigger, tools))
+	fun request(trigger: String, tools: Set<Tool>? = null) {
+		// Fails here, in the request that asked, rather than later in the background when the run is recorded (review H1).
+		require(trigger in SyncTriggers.ALL) { "Unknown sync trigger $trigger" }
+		events.publishEvent(SyncRequested(trigger, tools))
+	}
 }
 
 /**
@@ -37,11 +46,39 @@ class SyncRequests(private val events: ApplicationEventPublisher) {
 class SyncListener(private val engine: SyncEngine, @org.springframework.beans.factory.annotation.Value("\${portal.sync.on-request:true}") private val enabled: Boolean) {
 	private val log = LoggerFactory.getLogger(javaClass)
 
+	// Requests that arrived while a run was going: they're merged into one more run when it finishes (review H2).
+	private var running = false
+	private var allTools = false
+	private val tools = mutableSetOf<Tool>()
+	private var trigger: String? = null
+
 	@ApplicationModuleListener
 	fun on(event: SyncRequested) {
 		if (!enabled) return
-		val reports = engine.run(event.trigger, event.tools)
-		reports.forEach { log.info("Sync {} ({}): {}", it.tool, event.trigger, it) }
+		synchronized(this) {
+			if (event.tools == null) allTools = true else tools += event.tools
+			if (trigger == null) trigger = event.trigger
+			if (running) return // the run going now starts another when it finishes, which reads this request's change
+			running = true
+		}
+		while (true) {
+			val (which, these) = synchronized(this) {
+				if (!allTools && tools.isEmpty()) {
+					running = false
+					return
+				}
+				val next = (trigger ?: "manual") to (if (allTools) null else tools.toSet())
+				allTools = false
+				tools.clear()
+				trigger = null
+				next
+			}
+			try {
+				engine.run(which, these).forEach { log.info("Sync {} ({}): {}", it.tool, which, it) }
+			} catch (e: RuntimeException) {
+				log.error("Sync ({}) failed", which, e)
+			}
+		}
 	}
 }
 

@@ -114,7 +114,7 @@ class DemoSeed(
 		check(host in setOf("localhost", "127.0.0.1", "db")) { "only a local or staging database is seeded (this one is on $host)" }
 		if (properties.reset) reset()
 		check(dsl.fetchCount(PERSON) == 0) { "the database already has people; add --portal.demo.reset=true to empty it first (staging only)" }
-		val plan = TransactionTemplate(transactions).execute { Data().build() }!!
+		val plan = TransactionTemplate(transactions).execute { Data().build() }
 		// Next semester's plan, in a draft (Drafts tab). Made after the rest is committed: drafts replay in their own,
 		// rolled-back transactions.
 		val (chapter, lead, team) = plan

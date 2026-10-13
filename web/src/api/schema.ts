@@ -1816,7 +1816,7 @@ export interface components {
             resourceId: string | null;
             /** Format: uuid */
             roleId: string | null;
-            tags: string[];
+            tags: string[] | null;
             tool: string | null;
         };
         ResourceSync: {

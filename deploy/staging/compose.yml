@@ -26,7 +26,6 @@ services:
       - path: .env
         required: false
     environment:
-      SPRING_PROFILES_ACTIVE: staging
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/portal
       SPRING_DATASOURCE_USERNAME: portal
       SPRING_DATASOURCE_PASSWORD: ${PORTAL_DB_PASSWORD:?set PORTAL_DB_PASSWORD in deploy/staging/.env}

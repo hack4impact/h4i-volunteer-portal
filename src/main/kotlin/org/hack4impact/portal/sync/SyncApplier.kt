@@ -5,7 +5,6 @@ import org.hack4impact.portal.adapters.AdapterException
 import org.hack4impact.portal.adapters.AuthFailed
 import org.hack4impact.portal.adapters.GrantResult
 import org.hack4impact.portal.adapters.WriteAdapter
-import org.hack4impact.portal.db.tables.references.ADMIN_TASK
 import org.hack4impact.portal.db.tables.references.AUDIT_EVENT
 import org.hack4impact.portal.db.tables.references.PERSON
 import org.hack4impact.portal.db.tables.references.RESOURCE
@@ -113,7 +112,10 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 		for ((grant, from) in grants) {
 			val ext = external[grant.resourceId]?.first
 			val ref = accountRef(tool, grant.personId, actual)
-			val (outcome, error) = if (ext == null) "skipped" to "the resource doesn't exist in the tool yet" else attempt(grant.personId, grant.resourceId) {
+			val lowering = from != null && grant.access < from
+			val (outcome, error) = if (ext == null) "skipped" to "the resource doesn't exist in the tool yet"
+			else if (lowering && wouldPause != null) "held" to wouldPause // lowering access waits with the removals (review H3)
+			else attempt(grant.personId, grant.resourceId) {
 				when (writer.grant(ext, ref, grant.access)) {
 					GrantResult.DONE -> "applied"
 					GrantResult.INVITED -> "invited"
@@ -140,11 +142,9 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 			change("remove", removal.personId, removal.resourceId, outcome, error, account = account, from = removal.access, reasons = removal.previousReasons)
 			saveRemoval(removal.personId, removal.resourceId, outcome, error, runId, now, records[removal.personId to removal.resourceId])
 		}
-		if (wouldPause != null && plan.removals.isNotEmpty()) {
-			dsl.insertInto(ADMIN_TASK)
-				.set(ADMIN_TASK.TOOL, tool.name.lowercase()).set(ADMIN_TASK.ACTION, "confirm_removals").set(ADMIN_TASK.RUN_ID, runId)
-				.set(ADMIN_TASK.DESCRIPTION, "Confirm ${plan.removals.size} removals in ${tool.name.lowercase().replaceFirstChar { it.uppercase() }}: $wouldPause")
-				.execute()
+		val held = plan.removals.size + plan.lowerings.size
+		if (wouldPause != null && held > 0) {
+			queue.confirmRemovals(tool, runId, "Confirm $held removals in ${tool.name.lowercase().replaceFirstChar { it.uppercase() }}: $wouldPause")
 		}
 
 		// 3b. Archive closed projects' channels, once their members are out (not while removals are held).
@@ -193,8 +193,8 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 	}
 
 	/**
-	 * The person's account in the tool if they have one there; else what the tool can invite: their login from the
-	 * member DB (GitHub) and their H4I address, falling back to their school address.
+	 * The person's account in the tool if they have one there; else what the tool can invite: their verified account
+	 * ID (GitHub) or stored login (the others), and their H4I address, falling back to their school address.
 	 */
 	private fun accountRef(tool: Tool, person: UUID, actual: SyncEngine.Actual): AccountRef {
 		val who = dsl.select(PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME).from(PERSON).where(PERSON.ID.eq(person)).fetchOne()
@@ -209,11 +209,20 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 				.limit(1).fetchOne()?.let { return AccountRef(it.value1(), orgEmail, orgEmail, person, name) }
 		}
 		listed?.let { return AccountRef(it.externalId, it.login, it.email, person, name) }
-		val login = dsl.select(TOOL_ACCOUNT.EXTERNAL_LOGIN).from(TOOL_ACCOUNT)
-			.where(TOOL_ACCOUNT.PERSON_ID.eq(person), TOOL_ACCOUNT.TOOL.eq(tool.name.lowercase()), TOOL_ACCOUNT.EXTERNAL_LOGIN.isNotNull)
-			.limit(1).fetchOne()?.value1()
 		val email = dsl.select(PERSON.ORG_EMAIL, PERSON.SCHOOL_EMAIL).from(PERSON).where(PERSON.ID.eq(person)).fetchOne()
 			?.let { it.value1() ?: it.value2() }
+		if (tool == Tool.GITHUB) {
+			// Only a verified account ID (from a GitHub sign-in or the org's own listing): GitHub turns it into the account's
+			// current login. A stored login may be unverified or since taken by someone else, so without an ID the
+			// invitation goes to their address instead (review M2).
+			val id = dsl.select(TOOL_ACCOUNT.EXTERNAL_ID).from(TOOL_ACCOUNT)
+				.where(TOOL_ACCOUNT.PERSON_ID.eq(person), TOOL_ACCOUNT.TOOL.eq("github"), TOOL_ACCOUNT.EXTERNAL_ID.isNotNull)
+				.orderBy(TOOL_ACCOUNT.VERIFIED_AT.desc().nullsLast(), TOOL_ACCOUNT.CREATED_AT).limit(1).fetchOne()?.value1()
+			return AccountRef(id, null, email, person, name)
+		}
+		val login = dsl.select(TOOL_ACCOUNT.EXTERNAL_LOGIN).from(TOOL_ACCOUNT)
+			.where(TOOL_ACCOUNT.PERSON_ID.eq(person), TOOL_ACCOUNT.TOOL.eq(tool.name.lowercase()), TOOL_ACCOUNT.EXTERNAL_LOGIN.isNotNull)
+			.orderBy(TOOL_ACCOUNT.CREATED_AT).limit(1).fetchOne()?.value1()
 		return AccountRef(null, login, email, person, name)
 	}
 
@@ -236,7 +245,7 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 			.set(SYNC_RECORD.REASONS, engine.reasonsJson(grant.reasons)).set(SYNC_RECORD.ACTUAL, if (outcome == "applied") "present" else "absent")
 			.set(SYNC_RECORD.STATUS, status).set(SYNC_RECORD.ATTEMPTS, attempts).set(SYNC_RECORD.NEXT_RETRY_AT, nextRetry)
 			.set(SYNC_RECORD.LAST_ERROR, error).set(SYNC_RECORD.LAST_ATTEMPT_AT, now).set(SYNC_RECORD.LAST_RUN_ID, runId)
-			.set(SYNC_RECORD.APPLIED_AT, appliedAt)
+			.set(SYNC_RECORD.APPLIED_AT, appliedAt).set(SYNC_RECORD.APPLIED_ACCESS_LEVEL, if (appliedAt != null) grant.access.name.lowercase() else null)
 			.onConflict(SYNC_RECORD.PERSON_ID, SYNC_RECORD.RESOURCE_ID).doUpdate()
 			.set(SYNC_RECORD.DESIRED, "present").set(SYNC_RECORD.DESIRED_ACCESS_LEVEL, grant.access.name.lowercase())
 			.set(SYNC_RECORD.REASONS, engine.reasonsJson(grant.reasons)).set(SYNC_RECORD.ACTUAL, if (outcome == "applied") "present" else "absent")
@@ -244,6 +253,7 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 			.set(SYNC_RECORD.LAST_ERROR, error).set(SYNC_RECORD.LAST_ATTEMPT_AT, now).set(SYNC_RECORD.LAST_RUN_ID, runId)
 			// An earlier application stands while a later attempt fails or waits.
 			.set(SYNC_RECORD.APPLIED_AT, if (appliedAt != null) org.jooq.impl.DSL.`val`(appliedAt) else SYNC_RECORD.APPLIED_AT)
+			.set(SYNC_RECORD.APPLIED_ACCESS_LEVEL, if (appliedAt != null) org.jooq.impl.DSL.`val`(grant.access.name.lowercase()) else SYNC_RECORD.APPLIED_ACCESS_LEVEL)
 			.execute()
 	}
 
@@ -253,7 +263,7 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 			.set(SYNC_RECORD.DESIRED, "absent").set(SYNC_RECORD.LAST_ATTEMPT_AT, now).set(SYNC_RECORD.LAST_RUN_ID, runId).set(SYNC_RECORD.LAST_ERROR, error)
 		val done = when {
 			outcome == "applied" -> update.set(SYNC_RECORD.ACTUAL, "absent").set(SYNC_RECORD.STATUS, "in_sync").set(SYNC_RECORD.ATTEMPTS, 0)
-				.setNull(SYNC_RECORD.NEXT_RETRY_AT).setNull(SYNC_RECORD.APPLIED_AT) // no longer the portal's to remove again
+				.setNull(SYNC_RECORD.NEXT_RETRY_AT).setNull(SYNC_RECORD.APPLIED_AT).setNull(SYNC_RECORD.APPLIED_ACCESS_LEVEL) // no longer the portal's to remove again
 			failed -> {
 				val attempts = (state?.attempts ?: 0) + 1
 				update.set(SYNC_RECORD.STATUS, if (outcome == "dead_letter") "dead_letter" else "failed").set(SYNC_RECORD.ATTEMPTS, attempts)

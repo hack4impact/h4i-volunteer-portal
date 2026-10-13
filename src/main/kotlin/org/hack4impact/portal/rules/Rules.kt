@@ -325,5 +325,9 @@ class Rules(
 	}
 
 	private operator fun RuleInput.plus(extra: Pair<String, String>): Map<String, Any?> =
-		mapper.convertValue(this, Map::class.java).let { @Suppress("UNCHECKED_CAST") (it as Map<String, Any?>) + extra }
+		mapper.convertValue(this, Map::class.java).let {
+			@Suppress("UNCHECKED_CAST")
+			val map = it as Map<String, Any?>
+			map + extra
+		}
 }

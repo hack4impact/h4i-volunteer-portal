@@ -30,9 +30,14 @@ class SlackReadAdapter(
 ) : ReadAdapter {
 	override val tool = Tool.SLACK
 
-	override fun accounts(): List<ToolAccount> =
-		pages("users.list", "members")
-			.filterNot { it.path("is_bot").asBoolean() || it.text("id") == "USLACKBOT" }
+	/** Bots (the portal's own app among them) seen by the last [accounts] read: not members to match or report (review L8). */
+	@Volatile
+	private var bots: Set<String> = setOf("USLACKBOT")
+
+	override fun accounts(): List<ToolAccount> {
+		val (botUsers, people) = pages("users.list", "members").partition { it.path("is_bot").asBoolean() || it.text("id") == "USLACKBOT" }
+		bots = botUsers.mapNotNull { it.text("id") }.toSet() + "USLACKBOT"
+		return people
 			.map {
 				val profile = it.path("profile")
 				ToolAccount(
@@ -40,6 +45,7 @@ class SlackReadAdapter(
 					if (it.path("deleted").asBoolean()) AccountState.SUSPENDED else AccountState.ACTIVE,
 				)
 			}
+	}
 
 	override fun resources(): List<ToolResource> =
 		pages("conversations.list?types=public_channel,private_channel&exclude_archived=false", "channels")
@@ -47,6 +53,7 @@ class SlackReadAdapter(
 
 	override fun members(resourceId: String): List<ResourceMember> =
 		pages("conversations.members?channel=${HttpJson.encode(resourceId)}", "members")
+			.filterNot { it.asString() in bots }
 			.map { ResourceMember(it.asString(), Access.WRITE) }
 
 	/** Follows Slack's cursor pagination; Slack reports most errors as HTTP 200 with ok=false. */
@@ -67,8 +74,10 @@ class SlackReadAdapter(
 
 /** Slack answers most errors with HTTP 200 and ok=false; this maps its codes onto the adapters' errors. */
 internal fun slackError(tool: Tool, method: String, code: String): AdapterException = when (code) {
-	"invalid_auth", "not_authed", "account_inactive", "token_revoked", "token_expired", "missing_scope", "no_permission" ->
+	"invalid_auth", "not_authed", "account_inactive", "token_revoked", "token_expired", "missing_scope" ->
 		AuthFailed(tool, "$method: $code")
+	// One channel the app may not change: that change fails, not the whole run (review M1).
+	"no_permission" -> Rejected(tool, "$method: no_permission")
 	"ratelimited" -> RateLimited(tool, Duration.ofSeconds(60))
 	"channel_not_found" -> NotFound(tool, method)
 	"name_taken" -> Rejected(tool, "$method: name_taken (probably an existing channel the portal can't see, often a private one: invite the portal's Slack app to it and adopt it)")

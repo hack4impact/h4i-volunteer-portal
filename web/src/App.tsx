@@ -10,7 +10,7 @@ import { MemberHome } from './pages/MemberHome'
 import { National } from './pages/National'
 import { ProjectPage } from './pages/ProjectPage'
 
-type Session = { state: 'loading' } | { state: 'signed-out' } | { state: 'signed-in'; me: Me }
+type Session = { state: 'loading' } | { state: 'signed-out' } | { state: 'unavailable' } | { state: 'signed-in'; me: Me }
 
 /** Applicants (no Google account yet) use their own pages and session (build plan step 10). */
 const isApplicantPage = () => /^\/(join|claim|apply)(\/|$)/.test(window.location.pathname)
@@ -29,9 +29,13 @@ export function App() {
 
 function MemberApp() {
   const [session, setSession] = useState<Session>({ state: 'loading' })
+  const [attempt, setAttempt] = useState(0)
   useEffect(() => {
-    void api.GET('/api/me').then(({ data }) => setSession(data ? { state: 'signed-in', me: data } : { state: 'signed-out' }))
-  }, [])
+    // Only "not signed in" shows the sign-in page; a server error or a lost connection says so (review L12).
+    api.GET('/api/me')
+      .then(({ data, response }) => setSession(data ? { state: 'signed-in', me: data } : response.status === 401 ? { state: 'signed-out' } : { state: 'unavailable' }))
+      .catch(() => setSession({ state: 'unavailable' }))
+  }, [attempt])
 
   return (
     <ThemeProvider colorMode="auto">
@@ -40,6 +44,11 @@ function MemberApp() {
           <div className="center"><Spinner aria-label="Loading" /></div>
         ) : session.state === 'signed-out' ? (
           <SignIn denied={new URLSearchParams(window.location.search).get('signin') === 'denied'} />
+        ) : session.state === 'unavailable' ? (
+          <div className="center">
+            <Banner title="The portal can’t be reached" variant="critical"
+              description={<>It didn’t answer just now. <Button size="small" onClick={() => { setSession({ state: 'loading' }); setAttempt((n) => n + 1) }}>Try again</Button></>} />
+          </div>
         ) : (
           <BrowserRouter>
             <Routes>

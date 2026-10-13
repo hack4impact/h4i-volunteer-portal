@@ -82,7 +82,7 @@ class AdoptionScanner(
 		return try {
 			val accounts = adapter.accounts()
 			val resources = adapter.resources()
-			val toSnapshot = transactions.execute { discover(tool, scanId, resources, snapshotChapters) }!!
+			val toSnapshot = transactions.execute { discover(tool, scanId, resources, snapshotChapters) }
 			val accountsById = accounts.filter { it.externalId != null }.associateBy { it.externalId!! }
 			val read = mutableMapOf<UUID, List<ResourceMember>>()
 			val gone = mutableListOf<UUID>()

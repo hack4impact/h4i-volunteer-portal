@@ -138,7 +138,10 @@ class HttpJson(
 		val path = request.uri().path
 		when {
 			status == 429 || (status == 403 && isRateLimit(response, body)) -> throw RateLimited(tool, retryAfter(response.headers()))
-			status == 401 || status == 403 -> throw AuthFailed(tool, "$path: HTTP $status")
+			status == 401 -> throw AuthFailed(tool, "$path: HTTP $status")
+			// Usually one resource the portal may not touch: that change fails (and is retried), the rest of the run goes
+			// on. Credentials that are wrong everywhere still fail the run's first read (review M1).
+			status == 403 -> throw Rejected(tool, "$path: HTTP 403, not allowed${errorMessage(body)?.let { " ($it)" } ?: ""}", status)
 			status == 404 -> throw NotFound(tool, path)
 			status >= 500 -> throw Unavailable(tool, "$path: HTTP $status")
 			status >= 400 -> throw Rejected(tool, "$path: HTTP $status${errorMessage(body)?.let { " ($it)" } ?: ""}", status)

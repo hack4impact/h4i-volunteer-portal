@@ -69,7 +69,7 @@ class MemberProvisioning(
 			agreements.attach(registration, person) // the volunteer agreement and code of conduct they signed are now theirs
 			audit(decidedBy, if (claim) "registration.claim" else "registration.approve", registration, r.chapterId!!, person)
 			r to person
-		}!!
+		}
 		sessions.revoke(registration)
 
 		// Outside the transaction: the account is created in Google, and an email goes out.

@@ -15,6 +15,8 @@ class DocumensoClient(
 	private val baseUrl: String,
 	private val token: String,
 	private val http: HttpJson = HttpJson(Tool.DOCUMENSO),
+	/** For reads while someone waits on a page: fails at once on a rate limit instead of waiting it out (review M11). */
+	private val quick: HttpJson = HttpJson(Tool.DOCUMENSO),
 ) {
 	/** [status]: NOT_SIGNED, SIGNED or REJECTED. */
 	data class Signer(val recipientId: Int, val email: String, val signingUrl: String, val status: String, val rejectionReason: String?)
@@ -54,8 +56,9 @@ class DocumensoClient(
 		return envelope(created.text("id") ?: throw Rejected(Tool.DOCUMENSO, "envelope/use returned no id"))
 	}
 
-	fun envelope(id: String): Envelope {
-		val e = http.get("$api/envelope/${HttpJson.encode(id)}", headers()).body
+	/** [interactive]: someone is waiting on the answer (a page load), so don't wait out a rate limit. */
+	fun envelope(id: String, interactive: Boolean = false): Envelope {
+		val e = (if (interactive) quick else http).get("$api/envelope/${HttpJson.encode(id)}", headers()).body
 		return Envelope(
 			e.text("id")!!, e.text("type") ?: "DOCUMENT", e.text("status") ?: "DRAFT", e.text("externalId"),
 			e.path("recipients").toList().filter { it.text("role") == "SIGNER" }.map {

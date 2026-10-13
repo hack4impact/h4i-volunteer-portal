@@ -280,6 +280,16 @@ class RegistrationTests(
 	}
 
 	@Test
+	fun `a member of an inactive chapter can still open their claim (review H5)`() {
+		person("Ada", "active", school = "ada@umd.edu", imported = true)
+		dsl.update(org.hack4impact.portal.db.tables.references.CHAPTER).set(org.hack4impact.portal.db.tables.references.CHAPTER.STATUS, "inactive").execute()
+		json("/api/national/claims/send", """{"chapter":"umd"}""", as_ = "nora@hack4impact.org")
+		val token = Regex("/claim/([A-Za-z0-9_-]+)").find(mail.last("ada@umd.edu").text)!!.groupValues[1]
+		json("/api/apply/claim", """{"token":"$token"}""").andExpect { status { isOk() }; jsonPath("$.kind") { value("claim") }; jsonPath("$.chapter.code") { value("umd") } }
+		mvc.get("/api/apply/chapters/umd").andExpect { status { isNotFound() } } // nobody new applies to it
+	}
+
+	@Test
 	fun `unclaimed records become alumni a month after their first link`() {
 		val ada = person("Ada", "active", school = "ada@umd.edu", imported = true)
 		json("/api/national/claims/send", """{"chapter":"umd"}""", as_ = "nora@hack4impact.org")

@@ -8,7 +8,9 @@
 -- Then: psql -d member_db_copy -f scripts/anonymize-member-db.sql
 --
 -- Emails are replaced by a hash of their lower-cased value, so duplicate emails stay duplicates and
--- the importer's duplicate report still means something. Numeric GitHub IDs stay numeric.
+-- the importer's duplicate report still means something. Numeric GitHub IDs stay numeric. Every hash
+-- is salted with a random value made for this run and never stored, so a list of real addresses
+-- can't be matched back to the copy (code review L16).
 
 \set ON_ERROR_STOP on
 BEGIN;
@@ -21,10 +23,15 @@ BEGIN
 END
 $$;
 
+SELECT set_config('anon.salt', gen_random_uuid()::text, true);
+
+CREATE FUNCTION pg_temp.salted(value text) RETURNS text
+LANGUAGE sql STABLE AS $$ SELECT md5(current_setting('anon.salt') || value) $$;
+
 CREATE FUNCTION pg_temp.fake_email(email text, domain text) RETURNS text
-LANGUAGE sql IMMUTABLE AS $$
+LANGUAGE sql STABLE AS $$
 	SELECT CASE WHEN nullif(trim(email), '') IS NULL THEN email
-	            ELSE left(md5(lower(trim(email))), 16) || '@' || domain END
+	            ELSE left(pg_temp.salted(lower(trim(email))), 16) || '@' || domain END
 $$;
 
 UPDATE volunteers SET
@@ -38,10 +45,10 @@ UPDATE volunteers SET
 UPDATE academic_profiles SET email = pg_temp.fake_email(email, 'school.invalid');
 
 UPDATE volunteer_accounts SET external_id = CASE
-	WHEN external_id ~ '^[0-9]+$' THEN (abs(hashtext(external_id)) + 1)::text
+	WHEN external_id ~ '^[0-9]+$' THEN (abs(hashtext(current_setting('anon.salt') || external_id)) + 1)::text
 	WHEN external_id LIKE '%@%' THEN pg_temp.fake_email(external_id, 'example.invalid')
-	WHEN provider IN ('linkedin', 'website') THEN 'https://example.invalid/' || left(md5(external_id), 12)
-	ELSE 'acct-' || left(md5(external_id), 12)
+	WHEN provider IN ('linkedin', 'website') THEN 'https://example.invalid/' || left(pg_temp.salted(external_id), 12)
+	ELSE 'acct-' || left(pg_temp.salted(external_id), 12)
 END;
 
 UPDATE partners SET email = NULL, ein = NULL, notes = NULL;

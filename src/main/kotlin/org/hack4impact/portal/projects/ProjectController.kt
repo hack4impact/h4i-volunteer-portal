@@ -24,6 +24,7 @@ import java.util.UUID
 /**
  * Projects (build plan step 8). Every change answers with the updated project, so the screen shows its new preview.
  * With `?draft=<id>` (step 12) reads show the draft's version and changes go into the draft instead of applying.
+ * A change made directly requests a sync, so the tools follow without waiting for the nightly run.
  */
 @RestController
 @RequestMapping("/api")
@@ -34,6 +35,7 @@ class ProjectController(
 	private val syncs: SyncRequests,
 	private val drafts: Drafts,
 	private val projectActivity: ProjectActivity,
+	private val transactions: org.springframework.transaction.support.TransactionTemplate,
 ) {
 	@GetMapping("/project-roles")
 	fun roles(): List<ProjectRoleOption> = queries.roles()
@@ -188,7 +190,7 @@ class ProjectController(
 		val project = project(chapter.id, slug)
 		if (project.id !in viewer.ledProjects) throw AccessDeniedException("Only the project's leads and the chapter's leads can change the team")
 		if (project.status == "closed") throw ResponseStatusException(HttpStatus.CONFLICT, "This project is closed")
-		apply(chapter.id, project, viewer)
+		applied { apply(chapter.id, project, viewer) }
 		return queries.detail(chapter.id, project(chapter.id, slug), false, true)
 	}
 
@@ -204,7 +206,13 @@ class ProjectController(
 		}
 		val project = project(chapter.id, slug)
 		if (project.status == "closed") throw ResponseStatusException(HttpStatus.CONFLICT, "This project is closed")
-		apply(chapter.id, project, viewer)
+		applied { apply(chapter.id, project, viewer) }
 		return queries.detail(chapter.id, project(chapter.id, slug), true)
+	}
+
+	/** A direct change and a sync request together: the tools follow once the change commits (review H4, decision 142). */
+	private fun applied(block: () -> Unit) = transactions.executeWithoutResult {
+		block()
+		syncs.request("change")
 	}
 }

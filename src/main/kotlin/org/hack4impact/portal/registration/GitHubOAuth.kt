@@ -35,6 +35,9 @@ class GitHubOAuth(private val properties: GitHubOAuthProperties, private val htt
 			mapOf("client_id" to properties.clientId, "client_secret" to properties.clientSecret, "code" to code, "redirect_uri" to callback),
 		).body.text("access_token") ?: error("GitHub didn't return a token")
 		val user = http.get("${properties.apiUrl}/user", mapOf("Authorization" to "Bearer $token", "Accept" to "application/vnd.github+json")).body
-		return GitHubUser(user.path("id").asLong().toString(), user.text("login")!!)
+		// Never "0" or a missing login stored as someone's GitHub account (review L7).
+		val id = user.path("id").takeIf { it.isNumber }?.asLong()?.takeIf { it > 0 } ?: error("GitHub's reply had no user ID")
+		val login = user.text("login") ?: error("GitHub's reply had no login")
+		return GitHubUser(id.toString(), login)
 	}
 }

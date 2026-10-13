@@ -83,6 +83,9 @@ class NotionClient(
 			for (block in body.path("results")) {
 				val type = block.text("type") ?: continue
 				if (type in UNCOPYABLE) continue
+				// Files uploaded to Notion come back as links that expire within the hour, and new blocks can only point to
+				// external files, so the copy leaves them out rather than fail the page (review L9).
+				if (type in MEDIA && block.path(type).text("type") == "file") continue
 				@Suppress("UNCHECKED_CAST")
 				val content = (HttpJson.MAPPER.convertValue(block.path(type), Map::class.java) as Map<String, Any?>).toMutableMap()
 				if (block.path("has_children").asBoolean() && depth < 1) content["children"] = copyable(block.text("id")!!, depth + 1)
@@ -103,6 +106,7 @@ class NotionClient(
 	companion object {
 		private val HEX32 = Regex("[0-9a-fA-F]{32}")
 		private val UNCOPYABLE = setOf("child_page", "child_database", "synced_block", "link_preview", "unsupported", "template", "ai_block")
+		private val MEDIA = setOf("image", "file", "pdf", "video", "audio")
 
 		/** A page ID from a Notion URL or an ID with or without dashes, as Notion's dashed form; null if there's none. */
 		fun pageId(input: String): String? {

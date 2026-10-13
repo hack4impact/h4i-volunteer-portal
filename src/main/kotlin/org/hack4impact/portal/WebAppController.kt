@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.GetMapping
 @Controller
 class WebAppController {
 	@GetMapping(
-		"/", "/chapters/{code}", "/chapters/{code}/{tab}", "/chapters/{code}/projects/{slug}", "/national",
-		"/join/{code}", "/claim/{token}", "/apply",
+		"/", "/chapters/{code}", "/chapters/{code}/{tab}", "/chapters/{code}/projects/{slug}", "/chapters/{code}/drafts/{draftId}", "/national",
+		"/me", "/projects/{code}/{slug}", "/join/{code}", "/claim/{token}", "/apply",
 	)
 	fun app() = "forward:/index.html"
 }

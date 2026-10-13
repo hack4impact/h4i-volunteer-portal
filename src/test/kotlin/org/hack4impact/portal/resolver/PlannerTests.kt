@@ -25,6 +25,7 @@ class PlannerTests {
 	fun `different access is changed`() {
 		val plan = Planner.plan(desire(Grant(ada, channel, Access.ADMIN, reason)), listOf(Membership(ada, channel, Access.WRITE)), emptyMap())
 		assertEquals(listOf(AccessChange(Grant(ada, channel, Access.ADMIN, reason), Access.WRITE)), plan.changes)
+		assertTrue(plan.lowerings.isEmpty()) // raising access isn't held with removals
 		assertFalse(plan.isEmpty)
 	}
 
@@ -46,5 +47,25 @@ class PlannerTests {
 	fun `matching access needs nothing`() {
 		val plan = Planner.plan(desire(Grant(ada, channel, Access.WRITE, reason)), listOf(Membership(ada, channel, Access.WRITE)), emptyMap())
 		assertTrue(plan.isEmpty)
+	}
+
+	@Test
+	fun `access the portal didn't give is never lowered (review H3)`() {
+		// A group owner the portal wants as a member: reported, not demoted.
+		val plan = Planner.plan(desire(Grant(ada, channel, Access.WRITE, reason)), listOf(Membership(ada, channel, Access.ADMIN)), emptyMap())
+		assertTrue(plan.changes.isEmpty())
+		assertEquals(listOf(Membership(ada, channel, Access.ADMIN)), plan.drift)
+		// Raised by hand above what the portal applied: still not lowered.
+		val raised = Planner.plan(desire(Grant(ada, channel, Access.WRITE, reason)), listOf(Membership(ada, channel, Access.ADMIN)), mapOf((ada to channel) to reason),
+			mapOf((ada to channel) to Access.WRITE))
+		assertTrue(raised.changes.isEmpty())
+	}
+
+	@Test
+	fun `access the portal raised can be lowered again, and counts with removals`() {
+		val plan = Planner.plan(desire(Grant(ada, channel, Access.WRITE, reason)), listOf(Membership(ada, channel, Access.ADMIN)), mapOf((ada to channel) to reason),
+			mapOf((ada to channel) to Access.ADMIN))
+		assertEquals(listOf(AccessChange(Grant(ada, channel, Access.WRITE, reason), Access.ADMIN)), plan.changes)
+		assertEquals(1, plan.lowerings.size)
 	}
 }

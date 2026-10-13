@@ -77,6 +77,7 @@ class SyncEngine(
 	private val queue: AdminQueue,
 	private val notionPages: NotionPages,
 	private val transactions: TransactionTemplate,
+	private val locks: RunLocks,
 ) {
 	private val log = LoggerFactory.getLogger(javaClass)
 	private val json = JsonMapper.builder().build()
@@ -114,7 +115,11 @@ class SyncEngine(
 	/** Plans every tool without changing any, whatever their settings (previews, the sandbox check). */
 	fun dryRun(trigger: String, tools: Set<Tool>? = null): List<ToolRunReport> = sync(trigger, tools, forceDryRun = true)
 
-	private fun sync(trigger: String, tools: Set<Tool>?, forceDryRun: Boolean): List<ToolRunReport> {
+	/** One sync at a time, here and in any other process on this database (review H2). */
+	private fun sync(trigger: String, tools: Set<Tool>?, forceDryRun: Boolean): List<ToolRunReport> =
+		locks.exclusive(RunLocks.SYNC) { syncNow(trigger, tools, forceDryRun) }
+
+	private fun syncNow(trigger: String, tools: Set<Tool>?, forceDryRun: Boolean): List<ToolRunReport> {
 		val loaded = worlds.load()
 		loaded.warnings.forEach { log.warn("Sync: {}", it) }
 		val resolution = Resolver.resolve(loaded.world)
@@ -164,11 +169,12 @@ class SyncEngine(
 
 		val writer = writers.firstOrNull { it.tool == tool }
 		if (!forceDryRun && setting?.dryRun == false && writer != null) {
-			// National confirmed this many removals recently (admin queue): the run may make them.
-			val hold = wouldPause?.takeUnless { queue.removalsConfirmed(tool, plan.removals.size) }
+			// National confirmed these very removals recently (admin queue): the run may make them.
+			val taken = plan.removals.map { it.personId to it.resourceId } + plan.lowerings.map { it.grant.personId to it.grant.resourceId }
+			val hold = wouldPause?.takeUnless { queue.removalsConfirmed(tool, taken) }
 			return applier.apply(tool, trigger, writer, plan, actual, desired, hold)
 		}
-		val runId = transactions.execute { record(tool, trigger, plan, actual, desired, wouldPause) }!!
+		val runId = transactions.execute { record(tool, trigger, plan, actual, desired, wouldPause) }
 		return ToolRunReport(
 			tool, runId, if (wouldPause == null) "completed" else "paused",
 			plan.adds.size, plan.changes.size, plan.removals.size, plan.drift.size, actual.unmatched.size, actual.missing.size, actual.toCreate.size, wouldPause,
@@ -284,7 +290,9 @@ class SyncEngine(
 				.set(SYNC_RECORD.DESIRED, "present").set(SYNC_RECORD.DESIRED_ACCESS_LEVEL, grant.access.name.lowercase())
 				.set(SYNC_RECORD.REASONS, reasonsJson(grant.reasons))
 				.set(SYNC_RECORD.ACTUAL, if (current == null) "absent" else "present")
-				.set(SYNC_RECORD.STATUS, if (inSync) "in_sync" else "pending")
+				// A dry run doesn't undo what an applying run learned: a dead letter, an invite waiting, a manual task (review L6).
+				.set(SYNC_RECORD.STATUS, if (inSync) DSL.inline("in_sync") else DSL.case_()
+					.`when`(SYNC_RECORD.STATUS.`in`("dead_letter", "waiting_on_member", "manual_task", "failed"), SYNC_RECORD.STATUS).else_(DSL.inline("pending")))
 				.set(SYNC_RECORD.LAST_ATTEMPT_AT, now).set(SYNC_RECORD.LAST_RUN_ID, runId)
 				.execute()
 		}

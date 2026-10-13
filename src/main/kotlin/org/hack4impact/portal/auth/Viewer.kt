@@ -47,6 +47,9 @@ class Viewers(private val dsl: DSLContext) {
 		val email = user.email.orEmpty().lowercase()
 		val personId = user.subject?.let(::byGoogleId) ?: email.takeIf { it.isNotEmpty() }?.let(::byEmail)
 		if (personId == null) return Viewer(null, email, user.fullName, nationalAdmin = false, chapterRoles = emptyMap())
+		// Removed people and applicants hold no role, whatever was left unended (review M4).
+		val status = dsl.select(PERSON.STATUS).from(PERSON).where(PERSON.ID.eq(personId)).fetchOne()?.value1()
+		if (status in setOf("removed", "applicant")) return Viewer(personId, email, user.fullName, nationalAdmin = false, chapterRoles = emptyMap())
 		val nationalAdmin = dsl.fetchExists(NATIONAL_ADMIN, NATIONAL_ADMIN.PERSON_ID.eq(personId))
 		val roles = dsl.select(CHAPTER_ROLE.CHAPTER_ID, CHAPTER_ROLE.ROLE)
 			.from(CHAPTER_ROLE).join(CHAPTER).on(CHAPTER.ID.eq(CHAPTER_ROLE.CHAPTER_ID))
@@ -85,8 +88,8 @@ class Viewers(private val dsl: DSLContext) {
 	}
 
 	private fun byGoogleId(subject: String): UUID? =
-		dsl.select(TOOL_ACCOUNT.PERSON_ID).from(TOOL_ACCOUNT)
-			.where(TOOL_ACCOUNT.TOOL.eq("google"), TOOL_ACCOUNT.EXTERNAL_ID.eq(subject))
+		dsl.select(TOOL_ACCOUNT.PERSON_ID).from(TOOL_ACCOUNT).join(PERSON).on(PERSON.ID.eq(TOOL_ACCOUNT.PERSON_ID))
+			.where(TOOL_ACCOUNT.TOOL.eq("google"), TOOL_ACCOUNT.EXTERNAL_ID.eq(subject), PERSON.DELETED_AT.isNull)
 			.fetchOne(TOOL_ACCOUNT.PERSON_ID)
 
 	private fun byEmail(email: String): UUID? =

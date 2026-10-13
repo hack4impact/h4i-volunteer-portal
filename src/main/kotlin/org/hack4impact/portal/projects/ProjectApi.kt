@@ -160,5 +160,6 @@ data class ResourceInput(
 	val roleId: UUID? = null,
 	val access: String = "write",
 	val requiresAgreement: Boolean = false,
-	val tags: List<String> = emptyList(),
+	/** The resource's tags (shared by every project using it); left out (null): unchanged. */
+	val tags: List<String>? = null,
 )

@@ -134,6 +134,10 @@ class PortalSecurityTests(
 	fun `deep links serve the web app`() {
 		mvc.get("/chapters/umd/members").andExpect { forwardedUrl("/index.html") }
 		mvc.get("/").andExpect { forwardedUrl("/index.html") }
+		// Every app route loads from a link or a reload (review M10, T4).
+		for (path in listOf("/me", "/projects/umd/rise-dc", "/chapters/umd/drafts/d1", "/chapters/umd/projects/rise-dc", "/national", "/join/umd", "/claim/t", "/apply")) {
+			mvc.get(path).andExpect { forwardedUrl("/index.html") }
+		}
 	}
 
 	@Test

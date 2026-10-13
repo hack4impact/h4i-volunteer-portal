@@ -45,8 +45,12 @@ api.use({
     return new Request(url, { method: request.method, headers: request.headers, body, credentials: request.credentials })
   },
   onResponse({ request, response }) {
+    const url = new URL(request.url)
     // A change went into the draft: the banner's count follows.
-    if (request.method !== 'GET' && new URL(request.url).searchParams.has('draft') && response.ok) window.dispatchEvent(new Event(CHANGED))
+    if (request.method !== 'GET' && url.searchParams.has('draft') && response.ok) window.dispatchEvent(new Event(CHANGED))
+    // Released or discarded meanwhile (another tab, a schedule): back to live data (review L13).
+    const chapter = url.pathname.match(IN_DRAFT)?.[1]
+    if (response.status === 410 && url.searchParams.has('draft') && chapter) setActiveDraft(chapter, null)
     return response
   },
 })

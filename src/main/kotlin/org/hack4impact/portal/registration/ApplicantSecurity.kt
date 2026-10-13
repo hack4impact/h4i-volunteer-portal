@@ -48,10 +48,17 @@ object Tokens {
 @Component
 class RateLimiter {
 	private val hits = ConcurrentHashMap<String, ArrayDeque<Instant>>()
+	private val calls = java.util.concurrent.atomic.AtomicLong()
+
+	companion object {
+		/** Longer than any window asked for: a key with no hit this recent is forgotten (review L2). */
+		private val FORGET_AFTER: Duration = Duration.ofHours(2)
+	}
 
 	/** Records a hit; false when [key] already had [limit] hits within [window]. */
 	fun allow(key: String, limit: Int, window: Duration): Boolean {
 		val now = Instant.now()
+		if (calls.incrementAndGet() % 1000 == 0L) forget(now)
 		val queue = hits.computeIfAbsent(key) { ArrayDeque() }
 		synchronized(queue) {
 			while (queue.isNotEmpty() && queue.first().isBefore(now.minus(window))) queue.removeFirst()
@@ -62,6 +69,11 @@ class RateLimiter {
 	}
 
 	fun reset() = hits.clear()
+
+	/** Drops keys (an email, an IP) with no recent hit, so the map doesn't grow until a restart. */
+	private fun forget(now: Instant) {
+		hits.entries.removeIf { (_, queue) -> synchronized(queue) { queue.isEmpty() || queue.last().isBefore(now.minus(FORGET_AFTER)) } }
+	}
 }
 
 /** Who an applicant session belongs to. */

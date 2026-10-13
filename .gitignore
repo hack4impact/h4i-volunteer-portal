@@ -53,3 +53,7 @@ secrets/
 
 ### Sandbox check fixture (specific to your sandboxes) ###
 sandbox-fixture.yml
+
+# Python caches (code review W1)
+__pycache__/
+*.pyc

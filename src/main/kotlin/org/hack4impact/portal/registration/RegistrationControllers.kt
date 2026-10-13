@@ -36,6 +36,7 @@ class ApplyController(
 	private val dsl: DSLContext,
 	@Value("\${portal.base-url}") private val baseUrl: String,
 ) {
+	private val log = org.slf4j.LoggerFactory.getLogger(javaClass)
 	private val callback get() = "${baseUrl.trimEnd('/')}/api/apply/github/callback"
 
 	@GetMapping("/chapters/{code}")
@@ -106,7 +107,7 @@ class ApplyController(
 		dsl.update(APPLICANT_SESSION).setNull(APPLICANT_SESSION.GITHUB_STATE).where(APPLICANT_SESSION.ID.eq(applicant.sessionId)).execute()
 		val ok = code != null && state != null && expected != null && Tokens.same(state, expected) && runCatching {
 			registrations.linkGitHub(applicant.registrationId, github.user(code, callback))
-		}.isSuccess
+		}.onFailure { log.warn("GitHub sign-in for registration {} failed: {}", applicant.registrationId, it.message) }.isSuccess
 		response.sendRedirect("/apply" + if (ok) "" else "?github=failed")
 	}
 

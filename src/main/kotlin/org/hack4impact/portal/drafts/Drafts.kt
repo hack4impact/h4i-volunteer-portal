@@ -8,6 +8,8 @@ import org.hack4impact.portal.db.tables.references.AUDIT_EVENT
 import org.hack4impact.portal.db.tables.references.CHANGE
 import org.hack4impact.portal.db.tables.references.CHANGESET
 import org.hack4impact.portal.db.tables.references.CHAPTER
+import org.hack4impact.portal.db.tables.references.CHAPTER_ROLE
+import org.hack4impact.portal.db.tables.references.NATIONAL_ADMIN
 import org.hack4impact.portal.db.tables.references.PERSON
 import org.hack4impact.portal.db.tables.references.PROJECT
 import org.hack4impact.portal.db.tables.references.PROJECT_ROLE
@@ -169,7 +171,9 @@ class Drafts(
 
 	/** Runs [block] against the chapter as the draft would leave it; nothing is kept. */
 	fun <T> inDraft(chapterId: UUID, id: UUID, viewer: Viewer, block: () -> T): T {
-		changeset(chapterId, id)
+		// A released or discarded draft is history: replaying it on live data would show its changes twice (review L13).
+		val cs = changeset(chapterId, id)
+		if (cs.status !in setOf("draft", "scheduled")) throw ResponseStatusException(HttpStatus.GONE, "This draft was already ${cs.status}")
 		return rolledBack { s ->
 			replay(chapterId, id, viewer, s)
 			block()
@@ -252,7 +256,7 @@ class Drafts(
 		val chapter = dsl.select(CHAPTER.NAME).from(CHAPTER).where(CHAPTER.ID.eq(chapterId)).fetchSingle().value1()!!
 		if (preview.perPerson.isNotEmpty()) events.publishEvent(DraftReleased(id, chapter, cs.name!!, preview.perPerson))
 		ReleaseResult(true, emptyList(), preview)
-	}!!
+	}
 
 	/** Releases scheduled drafts that are due; one with conflicts goes back to being a draft, and whoever scheduled it hears why. */
 	fun releaseDue(now: OffsetDateTime = OffsetDateTime.now()): List<Pair<UUID, ReleaseResult>> {
@@ -260,8 +264,14 @@ class Drafts(
 		return due.map { cs ->
 			val by = cs.scheduledBy ?: cs.createdBy!!
 			val who = dsl.selectFrom(PERSON).where(PERSON.ID.eq(by)).fetchSingle()
-			val viewer = Viewer(by, who.orgEmail ?: "", "${who.firstName} ${who.lastName}", false, mapOf(cs.chapterId!! to "lead"))
-			val result = try { release(cs.chapterId!!, cs.id!!, viewer) } catch (e: ResponseStatusException) {
+			// Released with the permissions they have now, not when they scheduled it (review M5).
+			val national = dsl.fetchExists(NATIONAL_ADMIN, NATIONAL_ADMIN.PERSON_ID.eq(by))
+			val leads = dsl.fetchExists(CHAPTER_ROLE, CHAPTER_ROLE.PERSON_ID.eq(by), CHAPTER_ROLE.CHAPTER_ID.eq(cs.chapterId), CHAPTER_ROLE.ROLE.`in`("lead", "co_lead"), CHAPTER_ROLE.ENDS_AT.isNull)
+			val allowed = who.deletedAt == null && who.status !in setOf("removed", "applicant") && (national || leads)
+			val viewer = Viewer(by, who.orgEmail ?: "", "${who.firstName} ${who.lastName}", national, if (leads) mapOf(cs.chapterId!! to "lead") else emptyMap())
+			val result = if (!allowed) {
+				ReleaseResult(false, listOf(DraftConflict(cs.id!!, 0, cs.name!!, "${who.firstName} ${who.lastName}, who scheduled it, no longer leads the chapter: a lead has to schedule it again")), null)
+			} else try { release(cs.chapterId!!, cs.id!!, viewer) } catch (e: ResponseStatusException) {
 				ReleaseResult(false, listOf(DraftConflict(cs.id!!, 0, cs.name!!, e.reason ?: "couldn't release")), null)
 			}
 			if (!result.released) {

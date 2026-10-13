@@ -52,11 +52,16 @@ class RegistrationService(
 
 	// ---- The public page ----------------------------------------------------------------------------------------
 
-	fun chapter(code: String): ApplyChapter {
+	/** A chapter people can apply to: open (active, supported or pending) and not national's own. */
+	fun chapter(code: String): ApplyChapter =
+		applyChapter(CHAPTER.CODE.eq(code.lowercase()).and(CHAPTER.STATUS.`in`("active", "supported", "pending")).and(CHAPTER.KIND.eq("chapter")))
+			?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No chapter $code")
+
+	private fun applyChapter(condition: org.jooq.Condition): ApplyChapter? {
 		val c = dsl.select(CHAPTER.ID, CHAPTER.CODE, CHAPTER.NAME, INSTITUTION.EMAIL_DOMAINS, CHAPTER.APPLICATIONS_OPEN, CHAPTER.APPLICATION_URL)
 			.from(CHAPTER).leftJoin(INSTITUTION).on(INSTITUTION.ID.eq(CHAPTER.INSTITUTION_ID))
-			.where(CHAPTER.CODE.eq(code.lowercase()), CHAPTER.DELETED_AT.isNull, CHAPTER.STATUS.`in`("active", "supported", "pending"), CHAPTER.KIND.eq("chapter"))
-			.fetchOne() ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No chapter $code")
+			.where(condition, CHAPTER.DELETED_AT.isNull)
+			.fetchOne() ?: return null
 		return ApplyChapter(c.value2()!!, c.value3()!!, c.value4()?.filterNotNull().orEmpty(), asked(c.value1()!!), c.value5()!!, c.value6())
 	}
 
@@ -169,14 +174,15 @@ class RegistrationService(
 
 	fun view(registration: UUID, githubConfigured: Boolean): ApplicantView {
 		val r = record(registration)
-		val code = dsl.select(CHAPTER.CODE).from(CHAPTER).where(CHAPTER.ID.eq(r.chapterId)).fetchSingle().value1()!!
+		// Whatever the chapter's status: a member of an inactive chapter still claims their record (review H5).
+		val chapter = applyChapter(CHAPTER.ID.eq(r.chapterId)) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "This chapter is gone")
 		val account = r.personId?.takeIf { r.status in setOf("approved", "completed") }?.let { p ->
 			dsl.select(PERSON.ORG_EMAIL).from(PERSON).where(PERSON.ID.eq(p)).fetchSingle().value1()
 		}
 		// First, so a signature just made in Documenso already counts in what's missing.
 		val signing = if (r.status == "started") agreements.applicantAgreements(registration) else emptyList()
 		return ApplicantView(
-			r.kind!!, r.status!!, chapter(code), r.schoolEmail, r.emailVerifiedAt != null, r.githubLogin, githubConfigured,
+			r.kind!!, r.status!!, chapter, r.schoolEmail, r.emailVerifiedAt != null, r.githubLogin, githubConfigured,
 			Details(r.firstName, r.lastName, r.preferredName, r.personalEmail, r.graduationYear, r.roleInterest, r.stillActive),
 			answers(r), missing(r), r.declineReason, account,
 			signing,
@@ -362,18 +368,22 @@ class RegistrationService(
 		val chapter = dsl.selectFrom(CHAPTER).where(CHAPTER.ID.eq(chapterId)).fetchSingle()
 		val lines = csv.lines().map { it.trim() }.filter { it.isNotEmpty() }
 		if (lines.isEmpty()) bad("The roster is empty")
-		val header = lines.first().split(',').map { it.trim().lowercase().replace(' ', '_') }
+		val header = csvCells(lines.first()).map { it.lowercase().replace(' ', '_') }
 		val col = { name: String -> header.indexOf(name) }
 		if (col("first_name") < 0 || col("last_name") < 0 || col("school_email") < 0) bad("The first line needs columns first_name, last_name, school_email (and optionally personal_email)")
 		if (lines.size > 501) bad("At most 500 people per roster")
 		var invited = 0
 		val skipped = mutableListOf<String>()
 		for ((n, line) in lines.drop(1).withIndex()) {
-			val cells = line.split(',').map { it.trim().trim('"') }
+			val cells = csvCells(line)
 			fun cell(name: String) = col(name).takeIf { it >= 0 }?.let { cells.getOrNull(it) }?.takeIf { it.isNotEmpty() }
 			val first = cell("first_name"); val last = cell("last_name"); val school = cell("school_email")?.lowercase()
 			if (first == null || last == null || school == null || !EMAIL.matches(school)) { skipped += "row ${n + 2}: needs a name and a school email"; continue }
-			if (dsl.fetchExists(ROSTER_INVITE, ROSTER_INVITE.CHAPTER_ID.eq(chapterId), DSL.lower(ROSTER_INVITE.SCHOOL_EMAIL).eq(school), ROSTER_INVITE.STATUS.ne("expired"))) {
+			val sameAddress = ROSTER_INVITE.CHAPTER_ID.eq(chapterId).and(DSL.lower(ROSTER_INVITE.SCHOOL_EMAIL).eq(school))
+			val open = ROSTER_INVITE.STATUS.`in`("sent", "started")
+			// An open invite whose link has run out no longer counts: mark it expired so the address can be invited again (review M3).
+			dsl.update(ROSTER_INVITE).set(ROSTER_INVITE.STATUS, "expired").where(sameAddress, open, ROSTER_INVITE.EXPIRES_AT.lt(OffsetDateTime.now())).execute()
+			if (dsl.fetchExists(ROSTER_INVITE, sameAddress, ROSTER_INVITE.STATUS.ne("expired"))) {
 				skipped += "row ${n + 2}: $school is already invited"; continue
 			}
 			val token = Tokens.new()
@@ -432,7 +442,7 @@ class RegistrationService(
 			addresses.forEach { mailer.send(email, it, person = p.value1()) }
 			sent++
 		}
-		audit(actor, "claims.send", "chapter", null, null, """{"sent":$sent,"chapter":${chapter?.let { "\"$it\"" } ?: "null"}}""")
+		audit(actor, "claims.send", "chapter", null, null, org.hack4impact.portal.adapters.HttpJson.MAPPER.writeValueAsString(mapOf("sent" to sent, "chapter" to chapter)))
 		return sent
 	}
 
@@ -451,4 +461,24 @@ class RegistrationService(
 			.set(AUDIT_EVENT.AFTER, after?.let { JSONB.valueOf(it) })
 			.execute()
 	}
+}
+
+/** One CSV line into trimmed cells, keeping commas inside quoted values and reading "" as a quote (review L3). */
+internal fun csvCells(line: String): List<String> {
+	val cells = mutableListOf<String>()
+	val cell = StringBuilder()
+	var quoted = false
+	var i = 0
+	while (i < line.length) {
+		val c = line[i]
+		when {
+			quoted && c == '"' && line.getOrNull(i + 1) == '"' -> { cell.append('"'); i++ }
+			c == '"' -> quoted = !quoted
+			c == ',' && !quoted -> { cells += cell.toString().trim(); cell.clear() }
+			else -> cell.append(c)
+		}
+		i++
+	}
+	cells += cell.toString().trim()
+	return cells
 }

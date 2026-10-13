@@ -73,7 +73,7 @@ class GrantRole(private val dsl: DSLContext, private val transactions: Transacti
 			"$email is ${p.role} of ${p.chapter.lowercase()}"
 		}
 		summary + if (created) " (new person created)" else ""
-	}!!
+	}
 
 	private fun findPerson(email: String): UUID? =
 		dsl.select(PERSON.ID).from(PERSON).where(PERSON.DELETED_AT.isNull).and(
@@ -97,7 +97,7 @@ class GrantRole(private val dsl: DSLContext, private val transactions: Transacti
 			.set(AUDIT_EVENT.ACTOR_TYPE, "system").set(AUDIT_EVENT.ACTION, action)
 			.set(AUDIT_EVENT.TARGET_TYPE, "person").set(AUDIT_EVENT.TARGET_ID, personId)
 			.set(AUDIT_EVENT.CHAPTER_ID, chapterId)
-			.set(AUDIT_EVENT.AFTER, JSONB.valueOf(after.entries.joinToString(",", "{", "}") { "\"${it.key}\":\"${it.value}\"" }))
+			.set(AUDIT_EVENT.AFTER, JSONB.valueOf(org.hack4impact.portal.adapters.HttpJson.MAPPER.writeValueAsString(after)))
 			.execute()
 	}
 }

@@ -177,7 +177,7 @@ class SandboxCheck(
 		appendLine("Discovered (sandbox data):")
 		for (adapter in adapters.sortedBy { it.tool }) {
 			val accounts = adapter.accounts()
-			val login = accounts.filter { it.externalId != null }.associate { it.externalId!! to (it.login ?: it.email ?: it.externalId!!) }
+			val login = accounts.filter { it.externalId != null }.associate { it.externalId!! to (it.login ?: it.email ?: it.externalId) }
 			appendLine("== ${adapter.tool}")
 			accounts.forEach { appendLine("   account ${it.login ?: it.email} [${it.state.name.lowercase()}] id=${it.externalId}") }
 			adapter.resources().forEach { r ->

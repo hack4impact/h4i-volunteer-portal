@@ -4,8 +4,8 @@ import org.hack4impact.portal.auth.Viewer
 import org.hack4impact.portal.db.tables.references.ADMIN_TASK
 import org.hack4impact.portal.db.tables.references.AUDIT_EVENT
 import org.hack4impact.portal.db.tables.references.PERSON
+import org.hack4impact.portal.db.tables.references.SYNC_CHANGE
 import org.hack4impact.portal.db.tables.references.SYNC_RECORD
-import org.hack4impact.portal.db.tables.references.SYNC_RUN
 import org.hack4impact.portal.resolver.Tool
 import org.jooq.DSLContext
 import org.jooq.JSONB
@@ -23,9 +23,9 @@ import java.util.UUID
  * read); tasks that are no longer wanted cancel themselves at the next run.
  */
 @Component
-class AdminQueue(private val dsl: DSLContext) {
+class AdminQueue(private val dsl: DSLContext, private val syncs: org.hack4impact.portal.sync.SyncRequests) {
 	companion object {
-		/** A confirmation of held removals lets runs within this window make that many removals. */
+		/** A confirmation of held removals lets runs within this window make those removals (and no others). */
 		val CONFIRMATION_WINDOW: Duration = Duration.ofHours(24)
 	}
 
@@ -56,9 +56,12 @@ class AdminQueue(private val dsl: DSLContext) {
 		when (task.action) {
 			// The person did it by hand: from now on it counts as the portal's, like an applied change.
 			"add_member" -> dsl.update(SYNC_RECORD).set(SYNC_RECORD.ACTUAL, "present").set(SYNC_RECORD.STATUS, "in_sync")
-				.set(SYNC_RECORD.APPLIED_AT, OffsetDateTime.now()).set(SYNC_RECORD.ATTEMPTS, 0).where(record).execute()
+				.set(SYNC_RECORD.APPLIED_AT, OffsetDateTime.now()).set(SYNC_RECORD.APPLIED_ACCESS_LEVEL, SYNC_RECORD.DESIRED_ACCESS_LEVEL)
+				.set(SYNC_RECORD.ATTEMPTS, 0).where(record).execute()
 			"remove_member" -> dsl.update(SYNC_RECORD).set(SYNC_RECORD.ACTUAL, "absent").set(SYNC_RECORD.STATUS, "in_sync")
-				.setNull(SYNC_RECORD.APPLIED_AT).where(record).execute()
+				.setNull(SYNC_RECORD.APPLIED_AT).setNull(SYNC_RECORD.APPLIED_ACCESS_LEVEL).where(record).execute()
+			// The held removals go ahead now rather than at the next scheduled run (review M9).
+			"confirm_removals" -> syncs.request("manual", setOf(Tool.valueOf(task.tool!!.uppercase())))
 		}
 		audit(viewer, "queue.done", id, task.description)
 	}
@@ -90,15 +93,36 @@ class AdminQueue(private val dsl: DSLContext) {
 		}
 	}
 
-	/** Whether national confirmed at least [removals] removals for [tool] within the window. */
-	fun removalsConfirmed(tool: Tool, removals: Int): Boolean =
-		dsl.fetchExists(
-			dsl.selectOne().from(ADMIN_TASK).join(SYNC_RUN).on(SYNC_RUN.ID.eq(ADMIN_TASK.RUN_ID))
-				.where(
-					ADMIN_TASK.TOOL.eq(tool.name.lowercase()), ADMIN_TASK.ACTION.eq("confirm_removals"), ADMIN_TASK.STATUS.eq("done"),
-					ADMIN_TASK.DONE_AT.gt(OffsetDateTime.now().minus(CONFIRMATION_WINDOW)), SYNC_RUN.PLANNED_REMOVES.ge(removals),
-				),
-		)
+	/**
+	 * Whether national confirmed these removals (person, resource) for [tool] within the window: every one of them was
+	 * among those a confirmed run held. A run with other removals waits for its own confirmation (review M9).
+	 */
+	fun removalsConfirmed(tool: Tool, removals: Collection<Pair<UUID, UUID>>): Boolean {
+		val runs = dsl.select(ADMIN_TASK.RUN_ID).from(ADMIN_TASK)
+			.where(
+				ADMIN_TASK.TOOL.eq(tool.name.lowercase()), ADMIN_TASK.ACTION.eq("confirm_removals"), ADMIN_TASK.STATUS.eq("done"),
+				ADMIN_TASK.DONE_AT.gt(OffsetDateTime.now().minus(CONFIRMATION_WINDOW)), ADMIN_TASK.RUN_ID.isNotNull,
+			).fetch().map { it.value1()!! }
+		return runs.any { run ->
+			val held = dsl.select(SYNC_CHANGE.PERSON_ID, SYNC_CHANGE.RESOURCE_ID).from(SYNC_CHANGE)
+				.where(SYNC_CHANGE.RUN_ID.eq(run), SYNC_CHANGE.OUTCOME.eq("held"), SYNC_CHANGE.KIND.`in`("remove", "change"))
+				.fetch().map { it.value1()!! to it.value2()!! }.toSet()
+			held.containsAll(removals)
+		}
+	}
+
+	/**
+	 * Asks national to confirm a run's held removals: one open task per tool, brought up to date with the latest run
+	 * rather than a new task every run (review M9).
+	 */
+	fun confirmRemovals(tool: Tool, runId: UUID, description: String) {
+		val updated = dsl.update(ADMIN_TASK).set(ADMIN_TASK.RUN_ID, runId).set(ADMIN_TASK.DESCRIPTION, description).set(ADMIN_TASK.UPDATED_AT, OffsetDateTime.now())
+			.where(ADMIN_TASK.TOOL.eq(tool.name.lowercase()), ADMIN_TASK.ACTION.eq("confirm_removals"), ADMIN_TASK.STATUS.eq("open")).execute()
+		if (updated == 0) {
+			dsl.insertInto(ADMIN_TASK).set(ADMIN_TASK.TOOL, tool.name.lowercase()).set(ADMIN_TASK.ACTION, "confirm_removals").set(ADMIN_TASK.RUN_ID, runId)
+				.set(ADMIN_TASK.DESCRIPTION, description).execute()
+		}
+	}
 
 	private fun openTask(id: UUID) =
 		dsl.selectFrom(ADMIN_TASK).where(ADMIN_TASK.ID.eq(id)).fetchOne()?.also {

@@ -173,7 +173,9 @@ class AdapterConfiguration {
 			baseUrl,
 			GoogleServiceAccountToken(inlineOrFile(serviceAccountKey), required("google.admin-subject", adminSubject), GoogleServiceAccountToken.USER_SCOPES),
 			orgUnitScope = userScope,
-			http = patient(Tool.GOOGLE),
+			// Accounts are created while a lead's approval request waits: a rate limit fails at once and becomes a national
+			// task (approval still completes) rather than holding the request for minutes (review M11).
+			http = HttpJson(Tool.GOOGLE),
 		)
 	}
 

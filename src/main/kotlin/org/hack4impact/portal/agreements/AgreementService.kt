@@ -60,6 +60,7 @@ class AgreementService(
 	private val properties: AgreementProperties,
 	private val mailer: Mailer,
 	private val syncs: SyncRequests,
+	private val locks: org.hack4impact.portal.sync.RunLocks,
 	@Value("\${portal.base-url}") private val baseUrl: String,
 ) {
 	private val log = LoggerFactory.getLogger(javaClass)
@@ -85,7 +86,7 @@ class AgreementService(
 	fun signingUrl(agreement: AgreementRecord): String? {
 		val client = client() ?: return null
 		if (agreement.status != "sent" || agreement.documensoDocumentId == null) return null
-		return try { client.envelope(agreement.documensoDocumentId!!).signers.firstOrNull()?.signingUrl } catch (e: AdapterException) { null }
+		return try { client.envelope(agreement.documensoDocumentId!!, interactive = true).signers.firstOrNull()?.signingUrl } catch (e: AdapterException) { null }
 	}
 
 	fun activeTemplate(kind: String): AgreementTemplateRecord? =
@@ -97,7 +98,11 @@ class AgreementService(
 	 * Sends the project agreement to members of live projects who haven't signed one ([projectId]: just that
 	 * project). Someone who signed this project's agreement before (they left and came back) counts as signed again.
 	 */
-	fun sendProjectAgreements(projectId: UUID? = null): Int {
+	fun sendProjectAgreements(projectId: UUID? = null): Int =
+		// One sender at a time: the listener and the regular pass could otherwise send one agreement twice (review M12).
+		locks.exclusive(org.hack4impact.portal.sync.RunLocks.AGREEMENTS) { sendProjectAgreementsNow(projectId) }
+
+	private fun sendProjectAgreementsNow(projectId: UUID?): Int {
 		val template = activeTemplate("project") ?: return 0
 		val waiting = dsl.select(PROJECT_MEMBER.PROJECT_ID, PROJECT_MEMBER.PERSON_ID, PROJECT.NAME).from(PROJECT_MEMBER)
 			.join(PROJECT).on(PROJECT.ID.eq(PROJECT_MEMBER.PROJECT_ID))
@@ -167,11 +172,13 @@ class AgreementService(
 	}
 
 	/** Brings one sent agreement up to date with Documenso: signed, declined or cancelled there. */
-	fun refresh(agreement: AgreementRecord) {
+	fun refresh(agreement: AgreementRecord, interactive: Boolean = false) {
 		val client = client() ?: return
 		if (agreement.status != "sent" || agreement.documensoDocumentId == null) return
+		// Checked now, whatever the answer: the pass takes the longest-unchecked first, so every one comes round (review M6).
+		dsl.update(AGREEMENT).set(AGREEMENT.CHECKED_AT, OffsetDateTime.now()).where(AGREEMENT.ID.eq(agreement.id)).execute()
 		val envelope = try {
-			client.envelope(agreement.documensoDocumentId!!)
+			client.envelope(agreement.documensoDocumentId!!, interactive)
 		} catch (e: AdapterException) {
 			dsl.update(AGREEMENT).set(AGREEMENT.ERROR, e.message?.take(500)).where(AGREEMENT.ID.eq(agreement.id)).execute()
 			return
@@ -231,7 +238,7 @@ class AgreementService(
 	fun pass(now: OffsetDateTime = OffsetDateTime.now()): PassReport {
 		if (client() == null) return PassReport()
 		val sent = sendProjectAgreements()
-		val open = dsl.selectFrom(AGREEMENT).where(AGREEMENT.STATUS.eq("sent")).orderBy(AGREEMENT.UPDATED_AT).limit(properties.batch).fetch()
+		val open = dsl.selectFrom(AGREEMENT).where(AGREEMENT.STATUS.eq("sent")).orderBy(AGREEMENT.CHECKED_AT.asc().nullsFirst()).limit(properties.batch).fetch()
 		open.forEach { refresh(it) }
 		val voided = voidLeft()
 		val reminded = remind(now)
@@ -253,11 +260,18 @@ class AgreementService(
 					),
 				),
 			).fetchInto(AGREEMENT)
+		// Registration agreements of applications declined, or left unfinished for a month: they'd hold their place in
+		// the pass's batch for ever (review M6).
+		val abandoned = dsl.select(AGREEMENT.asterisk()).from(AGREEMENT).join(REGISTRATION).on(REGISTRATION.ID.eq(AGREEMENT.REGISTRATION_ID))
+			.where(
+				AGREEMENT.STATUS.`in`("draft", "sent"), AGREEMENT.PERSON_ID.isNull,
+				REGISTRATION.STATUS.eq("declined").or(REGISTRATION.STATUS.eq("started").and(REGISTRATION.CREATED_AT.lt(OffsetDateTime.now().minusDays(30)))),
+			).fetchInto(AGREEMENT)
 		var voided = 0
-		for (a in stale) {
+		for (a in stale + abandoned) {
 			if (a.documensoDocumentId != null) {
 				if (!canSend()) continue
-				try { client()!!.cancel(a.documensoDocumentId!!, "No longer on the project") } catch (e: AdapterException) { fail(a, e.message); continue }
+				try { client()!!.cancel(a.documensoDocumentId!!, if (a.projectId != null) "No longer on the project" else "The application was closed") } catch (e: AdapterException) { fail(a, e.message); continue }
 			}
 			dsl.update(AGREEMENT).set(AGREEMENT.STATUS, "voided").where(AGREEMENT.ID.eq(a.id)).execute()
 			voided++
@@ -321,7 +335,7 @@ class AgreementService(
 		val rows = projectLeads.ifEmpty {
 			dsl.select(PERSON.FIRST_NAME, PERSON.PREFERRED_NAME, PERSON.ORG_EMAIL).from(CHAPTER_ROLE).join(PERSON).on(PERSON.ID.eq(CHAPTER_ROLE.PERSON_ID))
 				.join(PROJECT).on(PROJECT.CHAPTER_ID.eq(CHAPTER_ROLE.CHAPTER_ID))
-				.where(PROJECT.ID.eq(project), CHAPTER_ROLE.ROLE.`in`("lead", "co_lead"), PERSON.ORG_EMAIL.isNotNull).fetch()
+				.where(PROJECT.ID.eq(project), CHAPTER_ROLE.ROLE.`in`("lead", "co_lead"), CHAPTER_ROLE.ENDS_AT.isNull, PERSON.ORG_EMAIL.isNotNull).fetch()
 		}
 		return rows.map { (it.value2()?.takeIf { n -> n.isNotBlank() } ?: it.value1()!!) to it.value3()!! }.distinctBy { it.second }
 	}
@@ -345,10 +359,10 @@ class AgreementService(
 		return registrationTemplates().map { t ->
 			var a = registrationAgreement(registration, t)
 			if (a?.status == "sent") {
-				refresh(a)
+				refresh(a, interactive = true)
 				a = registrationAgreement(registration, t)
 			}
-			val url = if (a?.status == "sent") runCatching { client()!!.envelope(a.documensoDocumentId!!).signers.firstOrNull()?.signingUrl }.getOrNull() else null
+			val url = if (a?.status == "sent") runCatching { client()!!.envelope(a.documensoDocumentId!!, interactive = true).signers.firstOrNull()?.signingUrl }.getOrNull() else null
 			ApplicantAgreement(t.kind!!, t.name!!, a?.status ?: "not_started", url)
 		}
 	}
@@ -363,7 +377,7 @@ class AgreementService(
 			throw IllegalStateException("The agreement couldn't be prepared. Try again in a moment.")
 		}
 		val sent = dsl.selectFrom(AGREEMENT).where(AGREEMENT.ID.eq(agreement.id)).fetchSingle()
-		return client()!!.envelope(sent.documensoDocumentId!!).signers.firstOrNull()?.signingUrl ?: throw IllegalStateException("The agreement has no signer")
+		return client()!!.envelope(sent.documensoDocumentId!!, interactive = true).signers.firstOrNull()?.signingUrl ?: throw IllegalStateException("The agreement has no signer")
 	}
 
 	/** What's still unsigned, in words, for the applicant's checklist. */

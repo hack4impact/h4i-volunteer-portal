@@ -182,7 +182,8 @@ val testWeb = tasks.register<Exec>("testWeb") {
 	workingDir = web.asFile
 	commandLine("npm", "test")
 	inputs.dir(web.dir("src"))
-	inputs.files(web.file("vite.config.ts"), web.file("package-lock.json"))
+	// Everything that changes how the tests run, so changing only one of these reruns them (code review W2).
+	inputs.files(web.file("vite.config.ts"), web.file("package.json"), web.file("package-lock.json"), web.file("tsconfig.json"))
 	outputs.upToDateWhen { true }
 }
 

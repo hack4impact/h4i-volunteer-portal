@@ -85,9 +85,9 @@ class GitHubWriteAdapterTests {
 	}
 
 	@Test
-	fun `missing write permission is an auth failure`() {
+	fun `a team the app may not change fails that change only (review M1)`() {
 		server.stubFor(put(urlEqualTo("/orgs/$org/teams/umd-rise-dc/memberships/ada")).willReturn(json(403, """{"message":"Resource not accessible by integration"}""")))
-		assertFailsWith<AuthFailed> { adapter.grant("umd-rise-dc", AccountRef("1001", "ada"), Access.WRITE) }
+		assertFailsWith<Rejected> { adapter.grant("umd-rise-dc", AccountRef(null, "ada"), Access.WRITE) }
 	}
 
 	@Test

@@ -114,7 +114,7 @@ class AdoptionController(
 	}
 
 	private fun describe(state: String?, target: String?, projectId: UUID?) =
-		JSONB.valueOf("""{"state":"$state","target":${target?.let { "\"$it\"" } ?: "null"},"projectId":${projectId?.let { "\"$it\"" } ?: "null"}}""")
+		JSONB.valueOf(org.hack4impact.portal.adapters.HttpJson.MAPPER.writeValueAsString(mapOf("state" to state, "target" to target, "projectId" to projectId?.toString())))
 
 	private fun audit(viewer: Viewer, chapter: Chapter, id: UUID, before: JSONB, after: JSONB) {
 		dsl.insertInto(AUDIT_EVENT)

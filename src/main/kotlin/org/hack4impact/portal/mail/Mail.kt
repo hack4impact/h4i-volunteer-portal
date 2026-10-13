@@ -14,6 +14,11 @@ import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.stereotype.Component
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
+import org.springframework.transaction.support.TransactionTemplate
 import java.io.File
 import java.util.Base64
 import java.util.UUID
@@ -75,22 +80,39 @@ class GmailMailSender(
 	}
 }
 
-/** Sends an email and records that it was sent (never the body), so failures are visible and auditable. */
+/**
+ * Sends an email and records that it was sent (never the body), so failures are visible and auditable. Inside a
+ * transaction it waits for the commit: nothing goes out for a change that rolled back, and no lock is held while
+ * it sends (code review M8).
+ */
 @Component
-class Mailer(private val sender: MailSender, private val dsl: DSLContext) {
+class Mailer(private val sender: MailSender, private val dsl: DSLContext, private val transactions: PlatformTransactionManager) {
 	private val log = LoggerFactory.getLogger(javaClass)
 
-	/** Returns whether it was sent. */
+	/** Returns whether it was sent; true when it waits for the transaction to commit. */
 	fun send(email: Email, to: String, registration: UUID? = null, person: UUID? = null): Boolean {
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) return deliver(email, to, registration, person)
+		TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+			override fun afterCommit() {
+				deliver(email, to, registration, person)
+			}
+		})
+		return true
+	}
+
+	private fun deliver(email: Email, to: String, registration: UUID?, person: UUID?): Boolean {
 		val error = try {
 			sender.send(to, email.subject, email.text); null
 		} catch (e: Exception) {
 			log.warn("Email {} to {} failed: {}", email.template, to, e.message); e.message ?: e.javaClass.simpleName
 		}
-		dsl.insertInto(EMAIL_MESSAGE).set(EMAIL_MESSAGE.TO_ADDRESS, to).set(EMAIL_MESSAGE.TEMPLATE, email.template).set(EMAIL_MESSAGE.SUBJECT, email.subject)
-			.set(EMAIL_MESSAGE.STATUS, if (error == null) "sent" else "failed").set(EMAIL_MESSAGE.ERROR, error?.take(500))
-			.set(EMAIL_MESSAGE.REGISTRATION_ID, registration).set(EMAIL_MESSAGE.PERSON_ID, person)
-			.execute()
+		// A transaction of its own: after a commit, the finished one can't take more writes.
+		TransactionTemplate(transactions).apply { propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW }.executeWithoutResult {
+			dsl.insertInto(EMAIL_MESSAGE).set(EMAIL_MESSAGE.TO_ADDRESS, to).set(EMAIL_MESSAGE.TEMPLATE, email.template).set(EMAIL_MESSAGE.SUBJECT, email.subject)
+				.set(EMAIL_MESSAGE.STATUS, if (error == null) "sent" else "failed").set(EMAIL_MESSAGE.ERROR, error?.take(500))
+				.set(EMAIL_MESSAGE.REGISTRATION_ID, registration).set(EMAIL_MESSAGE.PERSON_ID, person)
+				.execute()
+		}
 		return error == null
 	}
 }

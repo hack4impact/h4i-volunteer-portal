@@ -183,13 +183,13 @@ class ProjectService(private val dsl: DSLContext, private val agreements: org.ha
 			val name = normalizeName(tool, input.name ?: "")
 			if (!rule.matches(name)) bad("A $tool name needs $hint")
 			if (existing(chapterId, tool, name) != null) conflict("This chapter already has $name in $tool: attach that one instead")
-			insertResource(chapterId, tool, name, tags(input.tags), newResourceId ?: UUID.randomUUID())
+			insertResource(chapterId, tool, name, tags(input.tags.orEmpty()), newResourceId ?: UUID.randomUUID())
 		}
 		dsl.insertInto(PROJECT_RESOURCE).set(PROJECT_RESOURCE.PROJECT_ID, project.id).set(PROJECT_RESOURCE.RESOURCE_ID, resourceId)
 			.set(PROJECT_RESOURCE.AUDIENCE, input.audience).set(PROJECT_RESOURCE.AUDIENCE_ROLE_ID, input.roleId)
 			.set(PROJECT_RESOURCE.ACCESS_LEVEL, input.access).set(PROJECT_RESOURCE.REQUIRES_AGREEMENT, input.requiresAgreement)
 			.execute()
-		if (input.resourceId != null && input.tags.isNotEmpty()) dsl.update(RESOURCE).set(RESOURCE.TAGS, tags(input.tags).toTypedArray()).where(RESOURCE.ID.eq(resourceId)).execute()
+		if (input.resourceId != null && !input.tags.isNullOrEmpty()) dsl.update(RESOURCE).set(RESOURCE.TAGS, tags(input.tags).toTypedArray()).where(RESOURCE.ID.eq(resourceId)).execute()
 		touch(project)
 		audit(viewer, chapterId, project.id!!, "project.resource_attach", "Attached ${resourceName(resourceId)}")
 		return resourceId
@@ -203,7 +203,8 @@ class ProjectService(private val dsl: DSLContext, private val agreements: org.ha
 			.set(PROJECT_RESOURCE.ACCESS_LEVEL, input.access).set(PROJECT_RESOURCE.REQUIRES_AGREEMENT, input.requiresAgreement)
 			.where(PROJECT_RESOURCE.PROJECT_ID.eq(project.id), PROJECT_RESOURCE.RESOURCE_ID.eq(resourceId)).execute()
 		if (updated == 0) throw ResponseStatusException(HttpStatus.NOT_FOUND, "Not attached to this project")
-		dsl.update(RESOURCE).set(RESOURCE.TAGS, tags(input.tags).toTypedArray()).where(RESOURCE.ID.eq(resourceId)).execute()
+		// Left out: the tags stay; an empty list clears them for every project sharing the resource (review L15).
+		input.tags?.let { dsl.update(RESOURCE).set(RESOURCE.TAGS, tags(it).toTypedArray()).where(RESOURCE.ID.eq(resourceId)).execute() }
 		touch(project)
 		audit(viewer, chapterId, project.id!!, "project.resource_update", "Changed who gets ${resourceName(resourceId)}")
 	}

@@ -66,7 +66,10 @@ class ResolverProperties {
 		val plan = Planner.plan(desired, actual, previous)
 		return desired.grants.all { it.reasons.isNotEmpty() } &&
 			plan.removals.all { it.previousReasons.isNotEmpty() && previous[it.personId to it.resourceId] == it.previousReasons } &&
-			plan.drift.all { previous[it.personId to it.resourceId].isNullOrEmpty() }
+			// Drift: access the portal never granted, or a level above what it wants that it didn't give (review H3).
+			plan.drift.all { d ->
+				previous[d.personId to d.resourceId].isNullOrEmpty() || desired.grants.any { it.personId == d.personId && it.resourceId == d.resourceId && it.access < d.access }
+			}
 	}
 
 	// The resolver's own guarantees ---------------------------------------------------------------
