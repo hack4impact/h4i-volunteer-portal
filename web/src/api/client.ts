@@ -38,6 +38,12 @@ export type TeamCandidate = components['schemas']['TeamCandidate']
 export type ActivityItem = components['schemas']['ActivityItem']
 export type MemberHome = components['schemas']['MemberHome']
 export type ReleaseResult = components['schemas']['ReleaseResult']
+export type RuleInput = components['schemas']['RuleInput']
+export type RuleView = components['schemas']['RuleView']
+export type RulesPage = components['schemas']['RulesPage']
+export type RulePreview = components['schemas']['RulePreview']
+export type RulePreviewInput = components['schemas']['RulePreviewInput']
+export type MyAccess = components['schemas']['MyAccess']
 
 /** Typed client for the portal API; types come from web/openapi.json (`npm run gen:api`). */
 export const api = createClient<paths>({

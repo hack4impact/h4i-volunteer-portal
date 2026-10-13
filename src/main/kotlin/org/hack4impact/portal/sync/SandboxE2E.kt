@@ -55,6 +55,8 @@ data class SandboxE2EProperties(
  *  2. Apply: the run creates the resources and adds everyone it can; the tools must show them.
  *  3. Again: a second run must have nothing left to do.
  *  4. Rollback: everyone leaves the project; the run must take away what it gave, and the tools must show that.
+ *  4b. Rules (step 14): a chapter rule gives everyone the test channel and team, previewed first; turning it off
+ *     takes exactly that back.
  *  5. Cleanup: the created resources are archived or deleted (unless --portal.sandbox-e2e.keep=true).
  *
  * Tools with a write adapter (`PORTAL_ADAPTERS_<TOOL>_WRITE=true`) take part, plus Notion through the admin queue:
@@ -76,6 +78,7 @@ class SandboxE2E(
 	private val adapterProperties: org.hack4impact.portal.adapters.AdapterProperties,
 	private val agreements: org.hack4impact.portal.agreements.AgreementService,
 	private val drafts: org.hack4impact.portal.drafts.Drafts,
+	private val rules: org.hack4impact.portal.rules.Rules,
 	private val documenso: org.springframework.beans.factory.ObjectProvider<org.hack4impact.portal.adapters.documenso.DocumensoClient>,
 	private val context: ConfigurableApplicationContext,
 ) : ApplicationRunner {
@@ -267,6 +270,47 @@ class SandboxE2E(
 				check(r.tool, "rollback: removed $removed of ${expected.size}", r.status == "completed" && removed == expected.size, r.error ?: "")
 				val there = membersIn(r.tool)
 				check(r.tool, "rollback: the tool shows them gone", there != null && there.intersect(expected).isEmpty(), if (there == null) "couldn't read members" else "${there.intersect(expected).size} still there")
+			}
+
+			// 4b. Automations (step 14): with the project's access gone, a chapter rule gives everyone read on the test
+			// channel and team. Its preview must match what the sync then does, and turning it off must take back exactly that.
+			val ruleTools = tools.filter { it == Tool.SLACK || it == Tool.GITHUB }
+			if (ruleTools.isEmpty()) report.appendLine("Rules: skipped (needs Slack or GitHub)") else {
+				val tag = "e2e-rule-$run"
+				dsl.update(RESOURCE).set(RESOURCE.TAGS, arrayOf(tag)).where(RESOURCE.ID.`in`(ruleTools.map { resources.getValue(it) })).execute()
+				// The rule's resources aren't behind the project agreement here (the agreement phase gated the team).
+				dsl.update(PROJECT_RESOURCE).set(PROJECT_RESOURCE.REQUIRES_AGREEMENT, false).where(PROJECT_RESOURCE.PROJECT_ID.eq(project)).execute()
+				val leadId = active.values.first()
+				val leadRow = dsl.selectFrom(org.hack4impact.portal.db.tables.references.PERSON).where(org.hack4impact.portal.db.tables.references.PERSON.ID.eq(leadId)).fetchSingle()
+				val lead = org.hack4impact.portal.auth.Viewer(leadId, leadRow.orgEmail ?: "", "${leadRow.firstName} ${leadRow.lastName}", false, mapOf(chapterId to "lead"))
+				val input = org.hack4impact.portal.rules.RuleInput(
+					"E2E $run: everyone in the test channel and team", who = org.hack4impact.portal.rules.RuleWho(everyone = true),
+					resources = org.hack4impact.portal.rules.RuleResources("tags", tags = listOf(tag)), tools = ruleTools.map { it.name.lowercase() },
+				)
+				val on = rules.preview(chapterId, org.hack4impact.portal.rules.RulePreviewInput(input = input), lead).preview
+				check("RULE", "preview: adds ${on.people} people to ${on.resources} resources", on.adds == on.people * ruleTools.size && on.resources == ruleTools.size && on.removes == 0, "${on.adds} grants")
+				val ruleId = rules.create(chapterId, input, lead)
+				val given = mutableMapOf<Tool, Set<String>>()
+				for (r in engine.run("rule", ruleTools.toSet())) {
+					val there = membersIn(r.tool)
+					val done = outcomes(r.runId).filter { it.value1() == "add" && it.value2() == "applied" }.mapNotNull { it.value3() }
+						.mapNotNull { p -> accountsOf(r.tool, p).let { mine -> mine.firstOrNull { there?.contains(it) == true } ?: mine.firstOrNull() } }.toSet()
+					check(r.tool, "rule: added ${done.size}, and the tool shows them", r.status == "completed" && done.isNotEmpty() && there != null && there.containsAll(done), r.error ?: "")
+					given[r.tool] = done
+				}
+				val off = rules.preview(chapterId, org.hack4impact.portal.rules.RulePreviewInput(ruleId, input.copy(enabled = false)), lead).preview
+				check("RULE", "turning it off previews taking back all ${on.adds} grants", off.removes == on.adds && off.adds == 0, "${off.removes} removals")
+				rules.setEnabled(chapterId, ruleId, false, lead)
+				for (r in engine.run("rule", ruleTools.toSet())) {
+					val removed = outcomes(r.runId).filter { it.value1() == "remove" && it.value2() == "applied" }.size
+					val implicit = externalId(r.tool)?.let { ext ->
+						try { readerOf.getValue(r.tool).members(ext).filter { it.implicit }.map { it.accountId }.toSet() } catch (e: AdapterException) { emptySet() }
+					}.orEmpty()
+					val expected = given[r.tool].orEmpty() - implicit
+					val there = membersIn(r.tool)
+					check(r.tool, "rule off: removed $removed of ${expected.size}, and the tool shows them gone",
+						r.status == "completed" && removed == expected.size && there != null && there.intersect(expected).isEmpty(), r.error ?: "")
+				}
 			}
 		} catch (e: RuntimeException) {
 			// Still clean up and report: a crash mustn't leave real accounts and groups behind unnoticed.

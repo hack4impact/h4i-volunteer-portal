@@ -21,12 +21,17 @@ data class DraftSummary(
 data class DraftChange(
 	val id: UUID,
 	val position: Int,
-	/** create_project, update_project, set_status, add_member, set_member_role, remove_member, attach_resource, update_resource, detach_resource. */
+	/**
+	 * create_project, update_project, set_status, add_member, set_member_role, remove_member, attach_resource, update_resource,
+	 * detach_resource; create_rule, update_rule, set_rule_enabled, delete_rule (step 14).
+	 */
 	val operation: String,
 	val summary: String,
 	val projectId: UUID?,
 	val createdBy: String?,
 	val createdAt: OffsetDateTime,
+	/** The rule a rule change is about. */
+	val ruleId: UUID? = null,
 )
 
 /** A change that no longer works on live data (e.g. the person left the chapter): fix it before release. */

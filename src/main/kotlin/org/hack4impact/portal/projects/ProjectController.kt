@@ -50,7 +50,7 @@ class ProjectController(
 	fun list(@AuthenticationPrincipal user: OidcUser, @PathVariable code: String, @RequestParam(required = false) draft: UUID?): List<ProjectSummary> {
 		if (draft == null) return queries.list(access.read(user, code).second.id)
 		val (viewer, chapter) = access.manage(user, code)
-		val pending = drafts.pendingByProject(draft)
+		val pending = drafts.pendingByTarget(draft)
 		return drafts.inDraft(chapter.id, draft, viewer) { queries.list(chapter.id) }.map { it.copy(pendingChanges = pending[it.id]?.size ?: 0) }
 	}
 
@@ -60,7 +60,7 @@ class ProjectController(
 		val (viewer, chapter) = access.manage(user, code)
 		if (draft != null) {
 			val op = drafts.record(chapter.id, draft, viewer, null) { drafts.operation("create_project", UUID.randomUUID(), "input" to input) }
-			return inDraft(chapter.id, draft, viewer) { queries.byId(op.projectId) }
+			return inDraft(chapter.id, draft, viewer) { queries.byId(op.targetId) }
 		}
 		val project = service.create(chapter.id, input, viewer)
 		return queries.detail(chapter.id, queries.bySlug(chapter.id, project.slug!!)!!, true)
@@ -171,7 +171,7 @@ class ProjectController(
 			val project = find() ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No such project in this draft")
 			queries.detail(chapterId, project, true)
 		}
-		return detail.copy(pendingChanges = drafts.pendingByProject(draft)[detail.id].orEmpty())
+		return detail.copy(pendingChanges = drafts.pendingByTarget(draft)[detail.id].orEmpty())
 	}
 
 	/**
@@ -200,7 +200,7 @@ class ProjectController(
 		val (viewer, chapter) = access.manage(user, code)
 		if (draft != null) {
 			val op = drafts.record(chapter.id, draft, viewer, slug) { p -> operation(p!!) }
-			return inDraft(chapter.id, draft, viewer) { queries.byId(op.projectId) }
+			return inDraft(chapter.id, draft, viewer) { queries.byId(op.targetId) }
 		}
 		val project = project(chapter.id, slug)
 		if (project.status == "closed") throw ResponseStatusException(HttpStatus.CONFLICT, "This project is closed")

@@ -646,6 +646,10 @@
             "format" : "uuid",
             "type" : [ "string", "null" ]
           },
+          "ruleId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
           "summary" : {
             "type" : "string"
           }
@@ -2015,6 +2019,308 @@
         },
         "type" : "object"
       },
+      "RuleEnabled" : {
+        "properties" : {
+          "enabled" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "RuleInput" : {
+        "properties" : {
+          "access" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : [ "string", "null" ]
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "projects" : {
+            "$ref" : "#/components/schemas/RuleProjects"
+          },
+          "resources" : {
+            "$ref" : "#/components/schemas/RuleResources"
+          },
+          "tools" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "who" : {
+            "$ref" : "#/components/schemas/RuleWho"
+          }
+        },
+        "type" : "object"
+      },
+      "RuleOption" : {
+        "properties" : {
+          "detail" : {
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "tool" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "RuleOptions" : {
+        "properties" : {
+          "people" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RuleOption"
+            },
+            "type" : "array"
+          },
+          "projectRoles" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RuleOption"
+            },
+            "type" : "array"
+          },
+          "projects" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RuleOption"
+            },
+            "type" : "array"
+          },
+          "resources" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RuleOption"
+            },
+            "type" : "array"
+          },
+          "tags" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "titles" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "RulePreview" : {
+        "properties" : {
+          "preview" : {
+            "$ref" : "#/components/schemas/DraftPreview"
+          },
+          "sentence" : {
+            "type" : [ "string", "null" ]
+          },
+          "warnings" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "RulePreviewInput" : {
+        "properties" : {
+          "delete" : {
+            "type" : "boolean"
+          },
+          "input" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/RuleInput"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "ruleId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "RuleProjects" : {
+        "properties" : {
+          "ids" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "tags" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "RuleReach" : {
+        "properties" : {
+          "people" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "resources" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "RuleResources" : {
+        "properties" : {
+          "ids" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "tags" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "RuleView" : {
+        "properties" : {
+          "chapterCode" : {
+            "type" : [ "string", "null" ]
+          },
+          "description" : {
+            "type" : [ "string", "null" ]
+          },
+          "enabled" : {
+            "type" : "boolean"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "input" : {
+            "$ref" : "#/components/schemas/RuleInput"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "pendingChanges" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "reach" : {
+            "$ref" : "#/components/schemas/RuleReach"
+          },
+          "sentence" : {
+            "type" : "string"
+          },
+          "updatedAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "updatedBy" : {
+            "type" : [ "string", "null" ]
+          },
+          "warnings" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "RuleWho" : {
+        "properties" : {
+          "chapterRoles" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "everyone" : {
+            "type" : "boolean"
+          },
+          "people" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "projectRoles" : {
+            "items" : {
+              "format" : "uuid",
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "statuses" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "titles" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "RulesPage" : {
+        "properties" : {
+          "canEdit" : {
+            "type" : "boolean"
+          },
+          "national" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RuleView"
+            },
+            "type" : "array"
+          },
+          "options" : {
+            "$ref" : "#/components/schemas/RuleOptions"
+          },
+          "rules" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RuleView"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "ScanStatus" : {
         "properties" : {
           "coversChapter" : {
@@ -2745,7 +3051,7 @@
         "tags" : [ "draft-controller" ]
       },
       "post" : {
-        "operationId" : "create_1",
+        "operationId" : "create_3",
         "parameters" : [ {
           "in" : "path",
           "name" : "code",
@@ -3072,6 +3378,43 @@
         "tags" : [ "chapter-controller" ]
       }
     },
+    "/api/chapters/{code}/members/{personId}/access" : {
+      "get" : {
+        "operationId" : "memberAccess",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "personId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "items" : {
+                    "$ref" : "#/components/schemas/MyAccess"
+                  },
+                  "type" : "array"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "chapter-controller" ]
+      }
+    },
     "/api/chapters/{code}/notion" : {
       "get" : {
         "operationId" : "get_1",
@@ -3195,7 +3538,7 @@
         "tags" : [ "project-controller" ]
       },
       "post" : {
-        "operationId" : "create",
+        "operationId" : "create_2",
         "parameters" : [ {
           "in" : "path",
           "name" : "code",
@@ -3278,7 +3621,7 @@
         "tags" : [ "project-controller" ]
       },
       "put" : {
-        "operationId" : "update",
+        "operationId" : "update_2",
         "parameters" : [ {
           "in" : "path",
           "name" : "code",
@@ -4053,6 +4396,270 @@
         "tags" : [ "registration-controller" ]
       }
     },
+    "/api/chapters/{code}/rules" : {
+      "get" : {
+        "operationId" : "page_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RulesPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "rule-controller" ]
+      },
+      "post" : {
+        "operationId" : "create_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RuleInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RulesPage"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "rule-controller" ]
+      }
+    },
+    "/api/chapters/{code}/rules/preview" : {
+      "post" : {
+        "operationId" : "preview_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RulePreviewInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RulePreview"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "rule-controller" ]
+      }
+    },
+    "/api/chapters/{code}/rules/{id}" : {
+      "delete" : {
+        "operationId" : "delete_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RulesPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "rule-controller" ]
+      },
+      "put" : {
+        "operationId" : "update_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RuleInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RulesPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "rule-controller" ]
+      }
+    },
+    "/api/chapters/{code}/rules/{id}/enabled" : {
+      "post" : {
+        "operationId" : "setEnabled_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RuleEnabled"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RulesPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "rule-controller" ]
+      }
+    },
     "/api/chapters/{code}/sync" : {
       "get" : {
         "operationId" : "sync",
@@ -4263,7 +4870,7 @@
     },
     "/api/national/claims/preview" : {
       "get" : {
-        "operationId" : "preview",
+        "operationId" : "preview_2",
         "parameters" : [ {
           "in" : "query",
           "name" : "chapter",
@@ -4428,6 +5035,177 @@
           }
         },
         "tags" : [ "national-controller" ]
+      }
+    },
+    "/api/national/rules" : {
+      "get" : {
+        "operationId" : "page",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RulesPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "national-rule-controller" ]
+      },
+      "post" : {
+        "operationId" : "create",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RuleInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RulesPage"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "national-rule-controller" ]
+      }
+    },
+    "/api/national/rules/preview" : {
+      "post" : {
+        "operationId" : "preview",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RulePreviewInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RulePreview"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "national-rule-controller" ]
+      }
+    },
+    "/api/national/rules/{id}" : {
+      "delete" : {
+        "operationId" : "delete",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RulesPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "national-rule-controller" ]
+      },
+      "put" : {
+        "operationId" : "update",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RuleInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RulesPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "national-rule-controller" ]
+      }
+    },
+    "/api/national/rules/{id}/enabled" : {
+      "post" : {
+        "operationId" : "setEnabled",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RuleEnabled"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RulesPage"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "national-rule-controller" ]
       }
     },
     "/api/national/sync/run" : {

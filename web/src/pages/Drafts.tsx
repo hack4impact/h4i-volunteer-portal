@@ -39,9 +39,42 @@ function summary(p: DraftPreview['perPerson'][number]) {
   ].filter(Boolean).join(' · ')
 }
 
+/** Each person's change: projects joined and left, resources gained, waiting on an agreement, and lost. */
+export function PeopleChanges({ people, label = 'People' }: { people: DraftPreview['perPerson']; label?: string }) {
+  return (
+    <ul className="adopt-list" aria-label={label}>
+      {people.map((p) => (
+        <li key={p.personId}>
+          <div className="person-change">
+            <div className="person-change-head">
+              <span className="initials small" aria-hidden="true">{p.name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span>
+              <span className="name-text">{p.name}</span>
+              <span className="muted person-change-sum">{summary(p)}</span>
+            </div>
+            <dl className="change-grid">
+              {p.joins.length > 0 && <><dt>Joins</dt><dd>{p.joins.map((j) => <span key={j} className="chip">{j}</span>)}</dd></>}
+              {p.leaves.length > 0 && <><dt>Leaves</dt><dd>{p.leaves.map((j) => <span key={j} className="chip">{j}</span>)}</dd></>}
+              {p.gains.length > 0 && <><dt className="add">Gets</dt><dd>{p.gains.map((g) => <ResourceChip key={g} label={g} />)}</dd></>}
+              {p.afterAgreement.length > 0 && <><dt>After agreement</dt><dd>{p.afterAgreement.map((g) => <ResourceChip key={g} label={g} />)}</dd></>}
+              {p.loses.length > 0 && <><dt className="remove">Loses</dt><dd>{p.loses.map((g) => <ResourceChip key={g} label={g} remove />)}</dd></>}
+            </dl>
+          </div>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 /** PRD: "Adds 34 people to 12 resources, removes 6". */
 export function previewSentence(p: DraftPreview) {
   if (p.adds + p.removes + p.accessChanges + p.afterAgreement === 0) return p.people ? `Changes projects for ${p.people} ${p.people === 1 ? 'person' : 'people'}; no access changes` : 'No access changes'
+  const who = `${p.people} ${p.people === 1 ? 'person' : 'people'}`
+  if (p.adds + p.afterAgreement === 0) {
+    // Nothing new for anyone: access levels change, or access is taken back.
+    const parts = p.accessChanges ? [`Changes access for ${who} on ${p.resources} ${p.resources === 1 ? 'resource' : 'resources'}`] : []
+    if (p.removes) parts.push(parts.length ? `removes ${p.removes}` : `Removes ${p.removes} ${p.removes === 1 ? 'grant' : 'grants'} from ${who}`)
+    return parts.join(', ')
+  }
   const parts = [`Adds ${p.people} ${p.people === 1 ? 'person' : 'people'} to ${p.resources} ${p.resources === 1 ? 'resource' : 'resources'}`]
   if (p.removes) parts.push(`removes ${p.removes}`)
   if (p.accessChanges) parts.push(`changes ${p.accessChanges}`)
@@ -199,31 +232,12 @@ function DraftView({ code, id }: { code: string; id: string }) {
       <section className="box" aria-labelledby="people-title">
         <div className="box-head" id="people-title">{open ? 'What changes for people' : 'What changed for people'} <span className="Counter">{preview.people}</span></div>
         {preview.perPerson.length === 0 && <div className="box-row muted">Nobody’s projects or access change.</div>}
-        <ul className="adopt-list" aria-label="People">
-          {preview.perPerson.map((p) => (
-            <li key={p.personId}>
-              <div className="person-change">
-                <div className="person-change-head">
-                  <span className="initials small" aria-hidden="true">{p.name.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span>
-                  <span className="name-text">{p.name}</span>
-                  <span className="muted person-change-sum">{summary(p)}</span>
-                </div>
-                <dl className="change-grid">
-                  {p.joins.length > 0 && <><dt>Joins</dt><dd>{p.joins.map((j) => <span key={j} className="chip">{j}</span>)}</dd></>}
-                  {p.leaves.length > 0 && <><dt>Leaves</dt><dd>{p.leaves.map((j) => <span key={j} className="chip">{j}</span>)}</dd></>}
-                  {p.gains.length > 0 && <><dt className="add">Gets</dt><dd>{p.gains.map((g) => <ResourceChip key={g} label={g} />)}</dd></>}
-                  {p.afterAgreement.length > 0 && <><dt>After agreement</dt><dd>{p.afterAgreement.map((g) => <ResourceChip key={g} label={g} />)}</dd></>}
-                  {p.loses.length > 0 && <><dt className="remove">Loses</dt><dd>{p.loses.map((g) => <ResourceChip key={g} label={g} remove />)}</dd></>}
-                </dl>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <PeopleChanges people={preview.perPerson} />
       </section>
 
       <section className="box" aria-labelledby="changes-title">
         <div className="box-head" id="changes-title">Changes <span className="Counter">{changes.length}</span></div>
-        {changes.length === 0 && <div className="box-row muted">No changes yet. Plan them on the Projects tab with this draft open.</div>}
+        {changes.length === 0 && <div className="box-row muted">No changes yet. Plan them on the Projects or Automations tab with this draft open.</div>}
         <ol className="adopt-list" aria-label="Changes">
           {changes.map((c) => {
             const conflict = conflicts.find((x) => x.changeId === c.id)

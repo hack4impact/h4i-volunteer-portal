@@ -81,6 +81,10 @@ class ChapterQueries(private val dsl: DSLContext) {
 		)
 	}
 
+	/** A current member (or someone who left: their access is still worth explaining while it's being taken back). */
+	fun isMember(chapterId: UUID, personId: UUID): Boolean =
+		dsl.fetchExists(CHAPTER_MEMBERSHIP, CHAPTER_MEMBERSHIP.CHAPTER_ID.eq(chapterId), CHAPTER_MEMBERSHIP.PERSON_ID.eq(personId))
+
 	fun members(chapterId: UUID): List<MemberRow> {
 		val people = dsl.select(
 			PERSON.ID, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME, PERSON.ORG_EMAIL, PERSON.SCHOOL_EMAIL,

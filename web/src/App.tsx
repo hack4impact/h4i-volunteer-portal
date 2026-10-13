@@ -48,6 +48,7 @@ function MemberApp() {
               <Route path="/chapters/:code/approvals" element={<ChapterPage me={session.me} tab="approvals" />} />
               <Route path="/chapters/:code/projects" element={<ChapterPage me={session.me} tab="projects" />} />
               <Route path="/chapters/:code/projects/:slug" element={<ChapterPage me={session.me} tab="projects" />} />
+              <Route path="/chapters/:code/automations" element={<ChapterPage me={session.me} tab="automations" />} />
               <Route path="/chapters/:code/drafts" element={<ChapterPage me={session.me} tab="drafts" />} />
               <Route path="/chapters/:code/drafts/:draftId" element={<ChapterPage me={session.me} tab="drafts" />} />
               <Route path="/chapters/:code/adoption" element={<ChapterPage me={session.me} tab="adoption" />} />

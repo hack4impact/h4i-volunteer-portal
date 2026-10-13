@@ -10,7 +10,6 @@ import org.hack4impact.portal.db.tables.references.CHANGESET
 import org.hack4impact.portal.db.tables.references.CHAPTER
 import org.hack4impact.portal.db.tables.references.PERSON
 import org.hack4impact.portal.db.tables.references.PROJECT
-import org.hack4impact.portal.db.tables.references.PROJECT_MEMBER
 import org.hack4impact.portal.db.tables.references.PROJECT_ROLE
 import org.hack4impact.portal.db.tables.references.RESOURCE
 import org.hack4impact.portal.projects.MemberInput
@@ -20,10 +19,9 @@ import org.hack4impact.portal.projects.ProjectQueries
 import org.hack4impact.portal.projects.ProjectService
 import org.hack4impact.portal.projects.ResourceInput
 import org.hack4impact.portal.resolver.Access
-import org.hack4impact.portal.resolver.Resolver
-import org.hack4impact.portal.resolver.WithheldReason
+import org.hack4impact.portal.rules.RuleInput
+import org.hack4impact.portal.rules.Rules
 import org.hack4impact.portal.sync.SyncRequests
-import org.hack4impact.portal.sync.WorldLoader
 import org.jooq.DSLContext
 import org.jooq.JSONB
 import org.jooq.impl.DSL
@@ -53,23 +51,28 @@ data class DraftReleased(val changesetId: UUID, val chapter: String, val draft: 
 class Drafts(
 	private val dsl: DSLContext,
 	private val projects: ProjectService,
-	private val worlds: WorldLoader,
+	private val rules: Rules,
+	private val diffs: AccessDiff,
 	private val transactions: PlatformTransactionManager,
 	private val mapper: JsonMapper,
 	private val syncs: SyncRequests,
 	private val events: ApplicationEventPublisher,
 ) {
-	/** A project operation as a draft records it. [projectId] is chosen up front for a project the draft creates. */
-	data class Operation(val op: String, val projectId: UUID, val payload: JsonNode)
+	/**
+	 * A project or rule operation as a draft records it. [targetId] is the project or rule; it's chosen up front for one
+	 * the draft creates.
+	 */
+	data class Operation(val op: String, val targetId: UUID, val payload: JsonNode) {
+		val targetType get() = if (op.endsWith("_rule") || op == "set_rule_enabled") "rule" else "project"
+	}
 
 	companion object {
-		private val TOOL_LABEL = mapOf("slack" to "Slack", "github" to "GitHub", "google" to "Google group", "notion" to "Notion", "vaultwarden" to "Vaultwarden")
 		private fun notFound(message: String): Nothing = throw ResponseStatusException(HttpStatus.NOT_FOUND, message)
 		private fun conflict(message: String): Nothing = throw ResponseStatusException(HttpStatus.CONFLICT, message)
 		private fun bad(message: String): Nothing = throw ResponseStatusException(HttpStatus.BAD_REQUEST, message)
 	}
 
-	fun operation(op: String, projectId: UUID, vararg payload: Pair<String, Any?>) = Operation(op, projectId, mapper.valueToTree(mapOf(*payload)))
+	fun operation(op: String, targetId: UUID, vararg payload: Pair<String, Any?>) = Operation(op, targetId, mapper.valueToTree(mapOf(*payload)))
 
 	// ---- Drafts -------------------------------------------------------------------------------------------------------
 
@@ -114,9 +117,9 @@ class Drafts(
 		val changes = changes(id)
 		val (conflicts, preview) = if (cs.status in setOf("draft", "scheduled")) {
 			rolledBack { s ->
-				val before = snapshot()
+				val before = diffs.snapshot()
 				val conflicts = replay(chapterId, id, viewer, s)
-				conflicts to diff(before, snapshot())
+				conflicts to diffs.diff(before, diffs.snapshot())
 			}
 		} else {
 			emptyList<DraftConflict>() to (cs.releasedSummary?.let { mapper.readValue(it.data(), DraftPreview::class.java) } ?: DraftPreview(0, 0, 0, 0, 0, 0, emptyList()))
@@ -128,11 +131,13 @@ class Drafts(
 		.where(CHANGE.CHANGESET_ID.eq(id)).orderBy(CHANGE.POSITION)
 		.fetch { r ->
 			val c = r.into(CHANGE)
-			DraftChange(c.id!!, c.position!!, c.operation!!, c.summary!!, c.targetId, r.get(PERSON.FIRST_NAME)?.let { "$it ${r.get(PERSON.LAST_NAME)}" }, c.createdAt!!)
+			val rule = c.targetType == "rule"
+			DraftChange(c.id!!, c.position!!, c.operation!!, c.summary!!, c.targetId.takeUnless { rule }, r.get(PERSON.FIRST_NAME)?.let { "$it ${r.get(PERSON.LAST_NAME)}" }, c.createdAt!!,
+				c.targetId.takeIf { rule })
 		}
 
-	/** Pending change summaries per project, for marking them on the chapter's screens. */
-	fun pendingByProject(id: UUID): Map<UUID, List<String>> = dsl.select(CHANGE.TARGET_ID, CHANGE.SUMMARY).from(CHANGE).where(CHANGE.CHANGESET_ID.eq(id))
+	/** Pending change summaries per project or rule, for marking them on the chapter's screens. */
+	fun pendingByTarget(id: UUID): Map<UUID, List<String>> = dsl.select(CHANGE.TARGET_ID, CHANGE.SUMMARY).from(CHANGE).where(CHANGE.CHANGESET_ID.eq(id))
 		.orderBy(CHANGE.POSITION).fetch().filter { it.value1() != null }.groupBy({ it.value1()!! }, { it.value2()!! })
 
 	// ---- Recording changes --------------------------------------------------------------------------------------------
@@ -155,7 +160,7 @@ class Drafts(
 			editable(chapterId, id, lock = true)
 			val next = (dsl.select(DSL.max(CHANGE.POSITION)).from(CHANGE).where(CHANGE.CHANGESET_ID.eq(id)).fetchOne()?.value1() ?: 0) + 1
 			dsl.insertInto(CHANGE).set(CHANGE.CHANGESET_ID, id).set(CHANGE.POSITION, next).set(CHANGE.OPERATION, operation.op)
-				.set(CHANGE.TARGET_TYPE, "project").set(CHANGE.TARGET_ID, operation.projectId).set(CHANGE.PAYLOAD, JSONB.valueOf(mapper.writeValueAsString(operation.payload)))
+				.set(CHANGE.TARGET_TYPE, operation.targetType).set(CHANGE.TARGET_ID, operation.targetId).set(CHANGE.PAYLOAD, JSONB.valueOf(mapper.writeValueAsString(operation.payload)))
 				.set(CHANGE.CREATED_BY, viewer.personId).set(CHANGE.SUMMARY, summary).execute()
 			dsl.update(CHANGESET).set(CHANGESET.UPDATED_AT, OffsetDateTime.now()).where(CHANGESET.ID.eq(id)).execute()
 		}
@@ -232,13 +237,13 @@ class Drafts(
 		val cs = dsl.selectFrom(CHANGESET).where(CHANGESET.ID.eq(id), CHANGESET.CHAPTER_ID.eq(chapterId)).forUpdate().fetchOne() ?: notFound("No such draft")
 		if (cs.status !in setOf("draft", "scheduled")) conflict("This draft was already ${cs.status}")
 		if (!dsl.fetchExists(CHANGE, CHANGE.CHANGESET_ID.eq(id))) bad("The draft has no changes")
-		val before = snapshot()
+		val before = diffs.snapshot()
 		val conflicts = replay(chapterId, id, viewer, s)
 		if (conflicts.isNotEmpty()) {
 			s.setRollbackOnly()
 			return@execute ReleaseResult(false, conflicts, null)
 		}
-		val preview = diff(before, snapshot())
+		val preview = diffs.diff(before, diffs.snapshot())
 		dsl.update(CHANGESET).set(CHANGESET.STATUS, "released").set(CHANGESET.RELEASED_AT, OffsetDateTime.now()).set(CHANGESET.RELEASED_BY, viewer.personId)
 			.setNull(CHANGESET.RELEASE_ERROR).set(CHANGESET.RELEASED_SUMMARY, JSONB.valueOf(mapper.writeValueAsString(preview)))
 			.where(CHANGESET.ID.eq(id)).execute()
@@ -311,13 +316,13 @@ class Drafts(
 
 	private fun uuid(op: Operation, field: String): UUID = UUID.fromString(op.payload.path(field).asString())
 
-	/** The project operations, as the project API does them. */
+	/** The project and rule operations, as their APIs do them. */
 	private fun apply(chapterId: UUID, op: Operation, viewer: Viewer) {
-		fun project(): ProjectRecord = dsl.selectFrom(PROJECT).where(PROJECT.ID.eq(op.projectId), PROJECT.CHAPTER_ID.eq(chapterId)).fetchOne()
+		fun project(): ProjectRecord = dsl.selectFrom(PROJECT).where(PROJECT.ID.eq(op.targetId), PROJECT.CHAPTER_ID.eq(chapterId)).fetchOne()
 			?: conflict("The project isn't there any more")
 		fun open(): ProjectRecord = project().also { if (it.status == "closed") conflict("${it.name} was closed") }
 		when (op.op) {
-			"create_project" -> projects.create(chapterId, input(op, ProjectInput::class.java), viewer, id = op.projectId)
+			"create_project" -> projects.create(chapterId, input(op, ProjectInput::class.java), viewer, id = op.targetId)
 			"update_project" -> projects.update(chapterId, open(), input(op, ProjectInput::class.java), viewer)
 			"set_status" -> projects.setStatus(chapterId, open(), op.payload.path("status").asString(), viewer)
 			"add_member" -> projects.addMember(chapterId, open(), input(op, MemberInput::class.java), viewer)
@@ -327,17 +332,22 @@ class Drafts(
 				newResourceId = op.payload.path("newResourceId").takeIf { it.isString }?.let { UUID.fromString(it.asString()) })
 			"update_resource" -> projects.updateResource(chapterId, open(), uuid(op, "resourceId"), input(op, ResourceInput::class.java), viewer)
 			"detach_resource" -> projects.detachResource(chapterId, open(), uuid(op, "resourceId"), viewer)
+			"create_rule" -> rules.create(chapterId, input(op, RuleInput::class.java), viewer, id = op.targetId)
+			"update_rule" -> rules.update(chapterId, op.targetId, input(op, RuleInput::class.java), viewer)
+			"set_rule_enabled" -> rules.setEnabled(chapterId, op.targetId, op.payload.path("enabled").asBoolean(), viewer)
+			"delete_rule" -> rules.delete(chapterId, op.targetId, viewer)
 			else -> bad("Unknown change ${op.op}")
 		}
 	}
 
 	/** The change in words, written right after it was applied (so new projects and resources have names). */
 	private fun describe(op: Operation): String {
-		val project = dsl.select(PROJECT.NAME).from(PROJECT).where(PROJECT.ID.eq(op.projectId)).fetchOne()?.value1() ?: "the project"
+		val project = dsl.select(PROJECT.NAME).from(PROJECT).where(PROJECT.ID.eq(op.targetId)).fetchOne()?.value1() ?: "the project"
 		fun person(id: UUID) = dsl.select(PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME).from(PERSON).where(PERSON.ID.eq(id)).fetchOne()
 			?.let { ProjectQueries.name(it.value3(), it.value1()!!, it.value2()!!) } ?: "someone"
 		fun role(id: UUID?) = id?.let { dsl.select(PROJECT_ROLE.NAME).from(PROJECT_ROLE).where(PROJECT_ROLE.ID.eq(it)).fetchOne()?.value1() }
-		fun resource(id: UUID) = dsl.select(RESOURCE.TOOL, RESOURCE.NAME).from(RESOURCE).where(RESOURCE.ID.eq(id)).fetchOne()?.let { label(it.value1()!!, it.value2()!!) } ?: "a resource"
+		fun resource(id: UUID) = dsl.select(RESOURCE.TOOL, RESOURCE.NAME).from(RESOURCE).where(RESOURCE.ID.eq(id)).fetchOne()?.let { AccessDiff.label(it.value1()!!, it.value2()!!) } ?: "a resource"
+		val rule = "“${rules.name(op.targetId)}”"
 		return when (op.op) {
 			"create_project" -> "Create $project"
 			"update_project" -> "Edit $project's details"
@@ -357,53 +367,13 @@ class Drafts(
 			}
 			"update_resource" -> "Change who gets ${resource(uuid(op, "resourceId"))} on $project"
 			"detach_resource" -> "Detach ${resource(uuid(op, "resourceId"))} from $project"
+			"create_rule" -> "Add the rule $rule"
+			"update_rule" -> "Edit the rule $rule"
+			"set_rule_enabled" -> if (op.payload.path("enabled").asBoolean()) "Turn on the rule $rule" else "Turn off the rule $rule"
+			"delete_rule" -> "Delete the rule $rule"
 			else -> op.op
 		}
 	}
-
-	// ---- Preview ------------------------------------------------------------------------------------------------------
-
-	/** Who gets what, who waits on an agreement, and who's on which project: before or after the draft. */
-	private data class Snapshot(val grants: Map<Pair<UUID, UUID>, Access>, val awaiting: Set<Pair<UUID, UUID>>, val members: Set<Pair<UUID, UUID>>)
-
-	private fun snapshot(): Snapshot {
-		val resolution = Resolver.resolve(worlds.load().world)
-		val members = dsl.select(PROJECT_MEMBER.PERSON_ID, PROJECT_MEMBER.PROJECT_ID).from(PROJECT_MEMBER).join(PROJECT).on(PROJECT.ID.eq(PROJECT_MEMBER.PROJECT_ID))
-			.where(PROJECT_MEMBER.REMOVED_AT.isNull, PROJECT.STATUS.ne("closed")).fetch().map { it.value1()!! to it.value2()!! }.toSet()
-		return Snapshot(
-			resolution.grants.associate { (it.personId to it.resourceId) to it.access },
-			resolution.withheld.filter { it.why is WithheldReason.AwaitingAgreement }.map { it.personId to it.resourceId }.toSet(),
-			members,
-		)
-	}
-
-	private fun diff(before: Snapshot, after: Snapshot): DraftPreview {
-		val added = after.grants.keys - before.grants.keys
-		val removed = before.grants.keys - after.grants.keys
-		val changed = after.grants.keys.intersect(before.grants.keys).filter { after.grants[it] != before.grants[it] }
-		val waiting = after.awaiting - before.awaiting
-		val joins = after.members - before.members
-		val leaves = before.members - after.members
-		val people = (added + removed + changed + waiting + joins + leaves).map { it.first }.toSet()
-		val resourceIds = (added + removed + changed + waiting).map { it.second }.toSet()
-		val resources = if (resourceIds.isEmpty()) emptyMap() else
-			dsl.select(RESOURCE.ID, RESOURCE.TOOL, RESOURCE.NAME).from(RESOURCE).where(RESOURCE.ID.`in`(resourceIds)).fetch().associate { it.value1()!! to label(it.value2()!!, it.value3()!!) }
-		val projectIds = (joins + leaves).map { it.second }.toSet()
-		val projectNames = if (projectIds.isEmpty()) emptyMap() else dsl.select(PROJECT.ID, PROJECT.NAME).from(PROJECT).where(PROJECT.ID.`in`(projectIds)).fetch().associate { it.value1()!! to it.value2()!! }
-		val names = if (people.isEmpty()) emptyMap() else dsl.select(PERSON.ID, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME).from(PERSON).where(PERSON.ID.`in`(people)).fetch()
-			.associate { it.value1()!! to ProjectQueries.name(it.value4(), it.value2()!!, it.value3()!!) }
-		fun named(keys: Collection<Pair<UUID, UUID>>, person: UUID, labels: Map<UUID, String>) = keys.filter { it.first == person }.mapNotNull { labels[it.second] }.sorted()
-		val perPerson = people.map { p ->
-			PersonAccessChange(
-				p, names[p] ?: "someone", named(joins, p, projectNames), named(leaves, p, projectNames),
-				named(added, p, resources) + changed.filter { it.first == p }.mapNotNull { k -> resources[k.second]?.let { "$it, now ${after.grants[k]!!.name.lowercase()}" } },
-				named(removed, p, resources), named(waiting, p, resources),
-			)
-		}.sortedBy { it.name }
-		return DraftPreview(added.size, removed.size, changed.size, people.size, resourceIds.size, waiting.size, perPerson)
-	}
-
-	private fun label(tool: String, name: String) = "$name (${TOOL_LABEL[tool] ?: tool})"
 
 	private fun counts(p: DraftPreview) = "adds ${p.people} people to ${p.resources} resources (${p.adds} grants), removes ${p.removes}"
 

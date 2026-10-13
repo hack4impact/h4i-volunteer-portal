@@ -88,7 +88,7 @@ class WorldLoader(private val dsl: DSLContext) {
 			val access = access(cr.accessLevel, "chapter resource ${cr.chapterId}/${cr.resourceId}", warnings) ?: return@mapNotNull null
 			ChapterResource(cr.chapterId!!, cr.resourceId!!, ChapterAudience.valueOf(cr.audience!!.uppercase()), access)
 		}
-		val rules = dsl.selectFrom(RULE).fetch().mapNotNull { r ->
+		val rules = dsl.selectFrom(RULE).where(RULE.DELETED_AT.isNull).fetch().mapNotNull { r ->
 			try {
 				Rule(
 					id = r.id!!,

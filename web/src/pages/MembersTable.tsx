@@ -1,8 +1,8 @@
-import { Select, Spinner, TextInput } from '@primer/react'
+import { Banner, Button, Dialog, Select, Spinner, TextInput } from '@primer/react'
 import { DataTable, Table } from '@primer/react/experimental'
-import { useMemo, useState } from 'react'
-import { type MemberRow } from '../api/client'
-import { ROLE_LABEL, STATUS_LABEL, STATUS_TONE, Status, TOOL_NAME } from '../components/Status'
+import { useEffect, useMemo, useState } from 'react'
+import { api, reason, type MemberRow, type MyAccess } from '../api/client'
+import { ROLE_LABEL, STATUS_LABEL, STATUS_TONE, Status, TOOL_NAME, resourceName } from '../components/Status'
 import { ToolIcon } from '../components/ToolIcon'
 
 /** Filters a chapter's members by text (name or email), status and chapter role ("none" = no role). */
@@ -20,7 +20,8 @@ export function filterMembers(members: MemberRow[], query: string, status: strin
  * The members table. Chapter role and status are separate columns (design draft review: the draft mixed
  * chapter roles, project roles and status in one "Role" column).
  */
-export function MembersTable({ members }: { members: MemberRow[] | null }) {
+export function MembersTable({ code, members }: { code: string; members: MemberRow[] | null }) {
+  const [why, setWhy] = useState<MemberRow | null>(null)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [role, setRole] = useState('')
@@ -88,11 +89,60 @@ export function MembersTable({ members }: { members: MemberRow[] | null }) {
                       </span>
                     ),
                 },
+                {
+                  header: 'Access',
+                  field: 'personId',
+                  renderCell: (m) => <Button size="small" variant="invisible" onClick={() => setWhy(m)} aria-label={`Why ${m.name} has their access`}>Why?</Button>,
+                },
               ]}
             />
           </Table.Container>
         </div>
       </div>
+      {why && <AccessWhy code={code} member={why} onClose={() => setWhy(null)} />}
     </div>
+  )
+}
+
+const STATE: Record<string, [string, 'ok' | 'warn' | 'off']> = {
+  ready: ['Ready', 'ok'], invited: ['Invited', 'warn'], setting_up: ['Being set up', 'off'], after_agreement: ['After the agreement', 'off'],
+}
+
+/** Why a member has each of the chapter's resources (step 14): their project, a rule, a national default, the agreement. */
+function AccessWhy({ code, member, onClose }: { code: string; member: MemberRow; onClose: () => void }) {
+  const [access, setAccess] = useState<MyAccess[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    void api.GET('/api/chapters/{code}/members/{personId}/access', { params: { path: { code, personId: member.personId } } })
+      .then(({ data, error: failed, response }) => (data ? setAccess(data) : setError(reason(failed, response, 'Not available'))))
+  }, [code, member.personId])
+  return (
+    <Dialog title={`${member.name}’s access`} subtitle="What the portal gives them in this chapter, and why" width="xlarge" onClose={onClose}>
+      {error ? <Banner title="Not available" description={error} variant="critical" />
+        : !access ? <Spinner size="small" aria-label="Loading access" />
+        : access.length === 0 ? <div className="muted">Nothing yet: they get access once they’re on a project or a rule covers them.</div>
+        : (
+          <ul className="adopt-list why-list" aria-label="Access">
+            {access.map((a) => {
+              const [label, tone] = STATE[a.state] ?? [a.state, 'off']
+              return (
+                <li key={`${a.tool}:${a.name}`}>
+                  <div className="access-row">
+                    <span className="access-icon"><ToolIcon tool={a.tool} label /></span>
+                    <div>
+                      <div className="access-line">
+                        <span className="res-name">{resourceName(a.tool, a.name)}</span>
+                        <span className="muted">{TOOL_NAME[a.tool] ?? a.tool} · {a.access}</span>
+                        <span className="access-state"><Status tone={tone}>{label}</Status></span>
+                      </div>
+                      <div className="why-reasons">{a.reasons.map((r) => <span key={r} className="chip">{r}</span>)}</div>
+                    </div>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+    </Dialog>
   )
 }

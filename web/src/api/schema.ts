@@ -269,7 +269,7 @@ export interface paths {
         };
         get: operations["list_2"];
         put?: never;
-        post: operations["create_1"];
+        post: operations["create_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -388,6 +388,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chapters/{code}/members/{personId}/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["memberAccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chapters/{code}/notion": {
         parameters: {
             query?: never;
@@ -429,7 +445,7 @@ export interface paths {
         };
         get: operations["list_1"];
         put?: never;
-        post: operations["create"];
+        post: operations["create_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -444,7 +460,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get"];
-        put: operations["update"];
+        put: operations["update_2"];
         post?: never;
         delete?: never;
         options?: never;
@@ -660,6 +676,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chapters/{code}/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["page_1"];
+        put?: never;
+        post: operations["create_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/rules/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["preview_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["update_1"];
+        post?: never;
+        delete: operations["delete_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/rules/{id}/enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["setEnabled_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chapters/{code}/sync": {
         parameters: {
             query?: never;
@@ -795,7 +875,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["preview"];
+        get: operations["preview_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -878,6 +958,70 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["decide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["page"];
+        put?: never;
+        post: operations["create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/rules/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["update"];
+        post?: never;
+        delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/rules/{id}/enabled": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["setEnabled"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1226,6 +1370,8 @@ export interface components {
             position: number;
             /** Format: uuid */
             projectId: string | null;
+            /** Format: uuid */
+            ruleId: string | null;
             summary: string;
         };
         DraftConflict: {
@@ -1703,6 +1849,91 @@ export interface components {
             invited: number;
             invites: components["schemas"]["RosterInviteView"][];
             skipped: string[];
+        };
+        RuleEnabled: {
+            enabled: boolean;
+        };
+        RuleInput: {
+            access: string;
+            description: string | null;
+            enabled: boolean;
+            name: string;
+            projects: components["schemas"]["RuleProjects"];
+            resources: components["schemas"]["RuleResources"];
+            tools: string[];
+            who: components["schemas"]["RuleWho"];
+        };
+        RuleOption: {
+            detail: string | null;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            tool: string | null;
+        };
+        RuleOptions: {
+            people: components["schemas"]["RuleOption"][];
+            projectRoles: components["schemas"]["RuleOption"][];
+            projects: components["schemas"]["RuleOption"][];
+            resources: components["schemas"]["RuleOption"][];
+            tags: string[];
+            titles: string[];
+        };
+        RulePreview: {
+            preview: components["schemas"]["DraftPreview"];
+            sentence: string | null;
+            warnings: string[];
+        };
+        RulePreviewInput: {
+            delete: boolean;
+            input: components["schemas"]["RuleInput"] | null;
+            /** Format: uuid */
+            ruleId: string | null;
+        };
+        RuleProjects: {
+            ids: string[];
+            scope: string;
+            tags: string[];
+        };
+        RuleReach: {
+            /** Format: int32 */
+            people: number;
+            /** Format: int32 */
+            resources: number;
+        };
+        RuleResources: {
+            ids: string[];
+            scope: string;
+            tags: string[];
+        };
+        RuleView: {
+            chapterCode: string | null;
+            description: string | null;
+            enabled: boolean;
+            /** Format: uuid */
+            id: string;
+            input: components["schemas"]["RuleInput"];
+            name: string;
+            pendingChanges: string[];
+            reach: components["schemas"]["RuleReach"];
+            sentence: string;
+            /** Format: date-time */
+            updatedAt: string;
+            updatedBy: string | null;
+            warnings: string[];
+        };
+        RuleWho: {
+            chapterRoles: string[];
+            everyone: boolean;
+            people: string[];
+            projectRoles: string[];
+            statuses: string[];
+            titles: string[];
+        };
+        RulesPage: {
+            canEdit: boolean;
+            national: components["schemas"]["RuleView"][];
+            options: components["schemas"]["RuleOptions"];
+            rules: components["schemas"]["RuleView"][];
         };
         ScanStatus: {
             coversChapter: boolean;
@@ -2224,7 +2455,7 @@ export interface operations {
             };
         };
     };
-    create_1: {
+    create_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -2442,6 +2673,29 @@ export interface operations {
             };
         };
     };
+    memberAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MyAccess"][];
+                };
+            };
+        };
+    };
     get_1: {
         parameters: {
             query?: never;
@@ -2536,7 +2790,7 @@ export interface operations {
             };
         };
     };
-    create: {
+    create_2: {
         parameters: {
             query?: {
                 draft?: string;
@@ -2589,7 +2843,7 @@ export interface operations {
             };
         };
     };
-    update: {
+    update_2: {
         parameters: {
             query?: {
                 draft?: string;
@@ -3060,6 +3314,169 @@ export interface operations {
             };
         };
     };
+    page_1: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RulesPage"];
+                };
+            };
+        };
+    };
+    create_1: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RulesPage"];
+                };
+            };
+        };
+    };
+    preview_1: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RulePreviewInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RulePreview"];
+                };
+            };
+        };
+    };
+    update_1: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RulesPage"];
+                };
+            };
+        };
+    };
+    delete_1: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RulesPage"];
+                };
+            };
+        };
+    };
+    setEnabled_1: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleEnabled"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RulesPage"];
+                };
+            };
+        };
+    };
     sync: {
         parameters: {
             query?: never;
@@ -3252,7 +3669,7 @@ export interface operations {
             };
         };
     };
-    preview: {
+    preview_2: {
         parameters: {
             query?: {
                 chapter?: string;
@@ -3384,6 +3801,148 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["QueueTask"][];
+                };
+            };
+        };
+    };
+    page: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RulesPage"];
+                };
+            };
+        };
+    };
+    create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RulesPage"];
+                };
+            };
+        };
+    };
+    preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RulePreviewInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RulePreview"];
+                };
+            };
+        };
+    };
+    update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RulesPage"];
+                };
+            };
+        };
+    };
+    delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RulesPage"];
+                };
+            };
+        };
+    };
+    setEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleEnabled"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RulesPage"];
                 };
             };
         };

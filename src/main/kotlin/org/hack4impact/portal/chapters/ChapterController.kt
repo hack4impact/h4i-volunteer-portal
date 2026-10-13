@@ -20,6 +20,7 @@ class ChapterController(
 	private val viewers: Viewers,
 	private val chapters: ChapterQueries,
 	private val notion: NotionSettings,
+	private val homes: org.hack4impact.portal.members.MemberHomeQueries,
 	@Value("\${portal.join-base-url}") private val joinBaseUrl: String,
 ) {
 	@GetMapping("/me")
@@ -44,6 +45,14 @@ class ChapterController(
 	fun members(@AuthenticationPrincipal user: OidcUser, @PathVariable code: String): List<MemberRow> {
 		val (_, chapter) = authorize(user, code)
 		return chapters.members(chapter.id)
+	}
+
+	/** Why a member has each of the chapter's resources (step 14; PRD: "each member's page shows why they have each resource"). */
+	@GetMapping("/chapters/{code}/members/{personId}/access")
+	fun memberAccess(@AuthenticationPrincipal user: OidcUser, @PathVariable code: String, @PathVariable personId: java.util.UUID): List<org.hack4impact.portal.members.MyAccess> {
+		val (_, chapter) = authorize(user, code)
+		if (!chapters.isMember(chapter.id, personId)) throw ResponseStatusException(HttpStatus.NOT_FOUND, "Not a member of this chapter")
+		return homes.access(personId, chapter.id, own = false)
 	}
 
 	@GetMapping("/chapters/{code}/sync")

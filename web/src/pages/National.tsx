@@ -4,6 +4,7 @@ import { api, reason, type AgreementTemplates, type ClaimPreview, type DeadLette
 import { Status, TOOL_NAME } from '../components/Status'
 import { ToolName } from '../components/ToolIcon'
 import { TopBar } from '../components/TopBar'
+import { Automations } from './Automations'
 
 /**
  * National controls (build plan step 9): each tool's kill switch and dry run, the admin queue (changes made by
@@ -116,6 +117,8 @@ export function National({ me }: { me: Me }) {
               </details>
             )}
           </section>
+
+          <Automations scope={{ kind: 'national' }} />
 
           <ClaimLinks me={me} />
 

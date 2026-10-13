@@ -117,13 +117,18 @@ class MemberHomeQueries(
 		)
 	}
 
-	private fun access(person: UUID): List<MyAccess> {
+	/**
+	 * What [person] has and why. [chapterId]: only that chapter's resources and national ones (a lead's view of a member);
+	 * [own]: worded for the person themselves ("after you sign").
+	 */
+	fun access(person: UUID, chapterId: UUID? = null, own: Boolean = true): List<MyAccess> {
 		val resolution = Resolver.resolve(worlds.load().world)
 		val grants = resolution.grants.filter { it.personId == person }
 		val waiting = resolution.withheld.filter { it.personId == person && it.why is WithheldReason.AwaitingAgreement }
 		val ids = (grants.map { it.resourceId } + waiting.map { it.resourceId }).toSet()
 		if (ids.isEmpty()) return emptyList()
 		val resources = dsl.selectFrom(RESOURCE).where(RESOURCE.ID.`in`(ids)).fetch().associateBy { it.id!! }
+			.filterValues { chapterId == null || it.chapterId == null || it.chapterId == chapterId }
 		val records = dsl.select(SYNC_RECORD.RESOURCE_ID, SYNC_RECORD.STATUS).from(SYNC_RECORD).where(SYNC_RECORD.PERSON_ID.eq(person), SYNC_RECORD.RESOURCE_ID.`in`(ids))
 			.fetch().associate { it.value1()!! to it.value2()!! }
 		val chapterNames = dsl.select(CHAPTER.ID, CHAPTER.NAME).from(CHAPTER).fetch().associate { it.value1()!! to it.value2()!! }
@@ -148,7 +153,7 @@ class MemberHomeQueries(
 		val later = waiting.distinctBy { it.resourceId }.mapNotNull { w ->
 			val r = resources[w.resourceId] ?: return@mapNotNull null
 			val project = (w.why as WithheldReason.AwaitingAgreement).projectId
-			MyAccess(r.tool!!, r.name!!, null, "after_agreement", "write", listOf("After you sign the ${projectNames[project] ?: "project"} agreement"))
+			MyAccess(r.tool!!, r.name!!, null, "after_agreement", "write", listOf("After ${if (own) "you sign" else "they sign"} the ${projectNames[project] ?: "project"} agreement"))
 		}
 		val order = listOf("slack", "google", "github", "notion", "vaultwarden")
 		return (granted + later).sortedWith(compareBy({ order.indexOf(it.tool).let { i -> if (i < 0) 99 else i } }, { it.name }))

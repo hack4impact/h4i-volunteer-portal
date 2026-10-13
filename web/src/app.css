@@ -281,3 +281,40 @@ a.res-name:hover { text-decoration-color: currentColor; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid var(--h4i-border); border-radius: 12px; font-size: 13px; line-height: 20px; background: var(--h4i-bg); }
 .chip-remove { text-decoration: line-through; text-decoration-color: var(--h4i-danger); }
 @media (max-width: 700px) { .change-grid { grid-template-columns: 1fr; padding-left: 0; } }
+
+/* Automations (step 14): rules as sentences, the editor's sections and its live preview. */
+.rule-boxes { display: grid; gap: 16px; }
+.rule-row { align-items: flex-start; }
+.rule-sentence { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.rule-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.rule-warning { display: flex; align-items: baseline; gap: 6px; font-size: 13px; color: var(--h4i-fg-2); margin-top: 2px; }
+.rule-warning svg { color: var(--h4i-warn); flex-shrink: 0; position: relative; top: 1px; }
+.rule-form { display: grid; gap: 16px; }
+.rule-section { border: 0; border-top: 1px solid var(--h4i-border-muted); margin: 0; padding: 12px 0 0; display: grid; gap: 8px; min-width: 0; }
+.rule-section legend { font-weight: 600; padding: 0 8px 0 0; }
+.rule-section legend .muted { font-weight: 400; }
+.rule-choices { display: grid; gap: 8px; padding-left: 24px; }
+.rule-choice-group { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: start; column-gap: 12px; }
+.rule-choice-label { font-size: 13px; line-height: 20px; color: var(--h4i-fg-muted); padding-top: 1px; }
+.rule-choice-options { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+.rule-inline { display: flex; align-items: center; gap: 8px; }
+.rule-tag-hints { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-button { cursor: pointer; color: var(--h4i-fg-2); font: inherit; font-size: 13px; }
+.chip-button:hover { border-color: var(--h4i-fg-muted); }
+.rule-pick-list { max-height: 200px; overflow-y: auto; gap: 6px; }
+.rule-pick-list .check .muted { margin-left: 4px; }
+.rule-preview { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--h4i-border); border-radius: 6px; background: var(--h4i-bg-subtle); }
+.rule-preview .adopt-list { border: 1px solid var(--h4i-border-muted); border-radius: 6px; background: var(--h4i-bg); max-height: 320px; overflow-y: auto; }
+.rule-preview .change-grid { grid-template-columns: 110px minmax(0, 1fr); }
+.rule-footer-line { margin-right: auto; font-size: 13px; color: var(--h4i-fg-2); align-self: center; }
+.rule-problem { color: var(--h4i-danger); }
+.why-list { margin: -8px -16px; }
+.why-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+@media (max-width: 700px) {
+  .rule-choices { padding-left: 0; }
+  .rule-choice-group { grid-template-columns: 1fr; row-gap: 4px; }
+  .rule-preview .change-grid { grid-template-columns: 1fr; }
+  /* The switch and menu go under the rule, so the sentence keeps the width. */
+  .rule-row { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
+  .rule-actions { justify-content: flex-start; }
+}

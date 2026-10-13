@@ -7,6 +7,11 @@ import org.hack4impact.portal.db.tables.references.CHAPTER
 import org.hack4impact.portal.db.tables.references.CHAPTER_MEMBERSHIP
 import org.hack4impact.portal.db.tables.references.CHAPTER_QUESTION
 import org.hack4impact.portal.db.tables.references.CHAPTER_RESOURCE
+import org.hack4impact.portal.rules.RuleInput
+import org.hack4impact.portal.rules.RuleProjects
+import org.hack4impact.portal.rules.RuleResources
+import org.hack4impact.portal.rules.RuleWho
+import org.hack4impact.portal.rules.Rules
 import org.hack4impact.portal.db.tables.references.CHAPTER_ROLE
 import org.hack4impact.portal.db.tables.references.INSTITUTION
 import org.hack4impact.portal.db.tables.references.NATIONAL_ADMIN
@@ -97,6 +102,7 @@ class DemoSeed(
 	private val dataSource: DataSource,
 	private val projects: ProjectService,
 	private val drafts: Drafts,
+	private val rules: Rules,
 	private val worlds: WorldLoader,
 	private val transactions: PlatformTransactionManager,
 ) {
@@ -228,13 +234,27 @@ class DemoSeed(
 			project("Shelter Intake Portal", "new-build", "spring 2027", "Harbor Shelter", emptyList(), "draft")
 
 			// The chapter's own channels.
-			fun chapterChannel(name: String, audience: String, external: String) {
+			fun chapterChannel(name: String, audience: String, external: String): UUID {
 				val r = dsl.insertInto(RESOURCE).set(RESOURCE.TOOL, "slack").set(RESOURCE.NAME, name).set(RESOURCE.CHAPTER_ID, demo).set(RESOURCE.EXTERNAL_ID, external)
 					.set(RESOURCE.MANAGED, "portal").returningResult(RESOURCE.ID).fetchSingle().value1()!!
 				dsl.insertInto(CHAPTER_RESOURCE).set(CHAPTER_RESOURCE.CHAPTER_ID, demo).set(CHAPTER_RESOURCE.RESOURCE_ID, r).set(CHAPTER_RESOURCE.AUDIENCE, audience).set(CHAPTER_RESOURCE.ACCESS_LEVEL, "write").execute()
+				return r
 			}
-			chapterChannel("demo-general", "members", "C0DEMOGEN1")
-			chapterChannel("demo-leads", "leads", "C0DEMOLDS1")
+			val general = chapterChannel("demo-general", "members", "C0DEMOGEN1")
+			val leadsChannel = chapterChannel("demo-leads", "leads", "C0DEMOLDS1")
+
+			// Automations (step 14): a role rule, a title rule, one turned off, and a national default with its own channel.
+			rules.create(demo, RuleInput("Tech leads run the repositories", "So they can manage branch protection and reviewers",
+				RuleWho(projectRoles = listOf(techLead)), RuleProjects("all"), RuleResources("tags", tags = listOf("eng")), listOf("github"), "admin"), leoViewer)
+			rules.create(demo, RuleInput("Our advisor follows the leads channel", null,
+				RuleWho(titles = listOf("Faculty advisor")), resources = RuleResources("ids", ids = listOf(leadsChannel))), leoViewer)
+			rules.create(demo, RuleInput("Alumni stay in #demo-general", "Off until the alumni network decides",
+				RuleWho(statuses = listOf("alumni"), everyone = true), resources = RuleResources("ids", ids = listOf(general)), enabled = false), leoViewer)
+			dsl.insertInto(RESOURCE).set(RESOURCE.TOOL, "slack").set(RESOURCE.NAME, "h4i-chapter-leads").set(RESOURCE.EXTERNAL_ID, "C0DEMONAT1")
+				.set(RESOURCE.TAGS, arrayOf("chapter-leads")).set(RESOURCE.MANAGED, "portal").execute()
+			rules.create(null, RuleInput("Chapter leads meet in #h4i-chapter-leads", null,
+				RuleWho(chapterRoles = listOf("lead", "co_lead")), resources = RuleResources("tags", tags = listOf("chapter-leads"))),
+				Viewer(nadia, p.national, "Nadia Okafor", true, emptyMap()))
 
 			// The live projects' resources exist in their tools, and access is in place (fictional IDs; tools stay in dry run).
 			for ((projectId, n) in listOf(food to 1, tutor to 2)) {
@@ -246,10 +266,12 @@ class DemoSeed(
 			}
 			val world = worlds.load().world
 			val created = dsl.select(RESOURCE.ID).from(RESOURCE).where(RESOURCE.EXTERNAL_ID.isNotNull).fetch().map { it.value1()!! }.toSet()
+			// A few made-up people haven't accepted their invites yet; the personas have, so their screens are the same every time.
+			val personas = setOf(nadia, leo, chloe, victor, priya, marcus)
 			Resolver.resolve(world).grants.filter { it.resourceId in created }.forEachIndexed { i, g ->
 				dsl.insertInto(SYNC_RECORD).set(SYNC_RECORD.PERSON_ID, g.personId).set(SYNC_RECORD.RESOURCE_ID, g.resourceId).set(SYNC_RECORD.DESIRED, "present")
 					.set(SYNC_RECORD.DESIRED_ACCESS_LEVEL, g.access.name.lowercase()).set(SYNC_RECORD.ACTUAL, "present")
-					.set(SYNC_RECORD.STATUS, if (i % 11 == 5) "waiting_on_member" else "in_sync").set(SYNC_RECORD.APPLIED_AT, OffsetDateTime.now().minusDays(3)).execute()
+					.set(SYNC_RECORD.STATUS, if (i % 11 == 5 && g.personId !in personas) "waiting_on_member" else "in_sync").set(SYNC_RECORD.APPLIED_AT, OffsetDateTime.now().minusDays(3)).execute()
 			}
 
 			// Project agreements: the record of who signed (Documenso isn't connected on staging, so the template stays off).

@@ -3,7 +3,7 @@ import { api } from './client'
 
 /**
  * The draft a lead is planning in, per chapter (build plan step 12). While one is open, the chapter's project requests
- * carry `?draft=`, so the project screens show and change the draft instead of live data. Kept for the browser tab only.
+ * and rule requests carry `?draft=`, so those screens show and change the draft instead of live data. Kept for the browser tab only.
  */
 const key = (code: string) => `h4i-draft:${code}`
 const CHANGED = 'h4i-draft'
@@ -31,12 +31,13 @@ export function useActiveDraft(code: string): [string | null, number] {
   return state
 }
 
-const PROJECTS = /^\/api\/chapters\/([^/]+)\/projects(\/|$)/
+/** The chapter screens a draft covers: projects (step 12) and rules (step 14). */
+const IN_DRAFT = /^\/api\/chapters\/([^/]+)\/(projects|rules)(\/|$)/
 
 api.use({
   async onRequest({ request }) {
     const url = new URL(request.url)
-    const chapter = url.pathname.match(PROJECTS)?.[1]
+    const chapter = url.pathname.match(IN_DRAFT)?.[1]
     const draft = chapter ? activeDraft(chapter) : null
     if (!draft) return request
     url.searchParams.set('draft', draft)

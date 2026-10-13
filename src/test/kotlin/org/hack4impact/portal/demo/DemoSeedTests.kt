@@ -69,7 +69,7 @@ class DemoSeedTests(
 		with(drafts.detail(chapter, draft.id!!, leo)) {
 			assertEquals(5, changes.size)
 			assertEquals(0, conflicts.size)
-			assertEquals(4, preview.people)
+			assertEquals(7, preview.people) // the new team, and the other tech leads (a rule: admin on every live project's repositories)
 		}
 		assertFailsWith<IllegalStateException> { seed.seed() } // not again over existing data
 
@@ -104,5 +104,16 @@ class DemoSeedTests(
 		mvc.post("/api/chapters/demo/projects/tutor-match/members") { with(csrf()); with(signedIn(priya)); contentType = MediaType.APPLICATION_JSON; content = """{"personId":"$newcomer"}""" }
 			.andExpect { status { isForbidden() } } // not a project she doesn't lead
 		assertTrue(get("/api/me/home", priya).path("projects").toList().single().path("canOpen").asBoolean())
+
+		// Automations: three chapter rules (one off) and a national default; the viewer reads them, and sees why the advisor has the leads channel.
+		with(get("/api/chapters/demo/rules", "victor.test@hack4impact.org")) {
+			assertEquals(listOf(true, true, false), path("rules").toList().map { it.path("enabled").asBoolean() })
+			assertTrue(path("rules").toList().take(2).all { it.path("reach").path("people").asInt() > 0 })
+			assertEquals(1, path("national").size())
+			assertEquals(false, path("canEdit").asBoolean())
+		}
+		val victor = get("/api/chapters/demo/members", "victor.test@hack4impact.org").toList().single { it.path("name").asString() == "Victor Hughes" }.path("personId").asString()
+		val leads = get("/api/chapters/demo/members/$victor/access", "victor.test@hack4impact.org").toList().single { it.path("name").asString() == "demo-leads" }
+		assertEquals(listOf("Rule “Our advisor follows the leads channel”"), leads.path("reasons").toList().map { it.asString() })
 	}
 }
