@@ -197,8 +197,11 @@ class Drafts(
 	fun discard(chapterId: UUID, id: UUID, viewer: Viewer) {
 		val cs = changeset(chapterId, id)
 		if (cs.status !in setOf("draft", "scheduled")) conflict("This draft was already ${cs.status}")
-		dsl.update(CHANGESET).set(CHANGESET.STATUS, "discarded").set(CHANGESET.DISCARDED_AT, OffsetDateTime.now()).setNull(CHANGESET.SCHEDULED_FOR)
-			.where(CHANGESET.ID.eq(id)).execute()
+		// Only from draft or scheduled, checked in the update itself: a release committing at the same moment wins, and
+		// this one sees the row it left (second review M3).
+		val updated = dsl.update(CHANGESET).set(CHANGESET.STATUS, "discarded").set(CHANGESET.DISCARDED_AT, OffsetDateTime.now()).setNull(CHANGESET.SCHEDULED_FOR)
+			.where(CHANGESET.ID.eq(id), CHANGESET.STATUS.`in`("draft", "scheduled")).execute()
+		if (updated == 0) conflict("This draft was just ${changeset(chapterId, id).status}")
 		audit(viewer, chapterId, id, "draft.discard", "Discarded the draft “${cs.name}”")
 	}
 
@@ -217,7 +220,10 @@ class Drafts(
 	fun unschedule(chapterId: UUID, id: UUID, viewer: Viewer) {
 		val cs = changeset(chapterId, id)
 		if (cs.status != "scheduled") conflict("It isn't scheduled")
-		dsl.update(CHANGESET).set(CHANGESET.STATUS, "draft").setNull(CHANGESET.SCHEDULED_FOR).where(CHANGESET.ID.eq(id)).execute()
+		// Only while still scheduled: a release at the same moment wins (second review M3).
+		val updated = dsl.update(CHANGESET).set(CHANGESET.STATUS, "draft").setNull(CHANGESET.SCHEDULED_FOR)
+			.where(CHANGESET.ID.eq(id), CHANGESET.STATUS.eq("scheduled")).execute()
+		if (updated == 0) conflict("This draft was just ${changeset(chapterId, id).status}")
 		audit(viewer, chapterId, id, "draft.unschedule", "Took “${cs.name}” off the schedule")
 	}
 

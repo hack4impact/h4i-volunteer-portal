@@ -1779,6 +1779,8 @@ export interface components {
             doneBy: string | null;
             /** Format: uuid */
             id: string;
+            /** Format: uuid */
+            runId: string | null;
             status: string;
             tool: string;
         };
@@ -1986,6 +1988,8 @@ export interface components {
         TaskDecision: {
             action: string;
             reason: string | null;
+            /** Format: uuid */
+            runId: string | null;
         };
         TeamCandidate: {
             chapters: string[];

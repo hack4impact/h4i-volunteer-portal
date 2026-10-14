@@ -244,6 +244,10 @@ class AgreementTests(
 		agreements.pass()
 		assertEquals("declined", agreement().status)
 		assertTrue(mail.sent.single { it.to == "lena@hack4impact.org" }.text.contains("I need to read it with my advisor"))
+		// The next pass doesn't send a new envelope (second review M1).
+		server.resetRequests()
+		agreements.pass()
+		server.verify(0, postRequestedFor(urlEqualTo("/api/v2/envelope/use")))
 
 		// Signed for this project before, left, and came back: no new envelope.
 		dsl.update(AGREEMENT).set(AGREEMENT.STATUS, "signed").execute()

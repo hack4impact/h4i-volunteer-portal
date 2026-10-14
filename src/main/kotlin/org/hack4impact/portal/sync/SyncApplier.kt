@@ -44,13 +44,15 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 
 	companion object {
 		const val MAX_ATTEMPTS = 5
+		/** A pending email invitation is sent again after this long (GitHub's expire after seven days). */
+		private val REINVITE_AFTER: Duration = Duration.ofDays(7)
 		private val BACKOFF = listOf(Duration.ofMinutes(1), Duration.ofMinutes(5), Duration.ofMinutes(30), Duration.ofHours(2))
 		fun backoff(attempts: Int): Duration = BACKOFF[(attempts - 1).coerceIn(0, BACKOFF.lastIndex)]
 	}
 
 	private class Stop(val error: String) : RuntimeException(error)
 
-	private data class RecordState(val attempts: Int, val nextRetryAt: OffsetDateTime?, val status: String)
+	private data class RecordState(val attempts: Int, val nextRetryAt: OffsetDateTime?, val status: String, val lastAttemptAt: OffsetDateTime? = null)
 
 	internal fun apply(
 		tool: Tool, trigger: String, writer: WriteAdapter, plan: Plan, actual: SyncEngine.Actual, desired: Resolution, wouldPause: String?,
@@ -62,8 +64,8 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 			.returningResult(SYNC_RUN.ID).fetchSingle().value1()!!
 		val external = dsl.select(RESOURCE.ID, RESOURCE.EXTERNAL_ID, RESOURCE.NAME).from(RESOURCE).where(RESOURCE.TOOL.eq(tool.name.lowercase())).fetch()
 			.associate { it.value1()!! to (it.value2() to it.value3()!!) }.toMutableMap()
-		val records = dsl.select(SYNC_RECORD.PERSON_ID, SYNC_RECORD.RESOURCE_ID, SYNC_RECORD.ATTEMPTS, SYNC_RECORD.NEXT_RETRY_AT, SYNC_RECORD.STATUS).from(SYNC_RECORD).fetch()
-			.associate { (it.value1()!! to it.value2()!!) to RecordState(it.value3()!!, it.value4(), it.value5()!!) }
+		val records = dsl.select(SYNC_RECORD.PERSON_ID, SYNC_RECORD.RESOURCE_ID, SYNC_RECORD.ATTEMPTS, SYNC_RECORD.NEXT_RETRY_AT, SYNC_RECORD.STATUS, SYNC_RECORD.LAST_ATTEMPT_AT).from(SYNC_RECORD).fetch()
+			.associate { (it.value1()!! to it.value2()!!) to RecordState(it.value3()!!, it.value4(), it.value5()!!, it.value6()) }
 		var applied = 0
 		var removed = 0
 		var stopped: String? = null
@@ -95,14 +97,28 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 			}
 		}
 
-		// 1. Create portal-made resources, so their people can be added right after.
+		// 1. Create portal-made resources, so their people can be added right after. A failure backs off like a member's
+		// change, and the fifth goes to the admin queue rather than being tried on every run (second review L3).
+		val creating = dsl.select(RESOURCE.ID, RESOURCE.CREATE_ATTEMPTS, RESOURCE.CREATE_RETRY_AT).from(RESOURCE).where(RESOURCE.ID.`in`(actual.toCreate)).fetch()
+			.associate { it.value1()!! to (it.value2()!! to it.value3()) }
 		for (resourceId in actual.toCreate) {
 			val name = external[resourceId]?.second ?: continue
-			val (outcome, error) = attempt(null, resourceId) {
-				val id = writer.create(name)
-				dsl.update(RESOURCE).set(RESOURCE.EXTERNAL_ID, id).where(RESOURCE.ID.eq(resourceId)).execute()
-				external[resourceId] = id to name
-				"applied"
+			val (tries, retryAt) = creating[resourceId] ?: (0 to null)
+			val (outcome, error) = when {
+				tries >= MAX_ATTEMPTS -> "skipped" to "dead letter: on the admin queue"
+				retryAt != null && retryAt.isAfter(now) -> "skipped" to "next retry $retryAt"
+				else -> attempt(null, resourceId) {
+					val id = writer.create(name)
+					dsl.update(RESOURCE).set(RESOURCE.EXTERNAL_ID, id).set(RESOURCE.CREATE_ATTEMPTS, 0).setNull(RESOURCE.CREATE_RETRY_AT).where(RESOURCE.ID.eq(resourceId)).execute()
+					external[resourceId] = id to name
+					"applied"
+				}
+			}
+			if (outcome == "failed" || outcome == "dead_letter") {
+				val attempts = tries + 1
+				dsl.update(RESOURCE).set(RESOURCE.CREATE_ATTEMPTS, attempts).set(RESOURCE.CREATE_RETRY_AT, if (attempts >= MAX_ATTEMPTS) null else now.plus(backoff(attempts)))
+					.where(RESOURCE.ID.eq(resourceId)).execute()
+				if (attempts >= MAX_ATTEMPTS) queue.creationFailed(tool, resourceId, name, error)
 			}
 			change("create_resource", null, resourceId, outcome, error)
 		}
@@ -113,7 +129,12 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 			val ext = external[grant.resourceId]?.first
 			val ref = accountRef(tool, grant.personId, actual)
 			val lowering = from != null && grant.access < from
+			// An email invitation already sent and not accepted yet isn't sent again on every run (second review M2); once a
+			// week it is, as GitHub's expire after seven days. Someone who has since joined the tool has an ID and goes ahead.
+			val state = records[grant.personId to grant.resourceId]
+			val invitePending = ref.id == null && state?.status == "waiting_on_member" && state.lastAttemptAt?.isAfter(now.minus(REINVITE_AFTER)) == true
 			val (outcome, error) = if (ext == null) "skipped" to "the resource doesn't exist in the tool yet"
+			else if (invitePending) "waiting" to "invitation sent ${state!!.lastAttemptAt}, not accepted yet"
 			else if (lowering && wouldPause != null) "held" to wouldPause // lowering access waits with the removals (review H3)
 			else attempt(grant.personId, grant.resourceId) {
 				when (writer.grant(ext, ref, grant.access)) {
@@ -126,7 +147,8 @@ class SyncApplier(private val dsl: DSLContext, @Lazy private val engine: SyncEng
 			if (outcome == "applied" || outcome == "invited") applied++
 			change(if (from == null) "add" else "change", grant.personId, grant.resourceId, outcome, error, account = ref.id ?: ref.login ?: ref.email,
 				from = from, to = grant.access, reasons = grant.reasons)
-			saveGrant(grant, outcome, error, runId, now, records[grant.personId to grant.resourceId])
+			// A pending invitation that wasn't sent again leaves its record as it was, so the week counts from the real send.
+			if (!invitePending) saveGrant(grant, outcome, error, runId, now, records[grant.personId to grant.resourceId])
 		}
 
 		// 3. Take away access the portal granted and no longer wants, unless the blast-radius limit holds it.

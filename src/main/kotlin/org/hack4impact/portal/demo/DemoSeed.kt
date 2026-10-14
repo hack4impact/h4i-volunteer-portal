@@ -63,6 +63,11 @@ data class DemoProperties(
 	val seed: Boolean = false,
 	/** Empty the database first. Needed when it isn't empty; refused unless the database is local or staging's. */
 	val reset: Boolean = false,
+	/**
+	 * Says the database at host `db` is staging's (`PORTAL_DEMO_STAGINGDATABASE=true`, set by deploy/staging/seed.sh).
+	 * `db` is only a compose service name, which production could share, so it isn't trusted on its own (second review L2).
+	 */
+	val stagingDatabase: Boolean = false,
 	val personas: Personas = Personas(),
 ) {
 	/**
@@ -108,10 +113,20 @@ class DemoSeed(
 ) {
 	private val log = LoggerFactory.getLogger(javaClass)
 
+	companion object {
+		/** Why the database at [host] mustn't be seeded, or null when it may be. */
+		fun refusal(host: String?, stagingDatabase: Boolean): String? = when {
+			host == "localhost" || host == "127.0.0.1" -> null
+			host == "db" && stagingDatabase -> null
+			host == "db" -> "the database on host db is seeded only with portal.demo.staging-database=true (deploy/staging/seed.sh sets it)"
+			else -> "only a local or staging database is seeded (this one is on $host)"
+		}
+	}
+
 	fun seed() {
 		val url = dataSource.connection.use { it.metaData.url }
 		val host = Regex("//([^/:]+)").find(url)?.groupValues?.get(1)
-		check(host in setOf("localhost", "127.0.0.1", "db")) { "only a local or staging database is seeded (this one is on $host)" }
+		refusal(host, properties.stagingDatabase)?.let { error(it) }
 		if (properties.reset) reset()
 		check(dsl.fetchCount(PERSON) == 0) { "the database already has people; add --portal.demo.reset=true to empty it first (staging only)" }
 		val plan = TransactionTemplate(transactions).execute { Data().build() }

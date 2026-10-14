@@ -51,17 +51,19 @@ data class ToolChange(val enabled: Boolean, val dryRun: Boolean, val reason: Str
 data class QueueTask(
 	val id: UUID,
 	val tool: String,
-	/** confirm_removals (a held run), add_member or remove_member (a change to make by hand). */
+	/** confirm_removals (a held run), add_member or remove_member (a change to make by hand), create_resource (creation kept failing). */
 	val action: String,
 	val description: String,
 	val createdAt: OffsetDateTime,
 	val status: String,
 	val doneBy: String?,
 	val doneAt: OffsetDateTime?,
+	/** For confirm_removals: the held run it shows; sent back with "done". */
+	val runId: UUID? = null,
 )
 
-/** [action]: done (made by hand, or removals confirmed) or cancel. */
-data class TaskDecision(val action: String, val reason: String? = null)
+/** [action]: done (made by hand, or removals confirmed) or cancel. [runId]: the run a confirm_removals task showed. */
+data class TaskDecision(val action: String, val reason: String? = null, val runId: UUID? = null)
 
 data class DeadLetter(
 	val personId: UUID,
@@ -144,7 +146,7 @@ class NationalController(
 	fun decide(@AuthenticationPrincipal user: OidcUser, @PathVariable id: UUID, @RequestBody decision: TaskDecision): List<QueueTask> {
 		val viewer = national(user)
 		when (decision.action) {
-			"done" -> queue.done(id, viewer)
+			"done" -> queue.done(id, viewer, decision.runId)
 			"cancel" -> queue.cancel(id, viewer, decision.reason)
 			else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "action must be done or cancel")
 		}

@@ -86,7 +86,8 @@ class EnvelopeRefreshes(private val events: org.springframework.context.Applicat
 	@Transactional
 	fun request(envelopeId: String) = events.publishEvent(DocumensoEnvelopeChanged(envelopeId))
 
-	@ApplicationModuleListener
+	/** Outside any transaction, like the other listeners that talk to a tool (second review H2). */
+	@ApplicationModuleListener(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
 	fun on(event: DocumensoEnvelopeChanged) {
 		agreements.refreshEnvelope(event.envelopeId)
 	}

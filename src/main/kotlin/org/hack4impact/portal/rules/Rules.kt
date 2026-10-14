@@ -56,17 +56,34 @@ class Rules(
 	fun page(chapterId: UUID?, canEdit: Boolean): RulesPage {
 		val reach = reach()
 		val names = Names.load(dsl, toolRegistry)
-		fun views(of: UUID?) = dsl.select(RULE.asterisk(), PERSON.FIRST_NAME, PERSON.LAST_NAME).from(RULE).leftJoin(PERSON).on(PERSON.ID.eq(DSL.coalesce(RULE.UPDATED_BY, RULE.CREATED_BY)))
+		val tags = Tags() // once per page, not per rule (second review L7)
+		fun views(of: UUID?) = dsl.select(RULE.asterisk(), PERSON.FIRST_NAME, PERSON.LAST_NAME, CHAPTER.CODE).from(RULE)
+			.leftJoin(PERSON).on(PERSON.ID.eq(DSL.coalesce(RULE.UPDATED_BY, RULE.CREATED_BY))).leftJoin(CHAPTER).on(CHAPTER.ID.eq(RULE.CHAPTER_ID))
 			.where(scope(of), RULE.DELETED_AT.isNull).orderBy(RULE.CREATED_AT)
-			.fetch { r -> view(r.into(RULE), r.get(PERSON.FIRST_NAME)?.let { "$it ${r.get(PERSON.LAST_NAME)}" }, reach, names) }
+			.fetch { r -> view(r.into(RULE), r.get(CHAPTER.CODE), r.get(PERSON.FIRST_NAME)?.let { "$it ${r.get(PERSON.LAST_NAME)}" }, reach, names, tags) }
 		return RulesPage(if (chapterId == null) views(null) else views(chapterId), if (chapterId == null) emptyList() else views(null), canEdit, options(chapterId))
 	}
 
-	private fun view(r: RuleRecord, by: String?, reach: Map<UUID, RuleReach>, names: Names): RuleView {
+	private fun view(r: RuleRecord, code: String?, by: String?, reach: Map<UUID, RuleReach>, names: Names, tags: Tags): RuleView {
 		val input = input(r)
-		val code = r.chapterId?.let { dsl.select(CHAPTER.CODE).from(CHAPTER).where(CHAPTER.ID.eq(it)).fetchOne()?.value1() }
 		return RuleView(r.id!!, code, r.name!!, r.description, r.enabled!!, input, sentence(input, names), reach[r.id] ?: RuleReach(0, 0), by,
-			r.updatedAt ?: r.createdAt!!, warnings(r.chapterId, input))
+			r.updatedAt ?: r.createdAt!!, warnings(r.chapterId, input, tags))
+	}
+
+	/** The resource and project tags in use, per chapter (all of them for national's), loaded when first asked. */
+	private inner class Tags {
+		private val resources = mutableMapOf<UUID?, Set<String>>()
+		private val projects = mutableMapOf<UUID?, Set<String>>()
+
+		fun resources(chapterId: UUID?) = resources.getOrPut(chapterId) {
+			dsl.select(RESOURCE.TAGS).from(RESOURCE).where(RESOURCE.ARCHIVED_AT.isNull, if (chapterId == null) DSL.noCondition() else RESOURCE.CHAPTER_ID.eq(chapterId))
+				.fetch().flatMap { it.value1().orEmpty().filterNotNull() }.toSet()
+		}
+
+		fun projects(chapterId: UUID?) = projects.getOrPut(chapterId) {
+			dsl.select(PROJECT.TAGS).from(PROJECT).where(if (chapterId == null) DSL.noCondition() else PROJECT.CHAPTER_ID.eq(chapterId))
+				.fetch().flatMap { it.value1().orEmpty().filterNotNull() }.toSet()
+		}
 	}
 
 	/** People and resources each rule reaches now: grants whose reasons name the rule. */
@@ -208,15 +225,13 @@ class Rules(
 	}
 
 	/** Worth knowing, not wrong. */
-	private fun warnings(chapterId: UUID?, i: RuleInput): List<String> = buildList {
+	private fun warnings(chapterId: UUID?, i: RuleInput, known: Tags = Tags()): List<String> = buildList {
 		if (i.resources.scope == "tags") {
-			val tags = dsl.select(RESOURCE.TAGS).from(RESOURCE).where(RESOURCE.ARCHIVED_AT.isNull, if (chapterId == null) DSL.noCondition() else RESOURCE.CHAPTER_ID.eq(chapterId))
-				.fetch().flatMap { it.value1().orEmpty().filterNotNull() }.toSet()
+			val tags = known.resources(chapterId)
 			i.resources.tags.filter { it.isNotBlank() && it.lowercase() !in tags }.forEach { add("No resource is tagged #$it yet; the rule will cover ones that are") }
 		}
 		if (i.projects.scope == "tags") {
-			val tags = dsl.select(PROJECT.TAGS).from(PROJECT).where(if (chapterId == null) DSL.noCondition() else PROJECT.CHAPTER_ID.eq(chapterId))
-				.fetch().flatMap { it.value1().orEmpty().filterNotNull() }.toSet()
+			val tags = known.projects(chapterId)
 			i.projects.tags.filter { it.isNotBlank() && it.lowercase() !in tags }.forEach { add("No project is tagged #$it yet") }
 		}
 		// GitHub (maintainer), Google groups (manager) and Vaultwarden (manage) have an admin level; these don't.

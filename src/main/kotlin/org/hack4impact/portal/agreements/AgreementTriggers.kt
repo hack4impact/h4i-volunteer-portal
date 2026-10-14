@@ -23,7 +23,8 @@ class AgreementRequests(private val events: ApplicationEventPublisher) {
 /** Sends after the requesting transaction commits, in the background (through the outbox, like sync requests). */
 @Component
 class AgreementListener(private val agreements: AgreementService, @Value("\${portal.agreements.on-request:true}") private val enabled: Boolean) {
-	@ApplicationModuleListener
+	/** Outside any transaction, so an envelope Documenso already sent is never forgotten by a rollback (second review H2). */
+	@ApplicationModuleListener(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
 	fun on(event: AgreementsRequested) {
 		if (enabled) agreements.sendProjectAgreements(event.projectId)
 	}

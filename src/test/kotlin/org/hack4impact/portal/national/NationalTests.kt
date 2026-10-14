@@ -173,12 +173,16 @@ class NationalTests(
 		engine.run("manual", setOf(Tool.SLACK))
 		dsl.update(PROJECT_MEMBER).set(PROJECT_MEMBER.REMOVED_AT, OffsetDateTime.now()).execute()
 
-		val held = engine.run("manual", setOf(Tool.SLACK)).single()
-		assertEquals("paused", held.status)
+		val seen = engine.run("manual", setOf(Tool.SLACK)).single()
+		assertEquals("paused", seen.status)
+		val held = engine.run("manual", setOf(Tool.SLACK)).single() // a later run rewrites the task
 		val confirm = openTasks("confirm_removals").single()
+		// Only the run the page showed can be confirmed (second review L4).
+		call("POST", "/api/national/queue/${confirm.id}", """{"action":"done","runId":"${seen.runId}"}""").andExpect { status { isConflict() } }
+		call("POST", "/api/national/queue/${confirm.id}", """{"action":"done"}""").andExpect { status { isConflict() } }
 		val requested = { dsl.fetchCount(dsl.selectFrom("portal.event_publication").where("serialized_event LIKE '%SLACK%'")) }
 		val before = requested()
-		call("POST", "/api/national/queue/${confirm.id}", """{"action":"done"}""").andExpect { status { isOk() } }
+		call("POST", "/api/national/queue/${confirm.id}", """{"action":"done","runId":"${held.runId}"}""").andExpect { status { isOk() } }
 		assertEquals(before + 1, requested()) // confirming asks for a Slack run (review M9); the test makes it below
 		slack.writes.clear()
 		val confirmed = engine.run("manual", setOf(Tool.SLACK)).single()

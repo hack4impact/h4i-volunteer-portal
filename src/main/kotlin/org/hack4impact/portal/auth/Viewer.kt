@@ -42,10 +42,11 @@ data class Viewer(
  */
 @Component
 class Viewers(private val dsl: DSLContext) {
+	private val log = org.slf4j.LoggerFactory.getLogger(javaClass)
 
 	fun of(user: OidcUser): Viewer {
 		val email = user.email.orEmpty().lowercase()
-		val personId = user.subject?.let(::byGoogleId) ?: email.takeIf { it.isNotEmpty() }?.let(::byEmail)
+		val personId = user.subject?.let(::byGoogleId) ?: email.takeIf { it.isNotEmpty() }?.let { byEmail(it, user.subject) }
 		if (personId == null) return Viewer(null, email, user.fullName, nationalAdmin = false, chapterRoles = emptyMap())
 		// Removed people and applicants hold no role, whatever was left unended (review M4).
 		val status = dsl.select(PERSON.STATUS).from(PERSON).where(PERSON.ID.eq(personId)).fetchOne()?.value1()
@@ -70,13 +71,14 @@ class Viewers(private val dsl: DSLContext) {
 		val email = user.email?.lowercase() ?: return
 		val subject = user.subject ?: return
 		if (byGoogleId(subject) != null) return
-		val personId = byEmail(email) ?: return
+		val personId = byEmail(email, subject) ?: return
 		val now = OffsetDateTime.now()
+		// Only fills in an address's missing ID: never replaces the Google account already linked (second review H4).
 		val updated = dsl.update(TOOL_ACCOUNT)
 			.set(TOOL_ACCOUNT.EXTERNAL_ID, subject)
 			.set(TOOL_ACCOUNT.STATE, "confirmed")
 			.set(TOOL_ACCOUNT.VERIFIED_AT, now)
-			.where(TOOL_ACCOUNT.PERSON_ID.eq(personId), TOOL_ACCOUNT.TOOL.eq("google"), DSL.lower(TOOL_ACCOUNT.EXTERNAL_LOGIN).eq(email))
+			.where(TOOL_ACCOUNT.PERSON_ID.eq(personId), TOOL_ACCOUNT.TOOL.eq("google"), DSL.lower(TOOL_ACCOUNT.EXTERNAL_LOGIN).eq(email), TOOL_ACCOUNT.EXTERNAL_ID.isNull)
 			.execute()
 		if (updated == 0) {
 			dsl.insertInto(TOOL_ACCOUNT)
@@ -92,7 +94,22 @@ class Viewers(private val dsl: DSLContext) {
 			.where(TOOL_ACCOUNT.TOOL.eq("google"), TOOL_ACCOUNT.EXTERNAL_ID.eq(subject), PERSON.DELETED_AT.isNull)
 			.fetchOne(TOOL_ACCOUNT.PERSON_ID)
 
-	private fun byEmail(email: String): UUID? =
+	/**
+	 * The person behind an address, unless they already have a different Google account linked: an address can be
+	 * reused after an account is deleted, and the new holder mustn't sign in as the old one (second review H4).
+	 */
+	private fun byEmail(email: String, subject: String?): UUID? {
+		val person = byAddress(email) ?: return null
+		val linked = dsl.select(TOOL_ACCOUNT.EXTERNAL_ID).from(TOOL_ACCOUNT)
+			.where(TOOL_ACCOUNT.PERSON_ID.eq(person), TOOL_ACCOUNT.TOOL.eq("google"), TOOL_ACCOUNT.EXTERNAL_ID.isNotNull).fetch().map { it.value1() }
+		if (subject != null && linked.isNotEmpty() && subject !in linked) {
+			log.warn("Sign-in as {} refused a match: that person has a different Google account linked (a reused address?)", email)
+			return null
+		}
+		return person
+	}
+
+	private fun byAddress(email: String): UUID? =
 		dsl.select(PERSON.ID).from(PERSON)
 			.where(PERSON.DELETED_AT.isNull)
 			.and(

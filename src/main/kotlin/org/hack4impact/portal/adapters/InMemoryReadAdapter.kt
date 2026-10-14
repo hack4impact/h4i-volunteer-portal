@@ -15,9 +15,11 @@ class InMemoryReadAdapter(
 	var failure: AdapterException? = null,
 ) : ReadAdapter, WriteAdapter {
 	var failWrites: AdapterException? = null
+	/** Called on every read of the tool's accounts (tests check what the caller's state is then). */
+	var onRead: (() -> Unit)? = null
 	val writes = mutableListOf<String>()
 
-	override fun accounts(): List<ToolAccount> = guarded { accounts }
+	override fun accounts(): List<ToolAccount> = guarded { onRead?.invoke(); accounts }
 
 	override fun resources(): List<ToolResource> = guarded { resources.keys.toList() }
 

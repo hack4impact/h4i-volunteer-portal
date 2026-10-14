@@ -65,6 +65,7 @@ class DraftTests(
 	@Autowired private val dsl: DSLContext,
 	@Autowired private val drafts: Drafts,
 	@Autowired private val mail: DraftMail,
+	@Autowired private val transactions: org.springframework.transaction.PlatformTransactionManager,
 ) {
 	companion object {
 		@JvmStatic
@@ -212,6 +213,27 @@ class DraftTests(
 		get("/api/chapters/umd/drafts/$draft").andExpect { jsonPath("$.conflicts.length()") { value(0) } }
 		post("/api/chapters/umd/drafts/$draft/release", "{}").andExpect { jsonPath("$.released") { value(true) } }
 		assertEquals(3, dsl.fetchCount(PROJECT_RESOURCE)) // Slack, Google, Vaultwarden: the GitHub team was detached
+	}
+
+	@Test
+	fun `discarding while a release commits loses to the release (second review M3)`() {
+		val draft = UUID.fromString(newDraft())
+		val lena = dsl.select(PERSON.ID).from(PERSON).where(PERSON.FIRST_NAME.eq("Lena")).fetchSingle().value1()!!
+		val viewer = org.hack4impact.portal.auth.Viewer(lena, lead, "Lena Test", false, mapOf(umd to "lead"))
+		val locked = java.util.concurrent.CountDownLatch(1)
+		val releasing = Thread {
+			org.springframework.transaction.support.TransactionTemplate(transactions).executeWithoutResult {
+				dsl.selectFrom(CHANGESET).where(CHANGESET.ID.eq(draft)).forUpdate().fetchSingle()
+				locked.countDown()
+				Thread.sleep(400) // the release's work, holding the row
+				dsl.update(CHANGESET).set(CHANGESET.STATUS, "released").set(CHANGESET.RELEASED_AT, OffsetDateTime.now()).where(CHANGESET.ID.eq(draft)).execute()
+			}
+		}.also { it.start() }
+		locked.await()
+		val refused = runCatching { drafts.discard(umd, draft, viewer) }.exceptionOrNull()
+		releasing.join()
+		assertTrue(refused is org.springframework.web.server.ResponseStatusException && refused.statusCode.value() == 409, "$refused")
+		assertEquals("released", dsl.select(CHANGESET.STATUS).from(CHANGESET).where(CHANGESET.ID.eq(draft)).fetchSingle().value1())
 	}
 
 	@Test

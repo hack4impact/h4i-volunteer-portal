@@ -32,8 +32,9 @@ export function National({ me }: { me: Me }) {
     setTools(data)
   }
 
-  async function decide(id: string, action: 'done' | 'cancel') {
-    const { data, error: failed, response } = await api.POST('/api/national/queue/{id}', { params: { path: { id } }, body: { action, reason: null } })
+  // A held-removals task says which run it showed, so a newer one can't be confirmed unseen (second review L4).
+  async function decide(task: QueueTask, action: 'done' | 'cancel') {
+    const { data, error: failed, response } = await api.POST('/api/national/queue/{id}', { params: { path: { id: task.id } }, body: { action, reason: null, runId: task.runId ?? null } })
     if (!data) return setError(reason(failed, response))
     setTasks(data)
   }
@@ -104,10 +105,10 @@ export function National({ me }: { me: Me }) {
                       <div className="adopt-meta">{TOOL_NAME[t.tool] ?? t.tool} · {new Date(t.createdAt).toLocaleString()}</div>
                     </div>
                     <span style={{ display: 'flex', gap: 8 }}>
-                      <Button size="small" variant={t.action === 'confirm_removals' ? 'primary' : 'default'} onClick={() => decide(t.id, 'done')}>
+                      <Button size="small" variant={t.action === 'confirm_removals' ? 'primary' : 'default'} onClick={() => decide(t, 'done')}>
                         {t.action === 'confirm_removals' ? 'Confirm removals' : 'Done'}
                       </Button>
-                      <Button size="small" onClick={() => decide(t.id, 'cancel')}>Cancel</Button>
+                      <Button size="small" onClick={() => decide(t, 'cancel')}>Cancel</Button>
                     </span>
                   </div>
                 </li>

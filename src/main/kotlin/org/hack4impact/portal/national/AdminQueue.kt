@@ -4,6 +4,7 @@ import org.hack4impact.portal.auth.Viewer
 import org.hack4impact.portal.db.tables.references.ADMIN_TASK
 import org.hack4impact.portal.db.tables.references.AUDIT_EVENT
 import org.hack4impact.portal.db.tables.references.PERSON
+import org.hack4impact.portal.db.tables.references.RESOURCE
 import org.hack4impact.portal.db.tables.references.SYNC_CHANGE
 import org.hack4impact.portal.db.tables.references.SYNC_RECORD
 import org.hack4impact.portal.resolver.Tool
@@ -31,12 +32,12 @@ class AdminQueue(private val dsl: DSLContext, private val syncs: org.hack4impact
 
 	fun tasks(): List<QueueTask> =
 		dsl.select(ADMIN_TASK.ID, ADMIN_TASK.TOOL, ADMIN_TASK.ACTION, ADMIN_TASK.DESCRIPTION, ADMIN_TASK.CREATED_AT, ADMIN_TASK.STATUS,
-			PERSON.FIRST_NAME, PERSON.LAST_NAME, ADMIN_TASK.DONE_AT)
+			PERSON.FIRST_NAME, PERSON.LAST_NAME, ADMIN_TASK.DONE_AT, ADMIN_TASK.RUN_ID)
 			.from(ADMIN_TASK).leftJoin(PERSON).on(PERSON.ID.eq(ADMIN_TASK.DONE_BY))
 			.where(ADMIN_TASK.STATUS.eq("open").or(ADMIN_TASK.UPDATED_AT.gt(OffsetDateTime.now().minusDays(7))))
 			.orderBy(ADMIN_TASK.STATUS.desc(), ADMIN_TASK.TOOL, ADMIN_TASK.CREATED_AT)
 			.limit(500)
-			.fetch { QueueTask(it.value1()!!, it.value2()!!, it.value3()!!, it.value4()!!, it.value5()!!, it.value6()!!, it.value7()?.let { f -> "$f ${it.value8()}" }, it.value9()) }
+			.fetch { QueueTask(it.value1()!!, it.value2()!!, it.value3()!!, it.value4()!!, it.value5()!!, it.value6()!!, it.value7()?.let { f -> "$f ${it.value8()}" }, it.value9(), it.value10()) }
 
 	/** Opens a member task unless the same one is already open. */
 	fun open(tool: Tool, action: String, person: UUID, resource: UUID, description: String) {
@@ -47,9 +48,16 @@ class AdminQueue(private val dsl: DSLContext, private val syncs: org.hack4impact
 			.execute()
 	}
 
+	/**
+	 * Marks a task done. For held removals, [runId] is the run the page showed: a later run rewrites the task, and
+	 * national confirms only what they saw (second review L4).
+	 */
 	@Transactional
-	fun done(id: UUID, viewer: Viewer) {
-		val task = openTask(id)
+	fun done(id: UUID, viewer: Viewer, runId: UUID? = null) {
+		val task = openTask(id, lock = true)
+		if (task.action == "confirm_removals" && runId != task.runId) {
+			throw ResponseStatusException(HttpStatus.CONFLICT, "Newer removals were held since this page loaded. Reload and check them before confirming.")
+		}
 		dsl.update(ADMIN_TASK).set(ADMIN_TASK.STATUS, "done").set(ADMIN_TASK.DONE_BY, viewer.personId).set(ADMIN_TASK.DONE_AT, OffsetDateTime.now())
 			.set(ADMIN_TASK.UPDATED_AT, OffsetDateTime.now()).where(ADMIN_TASK.ID.eq(id)).execute()
 		val record = SYNC_RECORD.PERSON_ID.eq(task.personId).and(SYNC_RECORD.RESOURCE_ID.eq(task.resourceId))
@@ -62,6 +70,11 @@ class AdminQueue(private val dsl: DSLContext, private val syncs: org.hack4impact
 				.setNull(SYNC_RECORD.APPLIED_AT).setNull(SYNC_RECORD.APPLIED_ACCESS_LEVEL).where(record).execute()
 			// The held removals go ahead now rather than at the next scheduled run (review M9).
 			"confirm_removals" -> Tool.fromKey(task.tool)?.let { syncs.request("manual", setOf(it)) }
+			// National fixed what stopped it: tried again at once, with a fresh count (second review L3).
+			"create_resource" -> {
+				dsl.update(RESOURCE).set(RESOURCE.CREATE_ATTEMPTS, 0).setNull(RESOURCE.CREATE_RETRY_AT).where(RESOURCE.ID.eq(task.resourceId)).execute()
+				Tool.fromKey(task.tool)?.let { syncs.request("manual", setOf(it)) }
+			}
 		}
 		audit(viewer, "queue.done", id, task.description)
 	}
@@ -124,8 +137,17 @@ class AdminQueue(private val dsl: DSLContext, private val syncs: org.hack4impact
 		}
 	}
 
-	private fun openTask(id: UUID) =
-		dsl.selectFrom(ADMIN_TASK).where(ADMIN_TASK.ID.eq(id)).fetchOne()?.also {
+	/** A resource the portal couldn't create after its tries: one open task for it, until national marks it done. */
+	fun creationFailed(tool: Tool, resource: UUID, name: String, error: String?) {
+		if (dsl.fetchExists(ADMIN_TASK, ADMIN_TASK.ACTION.eq("create_resource"), ADMIN_TASK.RESOURCE_ID.eq(resource), ADMIN_TASK.STATUS.eq("open"))) return
+		val label = tool.name.lowercase().replaceFirstChar { it.uppercase() }
+		dsl.insertInto(ADMIN_TASK).set(ADMIN_TASK.TOOL, tool.name.lowercase()).set(ADMIN_TASK.ACTION, "create_resource").set(ADMIN_TASK.RESOURCE_ID, resource)
+			.set(ADMIN_TASK.DESCRIPTION, "Couldn't create $name in $label: ${error ?: "unknown error"}. Fix the cause, then mark this done to try again.".take(1000))
+			.execute()
+	}
+
+	private fun openTask(id: UUID, lock: Boolean = false) =
+		dsl.selectFrom(ADMIN_TASK).where(ADMIN_TASK.ID.eq(id)).let { if (lock) it.forUpdate() else it }.fetchOne()?.also {
 			if (it.status != "open") throw ResponseStatusException(HttpStatus.CONFLICT, "This task is already ${it.status}")
 		} ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No such task")
 

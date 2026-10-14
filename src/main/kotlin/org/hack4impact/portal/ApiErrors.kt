@@ -10,22 +10,30 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 /**
  * Errors the services raise without an HTTP status, answered in words instead of a bare 500 (code review L1): a state
  * check that failed (approving twice) or a race on unique data (two projects with one name) is a conflict, a bad
- * argument a bad request.
+ * argument a bad request. Only the portal's own checks get that (`check`, `require` and `error` are inline, so the
+ * exception's top frame is portal code); the same exceptions from a library or the framework are bugs, answered with
+ * a 500 and logged with their stack trace (second review L1).
  */
 @RestControllerAdvice
 class ApiErrors {
 	private val log = LoggerFactory.getLogger(javaClass)
 
 	@ExceptionHandler(IllegalStateException::class)
-	fun conflict(e: IllegalStateException): ProblemDetail {
-		log.info("Conflict: {}", e.message)
-		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.message ?: "That can't be done now")
-	}
+	fun conflict(e: IllegalStateException): ProblemDetail =
+		ours(e, HttpStatus.CONFLICT, "That can't be done now")
 
 	@ExceptionHandler(IllegalArgumentException::class)
-	fun badRequest(e: IllegalArgumentException): ProblemDetail {
-		log.info("Bad request: {}", e.message)
-		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.message ?: "That request isn't right")
+	fun badRequest(e: IllegalArgumentException): ProblemDetail =
+		ours(e, HttpStatus.BAD_REQUEST, "That request isn't right")
+
+	private fun ours(e: RuntimeException, status: HttpStatus, fallback: String): ProblemDetail {
+		val where = e.stackTrace.firstOrNull()
+		if (where == null || !where.className.startsWith("org.hack4impact.portal.")) {
+			log.error("Unexpected error", e)
+			return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong on our side. Try again, and tell national if it keeps happening.")
+		}
+		log.info("{} at {}.{}:{}: {}", status.reasonPhrase, where.className.substringAfterLast('.'), where.methodName, where.lineNumber, e.message)
+		return ProblemDetail.forStatusAndDetail(status, e.message ?: fallback)
 	}
 
 	@ExceptionHandler(DataIntegrityViolationException::class)

@@ -27,8 +27,9 @@ class GoogleAccounts(
 	private val users get() = "$baseUrl/admin/directory/v1/users"
 	private val random = SecureRandom()
 
-	fun create(firstName: String, lastName: String, domain: String, orgUnit: String, recoveryEmail: String?): NewAccount =
-		createAt(freeAddress(localPart(firstName), domain.lowercase()), firstName, lastName, orgUnit, recoveryEmail)
+	/** [taken]: addresses the portal still holds for someone (a deleted account's old address isn't reused, second review H4). */
+	fun create(firstName: String, lastName: String, domain: String, orgUnit: String, recoveryEmail: String?, taken: (String) -> Boolean = { false }): NewAccount =
+		createAt(freeAddress(localPart(firstName), domain.lowercase(), taken), firstName, lastName, orgUnit, recoveryEmail)
 
 	/** An account at exactly [email] (the staging demo's persona accounts), inside the org-unit scope. */
 	fun createAt(email: String, firstName: String, lastName: String, orgUnit: String, recoveryEmail: String?): NewAccount {
@@ -65,10 +66,11 @@ class GoogleAccounts(
 			.mapNotNull { it.text("primaryEmail") }.filter { it.startsWith(prefix) }
 	}
 
-	/** The first of `name@domain`, `name2@domain`, … that no account or alias uses. */
-	private fun freeAddress(local: String, domain: String): String {
+	/** The first of `name@domain`, `name2@domain`, … that no account or alias uses and the portal doesn't hold for anyone. */
+	private fun freeAddress(local: String, domain: String, taken: (String) -> Boolean): String {
 		for (n in 1..99) {
 			val candidate = "${if (n == 1) local else "$local$n"}@$domain"
+			if (taken(candidate)) continue
 			try {
 				http.get("$users/${HttpJson.encode(candidate)}", headers())
 			} catch (e: NotFound) {

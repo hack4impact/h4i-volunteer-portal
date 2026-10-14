@@ -156,12 +156,14 @@ class SyncEngine(
 			resolution.grants.filter { ofTool(it.resourceId) && (it.personId to it.resourceId) !in actual.implicit },
 			resolution.withheld.filter { ofTool(it.resourceId) },
 		)
-		val previous = dsl.select(SYNC_RECORD.PERSON_ID, SYNC_RECORD.RESOURCE_ID, SYNC_RECORD.REASONS).from(SYNC_RECORD)
+		val records = dsl.select(SYNC_RECORD.PERSON_ID, SYNC_RECORD.RESOURCE_ID, SYNC_RECORD.REASONS, SYNC_RECORD.APPLIED_ACCESS_LEVEL).from(SYNC_RECORD)
 			.where(SYNC_RECORD.APPLIED_AT.isNotNull)
 			.fetch()
 			.filter { ofTool(it.value2()!!) }
-			.associate { (it.value1()!! to it.value2()!!) to reasonsFrom(it.value3()) }
-		val plan = Planner.plan(desired, actual.memberships, previous)
+		val previous = records.associate { (it.value1()!! to it.value2()!!) to reasonsFrom(it.value3()) }
+		// The level the portal last applied: access is only lowered from a level the portal gave (decision 144).
+		val applied = records.mapNotNull { r -> r.value4()?.let { level -> (r.value1()!! to r.value2()!!) to Access.valueOf(level.uppercase()) } }.toMap()
+		val plan = Planner.plan(desired, actual.memberships, previous, applied)
 		val wouldPause = blastRadius(plan, actual.memberships, setting?.maxRemovals ?: 25, setting?.maxRemovalRatio?.toDouble() ?: 0.2)
 
 		val writer = writers.firstOrNull { it.tool == tool }
@@ -244,9 +246,11 @@ class SyncEngine(
 
 	/** Why a writing run would pause for national: too many removals overall, or too large a share of one resource. */
 	private fun blastRadius(plan: Plan, actual: List<Membership>, maxRemovals: Int, maxRatio: Double): String? {
-		if (plan.removals.size > maxRemovals) return "${plan.removals.size} removals is over the limit of $maxRemovals"
+		// Lowering someone's access counts like taking it away (decision 144).
+		val taken = plan.removals.map { it.resourceId } + plan.lowerings.map { it.grant.resourceId }
+		if (taken.size > maxRemovals) return "${taken.size} removals is over the limit of $maxRemovals"
 		val membersPerResource = actual.groupingBy { it.resourceId }.eachCount()
-		return plan.removals.groupingBy { it.resourceId }.eachCount().entries.firstNotNullOfOrNull { (resource, removed) ->
+		return taken.groupingBy { it }.eachCount().entries.firstNotNullOfOrNull { (resource, removed) ->
 			val total = membersPerResource[resource] ?: return@firstNotNullOfOrNull null
 			if (total >= 5 && removed.toDouble() / total > maxRatio) "$removed of $total members of one resource would be removed (over ${(maxRatio * 100).toInt()}%)" else null
 		}

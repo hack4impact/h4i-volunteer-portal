@@ -1772,6 +1772,10 @@
             "format" : "uuid",
             "type" : "string"
           },
+          "runId" : {
+            "format" : "uuid",
+            "type" : [ "string", "null" ]
+          },
           "status" : {
             "type" : "string"
           },
@@ -2408,6 +2412,10 @@
             "type" : "string"
           },
           "reason" : {
+            "type" : [ "string", "null" ]
+          },
+          "runId" : {
+            "format" : "uuid",
             "type" : [ "string", "null" ]
           }
         },

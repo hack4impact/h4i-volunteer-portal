@@ -221,13 +221,18 @@ class SyncEngineTests(
 	}
 
 	@Test
-	fun `a sync requested in a transaction goes through the outbox and runs`() {
+	fun `a sync requested in a transaction goes through the outbox and runs outside any transaction`() {
+		var inTransaction: Boolean? = null
+		slack.onRead = { inTransaction = org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive() }
 		requests.request("manual", setOf(Tool.SLACK))
 		val deadline = System.currentTimeMillis() + 15_000
 		while (dsl.fetchCount(SYNC_RUN) == 0 && System.currentTimeMillis() < deadline) Thread.sleep(100)
 		assertEquals("manual", dsl.select(SYNC_RUN.TRIGGER).from(SYNC_RUN).fetchSingle().value1())
 		while (dsl.fetchCount(EVENT_PUBLICATION, EVENT_PUBLICATION.COMPLETION_DATE.isNull) > 0 && System.currentTimeMillis() < deadline) Thread.sleep(100)
 		assertNotNull(dsl.select(EVENT_PUBLICATION.COMPLETION_DATE).from(EVENT_PUBLICATION).orderBy(EVENT_PUBLICATION.PUBLICATION_DATE.desc()).limit(1).fetchSingle().value1())
+		// Each recorded change commits as it happens, not when the whole run ends (second review H2).
+		assertEquals(false, inTransaction)
+		slack.onRead = null
 	}
 
 	@Test

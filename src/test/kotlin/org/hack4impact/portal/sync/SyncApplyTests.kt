@@ -38,12 +38,13 @@ import kotlin.test.assertTrue
 
 /** Build plan step 9: the sync engine changing tools, against in-memory tools. */
 @Import(TestcontainersConfiguration::class, FakeTools::class)
-@SpringBootTest
+@SpringBootTest(properties = ["portal.sync.on-request=false"]) // the tests run the engine themselves
 class SyncApplyTests(
 	@Autowired private val dsl: DSLContext,
 	@Autowired private val engine: SyncEngine,
 	@Autowired private val slack: InMemoryReadAdapter,
 	@Autowired private val github: InMemoryReadAdapter,
+	@Autowired private val queue: org.hack4impact.portal.national.AdminQueue,
 ) {
 	private lateinit var umd: UUID
 	private lateinit var project: UUID
@@ -63,6 +64,8 @@ class SyncApplyTests(
 		dsl.insertInto(PROJECT_MEMBER).set(PROJECT_MEMBER.PROJECT_ID, project).set(PROJECT_MEMBER.PERSON_ID, people.getValue(name)).execute()
 
 	private fun applying(tool: String) = dsl.update(TOOL_SETTING).set(TOOL_SETTING.DRY_RUN, false).where(TOOL_SETTING.TOOL.eq(tool)).execute()
+
+	private fun slackChannel() = dsl.select(RESOURCE.EXTERNAL_ID).from(RESOURCE).where(RESOURCE.ID.eq(channel)).fetchSingle().value1()
 
 	private fun slackRun() = engine.run("manual", setOf(Tool.SLACK)).single()
 
@@ -159,6 +162,14 @@ class SyncApplyTests(
 			assertEquals("waiting_on_member", status)
 			assertNotNull(appliedAt) // the portal gave it, so the portal may take it back
 		}
+		// The next run doesn't invite again while the invitation is pending (second review M2)…
+		slack.writes.clear()
+		slackRun()
+		assertTrue(slack.writes.none { it.startsWith("invite") }, slack.writes.toString())
+		// …but a week later it does, as the first may have expired.
+		dsl.update(SYNC_RECORD).set(SYNC_RECORD.LAST_ATTEMPT_AT, OffsetDateTime.now().minusDays(8)).where(SYNC_RECORD.PERSON_ID.eq(people.getValue("Cy"))).execute()
+		slackRun()
+		assertTrue(slack.writes.any { it.startsWith("invite") }, slack.writes.toString())
 	}
 
 	@Test
@@ -182,6 +193,28 @@ class SyncApplyTests(
 			assertEquals("in_sync", status)
 			assertNull(appliedAt)
 		}
+	}
+
+	@Test
+	fun `access the portal raised is lowered again, and access raised by hand is left alone (decision 144)`() {
+		applying("slack")
+		slackRun() // Ada and Bo get write
+		val access = { level: String -> dsl.update(PROJECT_RESOURCE).set(PROJECT_RESOURCE.ACCESS_LEVEL, level).where(PROJECT_RESOURCE.RESOURCE_ID.eq(channel)).execute() }
+		access("admin")
+		slackRun()
+		assertEquals("admin", record("Ada")!!.appliedAccessLevel)
+		// Back to write: the portal lowers what it raised.
+		slack.writes.clear()
+		access("write")
+		val lowered = slackRun()
+		assertEquals(listOf("grant ${slackChannel()} U-ada WRITE", "grant ${slackChannel()} U-bo WRITE"), slack.writes.sorted())
+		assertTrue(outcomes(lowered.runId).count { it == "change:applied" } == 2)
+		// Raised by hand in Slack above what the portal gave: reported as drift, not lowered.
+		slack.resources = slack.resources.mapValues { (_, members) -> members.map { if (it.accountId == "U-bo") it.copy(access = Access.ADMIN) else it } }
+		slack.writes.clear()
+		val handRaised = slackRun()
+		assertTrue(slack.writes.isEmpty(), slack.writes.toString())
+		assertTrue("drift:null" in outcomes(handRaised.runId))
 	}
 
 	@Test
@@ -231,6 +264,33 @@ class SyncApplyTests(
 		dsl.update(SYNC_RECORD).set(SYNC_RECORD.STATUS, "pending").set(SYNC_RECORD.ATTEMPTS, 0).execute() // a person resets it
 		slackRun()
 		assertEquals("in_sync", record("Ada")!!.status)
+	}
+
+	@Test
+	fun `a resource that can't be created backs off, then waits on the admin queue until national retries it (second review L3)`() {
+		applying("slack")
+		slack.failWrites = Unavailable(Tool.SLACK, "down")
+		slackRun()
+		val tries = { dsl.select(RESOURCE.CREATE_ATTEMPTS, RESOURCE.CREATE_RETRY_AT).from(RESOURCE).where(RESOURCE.ID.eq(channel)).fetchSingle() }
+		assertEquals(1, tries().value1())
+		assertTrue(tries().value2()!!.isAfter(OffsetDateTime.now()))
+		slack.writes.clear()
+		assertTrue("create_resource:skipped" in outcomes(slackRun().runId)) // not due yet
+		assertTrue(slack.writes.isEmpty(), slack.writes.toString())
+
+		dsl.update(RESOURCE).set(RESOURCE.CREATE_ATTEMPTS, SyncApplier.MAX_ATTEMPTS - 1).set(RESOURCE.CREATE_RETRY_AT, OffsetDateTime.now().minusMinutes(1)).where(RESOURCE.ID.eq(channel)).execute()
+		slackRun()
+		val task = dsl.selectFrom(ADMIN_TASK).where(ADMIN_TASK.ACTION.eq("create_resource")).fetchSingle()
+		assertEquals(channel, task.resourceId)
+		assertTrue("down" in task.description!!, task.description)
+		slack.failWrites = null
+		assertTrue("create_resource:skipped" in outcomes(slackRun().runId)) // not on its own any more
+		slackRun()
+		assertEquals(1, dsl.fetchCount(ADMIN_TASK, ADMIN_TASK.ACTION.eq("create_resource"))) // one task, not one per run
+
+		queue.done(task.id!!, org.hack4impact.portal.auth.Viewer(null, "national", "National", true, emptyMap()))
+		assertEquals(0, tries().value1())
+		assertTrue("create_resource:applied" in outcomes(slackRun().runId))
 	}
 
 	@Test

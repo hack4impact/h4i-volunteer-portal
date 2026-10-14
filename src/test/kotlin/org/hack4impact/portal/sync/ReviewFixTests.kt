@@ -35,6 +35,7 @@ class ReviewFixTests(
 	@Autowired private val locks: RunLocks,
 	@Autowired private val syncs: SyncRequests,
 	@Autowired private val mvc: MockMvc,
+	@Autowired private val recovery: SyncRecovery,
 ) {
 	companion object {
 		@JvmStatic
@@ -46,6 +47,22 @@ class ReviewFixTests(
 
 	@BeforeEach
 	fun empty() = dsl.emptyPortalTables()
+
+	@Test
+	fun `a run cut short by a crash is marked failed at startup and every tool is synced once (second review L5)`() {
+		val finished = dsl.insertInto(SYNC_RUN).set(SYNC_RUN.TOOL, "slack").set(SYNC_RUN.MODE, "apply").set(SYNC_RUN.TRIGGER, "manual").set(SYNC_RUN.STATUS, "completed")
+			.returning(SYNC_RUN.ID).fetchSingle().id
+		val cut = dsl.insertInto(SYNC_RUN).set(SYNC_RUN.TOOL, "slack").set(SYNC_RUN.MODE, "apply").set(SYNC_RUN.TRIGGER, "manual").set(SYNC_RUN.STATUS, "running")
+			.returning(SYNC_RUN.ID).fetchSingle().id
+		val requested = { dsl.fetchCount(dsl.selectFrom("portal.event_publication").where("serialized_event LIKE '%recovery%'")) }
+		val before = requested()
+		assertEquals(1, recovery.recover())
+		assertEquals("failed", dsl.select(SYNC_RUN.STATUS).from(SYNC_RUN).where(SYNC_RUN.ID.eq(cut)).fetchSingle().value1())
+		assertEquals("completed", dsl.select(SYNC_RUN.STATUS).from(SYNC_RUN).where(SYNC_RUN.ID.eq(finished)).fetchSingle().value1())
+		assertEquals(before + 1, requested())
+		assertEquals(0, recovery.recover()) // nothing cut short: no extra sync
+		assertEquals(before + 1, requested())
+	}
 
 	@Test
 	fun `every trigger the code can ask for is one a sync run can record (review T1, H1)`() {
@@ -86,6 +103,19 @@ class ReviewFixTests(
 		val signedIn = oidcLogin().idToken { it.subject("sub-rex").claim("email", "rex@hack4impact.org").claim("email_verified", true).claim("hd", "hack4impact.org") }
 		mvc.get("/api/me") { with(signedIn) }.andExpect { jsonPath("$.chapters.length()") { value(0) } }
 		mvc.get("/api/chapters/umd") { with(signedIn) }.andExpect { status { isForbidden() } }
+	}
+
+	@Test
+	fun `a reused address doesn't sign in as the person whose Google account it was (second review H4)`() {
+		val old = dsl.insertInto(PERSON).set(PERSON.FIRST_NAME, "Ada").set(PERSON.LAST_NAME, "Old").set(PERSON.STATUS, "alumni").set(PERSON.ORG_EMAIL, "ada@umd.hack4impact.org")
+			.returningResult(PERSON.ID).fetchSingle().value1()!!
+		dsl.insertInto(org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT).set(org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT.PERSON_ID, old)
+			.set(org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT.TOOL, "google").set(org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT.EXTERNAL_ID, "sub-old")
+			.set(org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT.EXTERNAL_LOGIN, "ada@umd.hack4impact.org").execute()
+		fun signIn(subject: String) = oidcLogin().idToken { it.subject(subject).claim("email", "ada@umd.hack4impact.org").claim("email_verified", true).claim("hd", "umd.hack4impact.org") }
+		mvc.get("/api/me") { with(signIn("sub-old")) }.andExpect { jsonPath("$.personId") { value(old.toString()) } }
+		// A new Google account at the same address (the old one deleted, the address given to someone new): not Ada.
+		mvc.get("/api/me") { with(signIn("sub-new")) }.andExpect { jsonPath("$.personId") { doesNotExist() } }
 	}
 
 	@Test

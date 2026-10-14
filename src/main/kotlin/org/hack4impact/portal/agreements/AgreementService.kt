@@ -105,7 +105,7 @@ class AgreementService(
 
 	private fun sendProjectAgreementsNow(projectId: UUID?): Int {
 		val template = activeTemplate("project") ?: return 0
-		val waiting = dsl.select(PROJECT_MEMBER.PROJECT_ID, PROJECT_MEMBER.PERSON_ID, PROJECT.NAME).from(PROJECT_MEMBER)
+		val waiting = dsl.select(PROJECT_MEMBER.PROJECT_ID, PROJECT_MEMBER.PERSON_ID, PROJECT.NAME, PROJECT_MEMBER.ADDED_AT).from(PROJECT_MEMBER)
 			.join(PROJECT).on(PROJECT.ID.eq(PROJECT_MEMBER.PROJECT_ID))
 			.where(
 				PROJECT_MEMBER.REMOVED_AT.isNull, PROJECT_MEMBER.AGREEMENT_STATUS.eq("pending"), PROJECT.STATUS.`in`(LIVE_PROJECTS),
@@ -115,6 +115,9 @@ class AgreementService(
 		var sent = 0
 		for (w in waiting) {
 			val (project, person, projectName) = Triple(w.value1()!!, w.value2()!!, w.value3()!!)
+			// Declined since they joined: not sent again (the leads were told). Removing and re-adding them starts over
+			// (second review M1).
+			if (dsl.fetchExists(AGREEMENT, AGREEMENT.PERSON_ID.eq(person), AGREEMENT.PROJECT_ID.eq(project), AGREEMENT.STATUS.eq("declined"), AGREEMENT.UPDATED_AT.ge(w.value4()))) continue
 			val existing = dsl.selectFrom(AGREEMENT)
 				.where(AGREEMENT.PERSON_ID.eq(person), AGREEMENT.PROJECT_ID.eq(project), AGREEMENT.STATUS.`in`("draft", "sent", "signed")).fetchOne()
 			when {

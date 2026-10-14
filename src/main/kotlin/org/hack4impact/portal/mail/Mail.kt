@@ -38,8 +38,9 @@ data class MailProperties(val mode: String = "log", val from: String = "noreply@
 
 @Configuration(proxyBeanMethods = false)
 class MailConfiguration {
+	/** Not named `mailSender`: Spring Boot's own JavaMailSender has that name once `spring.mail.host` is set (smtp mode). */
 	@Bean
-	fun mailSender(properties: MailProperties, adapters: AdapterProperties, smtp: ObjectProvider<JavaMailSender>): MailSender {
+	fun portalMailSender(properties: MailProperties, adapters: AdapterProperties, smtp: ObjectProvider<JavaMailSender>): MailSender {
 		val log = LoggerFactory.getLogger(MailSender::class.java)
 		return when (properties.mode) {
 			"gmail" -> {
@@ -91,7 +92,10 @@ class Mailer(private val sender: MailSender, private val dsl: DSLContext, privat
 
 	/** Returns whether it was sent; true when it waits for the transaction to commit. */
 	fun send(email: Email, to: String, registration: UUID? = null, person: UUID? = null): Boolean {
-		if (!TransactionSynchronizationManager.isSynchronizationActive()) return deliver(email, to, registration, person)
+		// Only a real transaction is waited for: a NOT_SUPPORTED listener has synchronization but nothing to commit.
+		if (!TransactionSynchronizationManager.isSynchronizationActive() || !TransactionSynchronizationManager.isActualTransactionActive()) {
+			return deliver(email, to, registration, person)
+		}
 		TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
 			override fun afterCommit() {
 				deliver(email, to, registration, person)

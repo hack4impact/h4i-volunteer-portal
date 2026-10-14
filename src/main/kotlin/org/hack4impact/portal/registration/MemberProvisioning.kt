@@ -136,7 +136,10 @@ class MemberProvisioning(
 			return null
 		}
 		return try {
-			val account = google.create(p.firstName!!, p.lastName!!, domain, unit, p.personalEmail ?: p.schoolEmail)
+			val account = google.create(p.firstName!!, p.lastName!!, domain, unit, p.personalEmail ?: p.schoolEmail) { address ->
+				dsl.fetchExists(PERSON, org.jooq.impl.DSL.lower(PERSON.ORG_EMAIL).eq(address.lowercase())) ||
+					dsl.fetchExists(TOOL_ACCOUNT, TOOL_ACCOUNT.TOOL.eq("google"), org.jooq.impl.DSL.lower(TOOL_ACCOUNT.EXTERNAL_LOGIN).eq(address.lowercase()))
+			}
 			dsl.update(PERSON).set(PERSON.ORG_EMAIL, account.email).where(PERSON.ID.eq(person)).execute()
 			dsl.insertInto(TOOL_ACCOUNT).set(TOOL_ACCOUNT.PERSON_ID, person).set(TOOL_ACCOUNT.TOOL, "google").set(TOOL_ACCOUNT.EXTERNAL_ID, account.userId)
 				.set(TOOL_ACCOUNT.EXTERNAL_LOGIN, account.email).set(TOOL_ACCOUNT.STATE, "confirmed").set(TOOL_ACCOUNT.VERIFIED_AT, OffsetDateTime.now()).execute()

@@ -17,10 +17,12 @@ import org.hack4impact.portal.db.tables.references.CHAPTER_MEMBERSHIP
 import org.hack4impact.portal.db.tables.references.CHAPTER_QUESTION
 import org.hack4impact.portal.db.tables.references.CHAPTER_ROLE
 import org.hack4impact.portal.db.tables.references.CLAIM_LINK
+import org.hack4impact.portal.db.tables.references.EMAIL_MESSAGE
 import org.hack4impact.portal.db.tables.references.INSTITUTION
 import org.hack4impact.portal.db.tables.references.NATIONAL_ADMIN
 import org.hack4impact.portal.db.tables.references.PERSON
 import org.hack4impact.portal.db.tables.references.REGISTRATION
+import org.hack4impact.portal.db.tables.references.ROSTER_INVITE
 import org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT
 import org.hack4impact.portal.emptyPortalTables
 import org.hack4impact.portal.mail.MailSender
@@ -56,9 +58,22 @@ import kotlin.test.assertTrue
 class CapturedMail : MailSender {
 	data class Sent(val to: String, val subject: String, val text: String)
 
-	val sent = mutableListOf<Sent>()
-	override fun send(to: String, subject: String, text: String) { sent += Sent(to, subject, text) }
-	fun last(to: String) = sent.last { it.to == to }
+	val sent = java.util.concurrent.CopyOnWriteArrayList<Sent>()
+	var failing = false
+	override fun send(to: String, subject: String, text: String) {
+		check(!failing) { "mail is down" }
+		sent += Sent(to, subject, text)
+	}
+
+	/** Invites and claim links go out after commit, in the background (second review M4): waits a little for them. */
+	fun waitFor(what: String = "the email", done: (List<Sent>) -> Boolean): List<Sent> {
+		val until = System.currentTimeMillis() + 10_000
+		while (!done(sent) && System.currentTimeMillis() < until) Thread.sleep(50)
+		check(done(sent)) { "$what never came" }
+		return sent
+	}
+
+	fun last(to: String) = waitFor("an email to $to") { s -> s.any { it.to == to } }.last { it.to == to }
 }
 
 @TestConfiguration(proxyBeanMethods = false)
@@ -86,6 +101,7 @@ class RegistrationTests(
 	@Autowired private val mail: CapturedMail,
 	@Autowired private val limiter: RateLimiter,
 	@Autowired private val deadline: ClaimDeadline,
+	@Autowired private val outbox: org.springframework.modulith.events.IncompleteEventPublications,
 ) {
 	companion object {
 		@JvmStatic
@@ -146,6 +162,7 @@ class RegistrationTests(
 	fun seed() {
 		dsl.emptyPortalTables()
 		mail.sent.clear()
+		mail.failing = false
 		limiter.reset()
 		server.resetAll()
 		// Google: no address is taken yet; account creation answers with an ID.
@@ -256,6 +273,7 @@ class RegistrationTests(
 		mvc.get("/api/national/claims/preview?chapter=umd") { with(signedIn("lena@hack4impact.org")) }.andExpect { status { isForbidden() } }
 		mvc.get("/api/national/claims/preview?chapter=umd") { with(signedIn("nora@hack4impact.org")) }.andExpect { jsonPath("$.eligible") { value(1) } }
 		json("/api/national/claims/send", """{"chapter":"umd"}""", as_ = "nora@hack4impact.org").andExpect { jsonPath("$.alreadySent") { value(1) } }
+		mail.waitFor { s -> s.count { it.subject.startsWith("Claim") } >= 2 }
 		assertEquals(setOf("ada@umd.edu", "ada@personal.test"), mail.sent.filter { it.subject.startsWith("Claim") }.map { it.to }.toSet()) // every address on file
 		val token = Regex("/claim/([A-Za-z0-9_-]+)").find(mail.last("ada@umd.edu").text)!!.groupValues[1]
 
@@ -316,6 +334,50 @@ class RegistrationTests(
 		assertEquals("approved", reg.status)
 		assertNull(reg.decidedBy) // nobody had to approve
 		assertEquals("active", dsl.select(PERSON.STATUS).from(PERSON).where(PERSON.FIRST_NAME.eq("Grace")).fetchSingle().value1())
+	}
+
+	@Test
+	fun `roster emails go out after the upload, and ones that failed are sent once the outbox retries (second review M4, L6)`() {
+		mail.failing = true
+		json("/api/chapters/umd/roster", """{"csv":"first_name,last_name,school_email,personal_email\nGrace,Hopper,grace@umd.edu,\nAlan,Turing,alan@umd.edu,not-an-email\n"}""", as_ = "lena@hack4impact.org").andExpect {
+			jsonPath("$.invited") { value(1) }
+			jsonPath("$.skipped[0]") { value("row 3: not-an-email isn't an email address") }
+		}
+		val failed = { dsl.fetchCount(EMAIL_MESSAGE, EMAIL_MESSAGE.TEMPLATE.eq("roster_invite"), EMAIL_MESSAGE.STATUS.eq("failed")) > 0 }
+		val until = System.currentTimeMillis() + 10_000
+		while (!failed() && System.currentTimeMillis() < until) Thread.sleep(50)
+		assertTrue(failed())
+		assertNull(dsl.select(ROSTER_INVITE.EMAILED_AT).from(ROSTER_INVITE).fetchSingle().value1())
+
+		mail.failing = false
+		outbox.resubmitIncompletePublications { it.event is RosterInvited }
+		val token = Regex("invite=([A-Za-z0-9_-]+)").find(mail.last("grace@umd.edu").text)!!.groupValues[1]
+		val emailed = { dsl.select(ROSTER_INVITE.EMAILED_AT).from(ROSTER_INVITE).fetchSingle().value1() }
+		val by = System.currentTimeMillis() + 10_000
+		while (emailed() == null && System.currentTimeMillis() < by) Thread.sleep(50)
+		assertNotNull(emailed())
+		json("/api/apply/roster", """{"token":"$token"}""").andExpect { jsonPath("$.details.lastName") { value("Hopper") } }
+
+		outbox.resubmitIncompletePublications { it.event is RosterInvited } // nothing left: no second email
+		Thread.sleep(300)
+		assertEquals(1, mail.sent.count { it.to == "grace@umd.edu" })
+	}
+
+	@Test
+	fun `a roster invitee who types someone else's personal email waits for a lead instead of becoming them (second review H3)`() {
+		val ada = person("Ada", "active", school = "ada@umd.edu")
+		dsl.update(PERSON).set(PERSON.PERSONAL_EMAIL, "ada@personal.test").where(PERSON.ID.eq(ada)).execute()
+		json("/api/chapters/umd/roster", """{"csv":"first_name,last_name,school_email\nMal,Lory,mal@umd.edu\n"}""", as_ = "lena@hack4impact.org")
+		val token = Regex("invite=([A-Za-z0-9_-]+)").find(mail.last("mal@umd.edu").text)!!.groupValues[1]
+		val cookie = json("/api/apply/roster", """{"token":"$token"}""").andReturn().response.getCookie("h4i_applicant")!!
+		linkGitHub(cookie, 556, "mal-gh")
+		val question = body(mvc.get("/api/apply/chapters/umd")).path("questions")[0].path("id").asString()
+		json("/api/apply/me", """{"details":{"firstName":"Mal","lastName":"Lory","graduationYear":2027,"personalEmail":"ada@personal.test"},"answers":{"$question":"x"}}""", cookie, method = "PUT")
+		json("/api/apply/me/submit", "{}", cookie)
+		val reg = dsl.selectFrom(REGISTRATION).where(REGISTRATION.SCHOOL_EMAIL.eq("mal@umd.edu")).fetchSingle()
+		assertEquals("submitted", reg.status) // not approved on its own
+		assertEquals("duplicate", reg.matchStatus) // a typed email is weak evidence: the lead decides
+		assertEquals("ada@umd.edu", dsl.select(PERSON.SCHOOL_EMAIL).from(PERSON).where(PERSON.ID.eq(ada)).fetchSingle().value1()) // Ada untouched
 	}
 
 	@Test

@@ -36,6 +36,7 @@ class RegistrationService(
 	private val matcher: RegistrationMatcher,
 	private val provisioning: MemberProvisioning,
 	private val agreements: org.hack4impact.portal.agreements.AgreementService,
+	private val events: org.springframework.context.ApplicationEventPublisher,
 	@Value("\${portal.base-url}") private val baseUrl: String,
 ) {
 	private val json = JsonMapper.builder().build()
@@ -236,8 +237,10 @@ class RegistrationService(
 		dsl.update(REGISTRATION).set(REGISTRATION.STATUS, "submitted").set(REGISTRATION.SUBMITTED_AT, OffsetDateTime.now())
 			.set(REGISTRATION.MATCH_STATUS, match.status).set(REGISTRATION.MATCHED_PERSON_IDS, match.people.keys.toTypedArray())
 			.where(REGISTRATION.ID.eq(registration)).execute()
-		if (r.kind == "roster" && match.status != "duplicate") {
-			provisioning.provision(registration, match.people.keys.singleOrNull(), null)
+		// Approved at once only when the roster invitee matches nobody; any match waits for a lead, like an application
+		// (second review H3: evidence the applicant typed must never merge them into someone else's record).
+		if (r.kind == "roster" && match.status == "new") {
+			provisioning.provision(registration, null, null)
 		}
 	}
 
@@ -372,13 +375,15 @@ class RegistrationService(
 		val col = { name: String -> header.indexOf(name) }
 		if (col("first_name") < 0 || col("last_name") < 0 || col("school_email") < 0) bad("The first line needs columns first_name, last_name, school_email (and optionally personal_email)")
 		if (lines.size > 501) bad("At most 500 people per roster")
-		var invited = 0
+		val invited = mutableListOf<UUID>()
 		val skipped = mutableListOf<String>()
 		for ((n, line) in lines.drop(1).withIndex()) {
 			val cells = csvCells(line)
 			fun cell(name: String) = col(name).takeIf { it >= 0 }?.let { cells.getOrNull(it) }?.takeIf { it.isNotEmpty() }
 			val first = cell("first_name"); val last = cell("last_name"); val school = cell("school_email")?.lowercase()
 			if (first == null || last == null || school == null || !EMAIL.matches(school)) { skipped += "row ${n + 2}: needs a name and a school email"; continue }
+			val personal = cell("personal_email")?.lowercase()
+			if (personal != null && !EMAIL.matches(personal)) { skipped += "row ${n + 2}: $personal isn't an email address"; continue } // second review L6
 			val sameAddress = ROSTER_INVITE.CHAPTER_ID.eq(chapterId).and(DSL.lower(ROSTER_INVITE.SCHOOL_EMAIL).eq(school))
 			val open = ROSTER_INVITE.STATUS.`in`("sent", "started")
 			// An open invite whose link has run out no longer counts: mark it expired so the address can be invited again (review M3).
@@ -386,15 +391,15 @@ class RegistrationService(
 			if (dsl.fetchExists(ROSTER_INVITE, sameAddress, ROSTER_INVITE.STATUS.ne("expired"))) {
 				skipped += "row ${n + 2}: $school is already invited"; continue
 			}
-			val token = Tokens.new()
-			dsl.insertInto(ROSTER_INVITE).set(ROSTER_INVITE.CHAPTER_ID, chapterId).set(ROSTER_INVITE.UPLOADED_BY, actor).set(ROSTER_INVITE.FIRST_NAME, first)
-				.set(ROSTER_INVITE.LAST_NAME, last).set(ROSTER_INVITE.SCHOOL_EMAIL, school).set(ROSTER_INVITE.PERSONAL_EMAIL, cell("personal_email")?.lowercase())
-				.set(ROSTER_INVITE.TOKEN_HASH, Tokens.hash(token)).set(ROSTER_INVITE.EXPIRES_AT, OffsetDateTime.now().plus(LINK_LIFETIME)).execute()
-			mailer.send(Emails.rosterInvite(first, chapter.name!!, "${baseUrl.trimEnd('/')}/join/${chapter.code}?invite=$token"), school)
-			invited++
+			// A placeholder token nobody has: the email, sent after commit, carries a new one (second review M4).
+			invited += dsl.insertInto(ROSTER_INVITE).set(ROSTER_INVITE.CHAPTER_ID, chapterId).set(ROSTER_INVITE.UPLOADED_BY, actor).set(ROSTER_INVITE.FIRST_NAME, first)
+				.set(ROSTER_INVITE.LAST_NAME, last).set(ROSTER_INVITE.SCHOOL_EMAIL, school).set(ROSTER_INVITE.PERSONAL_EMAIL, personal)
+				.set(ROSTER_INVITE.TOKEN_HASH, Tokens.hash(Tokens.new())).set(ROSTER_INVITE.EXPIRES_AT, OffsetDateTime.now().plus(LINK_LIFETIME))
+				.returning(ROSTER_INVITE.ID).fetchSingle().id!!
 		}
+		if (invited.isNotEmpty()) events.publishEvent(RosterInvited(invited))
 		audit(actor, "roster.upload", "chapter", chapterId, chapterId)
-		return RosterResult(invited, skipped, rosterInvites(chapterId))
+		return RosterResult(invited.size, skipped, rosterInvites(chapterId))
 	}
 
 	fun rosterInvites(chapterId: UUID): List<RosterInviteView> =
@@ -425,25 +430,25 @@ class RegistrationService(
 
 	/**
 	 * Sends claim links (PRD: to every address on file; 14 days, single use) to people without an open one, at most
-	 * [limit] per call so a mistake can't email everyone at once.
+	 * [limit] per call so a mistake can't email everyone at once. The emails go out after commit, in the background.
 	 */
+	@Transactional
 	fun sendClaims(chapter: String?, limit: Int, actor: UUID?): Int {
 		val open = dsl.select(CLAIM_LINK.PERSON_ID).from(CLAIM_LINK).where(CLAIM_LINK.EXPIRES_AT.gt(OffsetDateTime.now()), CLAIM_LINK.USED_AT.isNull).fetch().map { it.value1() }.toSet()
-		var sent = 0
+		val created = mutableListOf<UUID>()
 		for (p in claimable(chapter)) {
-			if (sent >= limit.coerceIn(1, 1000)) break
+			if (created.size >= limit.coerceIn(1, 1000)) break
 			if (p.value1() in open) continue
 			val addresses = listOfNotNull(p.value3(), p.value4(), p.value5()).map { it.trim().lowercase() }.distinct()
 			if (addresses.isEmpty()) continue
-			val token = Tokens.new()
-			dsl.insertInto(CLAIM_LINK).set(CLAIM_LINK.PERSON_ID, p.value1()).set(CLAIM_LINK.TOKEN_HASH, Tokens.hash(token)).set(CLAIM_LINK.SENT_TO, addresses.toTypedArray())
-				.set(CLAIM_LINK.EXPIRES_AT, OffsetDateTime.now().plus(LINK_LIFETIME)).set(CLAIM_LINK.CREATED_BY, actor).execute()
-			val email = Emails.claim(p.value2() ?: "there", "${baseUrl.trimEnd('/')}/claim/$token", LINK_LIFETIME.toDays().toInt())
-			addresses.forEach { mailer.send(email, it, person = p.value1()) }
-			sent++
+			// As with roster invites, the email carries a new token (second review M4).
+			created += dsl.insertInto(CLAIM_LINK).set(CLAIM_LINK.PERSON_ID, p.value1()).set(CLAIM_LINK.TOKEN_HASH, Tokens.hash(Tokens.new())).set(CLAIM_LINK.SENT_TO, addresses.toTypedArray())
+				.set(CLAIM_LINK.EXPIRES_AT, OffsetDateTime.now().plus(LINK_LIFETIME)).set(CLAIM_LINK.CREATED_BY, actor)
+				.returning(CLAIM_LINK.ID).fetchSingle().id!!
 		}
-		audit(actor, "claims.send", "chapter", null, null, org.hack4impact.portal.adapters.HttpJson.MAPPER.writeValueAsString(mapOf("sent" to sent, "chapter" to chapter)))
-		return sent
+		if (created.isNotEmpty()) events.publishEvent(ClaimLinksCreated(created))
+		audit(actor, "claims.send", "chapter", null, null, org.hack4impact.portal.adapters.HttpJson.MAPPER.writeValueAsString(mapOf("sent" to created.size, "chapter" to chapter)))
+		return created.size
 	}
 
 	// ---- Helpers --------------------------------------------------------------------------------------------------------

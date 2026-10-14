@@ -13,6 +13,7 @@ import org.springframework.modulith.events.ApplicationModuleListener
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import kotlin.system.exitProcess
 
@@ -24,8 +25,8 @@ import kotlin.system.exitProcess
 data class SyncRequested(val trigger: String, val tools: Set<Tool>? = null)
 
 object SyncTriggers {
-	/** What may start a sync; `sync_run_trigger_check` (V14) allows exactly these (a test keeps them in step). */
-	val ALL = setOf("schedule", "release", "manual", "agreement", "rule", "change")
+	/** What may start a sync; `sync_run_trigger_check` (V16) allows exactly these (a test keeps them in step). */
+	val ALL = setOf("schedule", "release", "manual", "agreement", "rule", "change", "recovery")
 }
 
 @Component
@@ -52,7 +53,12 @@ class SyncListener(private val engine: SyncEngine, @org.springframework.beans.fa
 	private val tools = mutableSetOf<Tool>()
 	private var trigger: String? = null
 
-	@ApplicationModuleListener
+	/**
+	 * Outside any transaction (second review H2): each run, change and created resource commits as it happens, so a
+	 * failure later on can't roll back the record of changes already made in the tools, and no row stays locked for
+	 * the whole run.
+	 */
+	@ApplicationModuleListener(propagation = Propagation.NOT_SUPPORTED)
 	fun on(event: SyncRequested) {
 		if (!enabled) return
 		synchronized(this) {
@@ -79,6 +85,31 @@ class SyncListener(private val engine: SyncEngine, @org.springframework.beans.fa
 				log.error("Sync ({}) failed", which, e)
 			}
 		}
+	}
+}
+
+/**
+ * After a crash (second review L5). A request that arrives during a run is merged into the next one and its outbox
+ * entry completes at once, so if the app stops mid-run, the outbox replays only the run's own request. Such a run is
+ * left "running"; at startup, holding the sync lock (so no live run is caught), those are marked failed and every
+ * tool is synced once, which covers whatever was waiting.
+ */
+@Component
+class SyncRecovery(private val dsl: org.jooq.DSLContext, private val locks: RunLocks, private val requests: SyncRequests) {
+	private val log = LoggerFactory.getLogger(javaClass)
+
+	@org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent::class)
+	fun recover(): Int {
+		val run = org.hack4impact.portal.db.tables.references.SYNC_RUN
+		val interrupted = locks.exclusive(RunLocks.SYNC) {
+			dsl.update(run).set(run.STATUS, "failed").set(run.ERROR, "The portal stopped during this run").set(run.FINISHED_AT, java.time.OffsetDateTime.now())
+				.where(run.STATUS.eq("running")).execute()
+		}
+		if (interrupted > 0) {
+			log.warn("{} sync runs were cut short when the portal stopped; syncing every tool once", interrupted)
+			requests.request("recovery")
+		}
+		return interrupted
 	}
 }
 
