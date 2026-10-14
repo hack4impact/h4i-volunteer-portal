@@ -1,12 +1,12 @@
 import { Banner, Link as PrimerLink } from '@primer/react'
 import { Link } from 'react-router'
 import { type ChapterOverview, type ChapterSync, type MemberRow } from '../api/client'
-import { CHANGE_LABEL, ROLE_LABEL, Status } from '../components/Status'
+import { CHANGE_LABEL, OUTCOME_LABEL, ROLE_LABEL, Status } from '../components/Status'
 import { ToolName } from '../components/ToolIcon'
 import { resourceTools } from '../api/tools'
 
 
-/** Chapter overview: leads, tool coverage, sync dry runs, and the side pane with counts and links. */
+/** Chapter overview: leads, tool coverage, each tool's latest sync, and the side pane with counts and links. */
 export function Overview({ chapter, members, sync }: { chapter: ChapterOverview; members: MemberRow[] | null; sync: ChapterSync | null }) {
   const leads = (members ?? []).filter((m) => m.chapterRole)
   const active = (members ?? []).filter((m) => m.status === 'active' || m.status === 'removal_requested')
@@ -82,14 +82,14 @@ export function Overview({ chapter, members, sync }: { chapter: ChapterOverview;
   )
 }
 
-/** The latest dry run per tool. Nothing is applied yet: these are the changes a real run would make. */
+/** Each tool's latest run: a dry run's plan, or what a run out of dry run changed. */
 function SyncBox({ sync }: { sync: ChapterSync | null }) {
   const shown = sync?.changes.slice(0, 10) ?? []
   // Counts cover every change; the API sends at most 200 rows.
   const total = (sync?.tools ?? []).reduce((n, t) => n + t.adds + t.changes + t.removals + t.drift + t.unmatchedAccounts + t.missingResources, 0)
   return (
     <section className="box" aria-labelledby="sync">
-      <div className="box-head" id="sync">Sync (dry run)</div>
+      <div className="box-head" id="sync">Sync</div>
       {!sync || sync.tools.length === 0 ? (
         <div className="box-row muted">No sync has run yet.</div>
       ) : (
@@ -99,7 +99,7 @@ function SyncBox({ sync }: { sync: ChapterSync | null }) {
               <ToolName tool={t.tool} />
               <span>
                 <Status tone={t.status === 'completed' ? 'ok' : t.status === 'paused' ? 'warn' : 'danger'}>
-                  {t.status === 'completed' ? 'Dry run' : t.status === 'paused' ? 'Paused' : 'Failed'}
+                  {t.status === 'completed' ? (t.mode === 'apply' ? 'Applied' : 'Dry run') : t.status === 'paused' ? 'Paused' : 'Failed'}
                 </Status>{' '}
                 <span className="muted">
                   {summary(t)} · {new Date(t.ranAt).toLocaleString()}
@@ -115,6 +115,7 @@ function SyncBox({ sync }: { sync: ChapterSync | null }) {
               </span>{' '}
               <span className="muted">
                 {c.fromAccess && c.toAccess ? `${c.fromAccess} → ${c.toAccess}` : (c.toAccess ?? '')}
+                {c.mode === 'apply' && c.outcome ? ` · ${OUTCOME_LABEL[c.outcome] ?? c.outcome}` : ''}
               </span>
             </div>
           ))}
@@ -128,10 +129,12 @@ function SyncBox({ sync }: { sync: ChapterSync | null }) {
 }
 
 function summary(t: ChapterSync['tools'][number]) {
+  // A dry run's counts are plans; a run out of dry run tried them (each change's result is in its row).
+  const done = t.mode === 'apply'
   const parts = [
-    [t.adds, 'to add'],
-    [t.changes, 'to change'],
-    [t.removals, 'to remove'],
+    [t.adds, done ? 'adds' : 'to add'],
+    [t.changes, done ? 'changes' : 'to change'],
+    [t.removals, done ? 'removals' : 'to remove'],
     [t.drift, 'drift'],
     [t.unmatchedAccounts, 'unlinked'],
     [t.missingResources, 'missing'],

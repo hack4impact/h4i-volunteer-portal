@@ -4,7 +4,7 @@ import { filterMembers } from './MembersTable'
 
 const member = (name: string, over: Partial<MemberRow> = {}): MemberRow => ({
   personId: name, name, email: `${name.toLowerCase()}@hack4impact.org`, status: 'active', kind: 'student',
-  chapterRole: null, title: null, projects: [], accounts: [], claimed: false, ...over,
+  chapterRole: null, title: null, projects: [], accounts: [], claimed: false, claimable: false, claimLinkSentAt: null, ...over,
 })
 
 describe('filterMembers', () => {

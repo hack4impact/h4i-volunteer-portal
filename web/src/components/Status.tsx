@@ -30,6 +30,12 @@ export const ROLE_LABEL: Record<string, string> = {
 export { TOOL_NAME } from '../api/tools'
 
 /** Planned sync changes, in words. */
+/** What an applying run did with a change (sync_change.outcome). */
+export const OUTCOME_LABEL: Record<string, string> = {
+  applied: 'Done', invited: 'Invited', waiting: 'Waiting on them', held: 'Held for national', failed: 'Failed',
+  dead_letter: 'Gave up', skipped: 'Skipped', queued: 'On the admin queue',
+}
+
 export const CHANGE_LABEL: Record<string, string> = {
   add: 'Add',
   change: 'Change access',

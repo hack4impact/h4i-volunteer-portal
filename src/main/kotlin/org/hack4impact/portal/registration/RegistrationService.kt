@@ -441,15 +441,42 @@ class RegistrationService(
 			if (p.value1() in open) continue
 			val addresses = listOfNotNull(p.value3(), p.value4(), p.value5()).map { it.trim().lowercase() }.distinct()
 			if (addresses.isEmpty()) continue
-			// As with roster invites, the email carries a new token (second review M4).
-			created += dsl.insertInto(CLAIM_LINK).set(CLAIM_LINK.PERSON_ID, p.value1()).set(CLAIM_LINK.TOKEN_HASH, Tokens.hash(Tokens.new())).set(CLAIM_LINK.SENT_TO, addresses.toTypedArray())
-				.set(CLAIM_LINK.EXPIRES_AT, OffsetDateTime.now().plus(LINK_LIFETIME)).set(CLAIM_LINK.CREATED_BY, actor)
-				.returning(CLAIM_LINK.ID).fetchSingle().id!!
+			created += newClaimLink(p.value1()!!, addresses, actor)
 		}
 		if (created.isNotEmpty()) events.publishEvent(ClaimLinksCreated(created))
 		audit(actor, "claims.send", "chapter", null, null, org.hack4impact.portal.adapters.HttpJson.MAPPER.writeValueAsString(mapOf("sent" to created.size, "chapter" to chapter)))
 		return created.size
 	}
+
+	/**
+	 * Sends one person a new claim link (national, from the members table): for someone whose link ran out, went
+	 * astray, or who was never sent one. An earlier open link stops working, so only the newest one claims. The
+	 * one-month deadline still counts from their first link (decision 39).
+	 */
+	@Transactional
+	fun sendClaim(personId: UUID, actor: UUID?): ClaimSent {
+		val p = dsl.selectFrom(PERSON).where(PERSON.ID.eq(personId), PERSON.DELETED_AT.isNull).forUpdate().fetchOne()
+			?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "No such person")
+		val conflict = { why: String -> ResponseStatusException(HttpStatus.CONFLICT, why) }
+		if (p.claimedAt != null) throw conflict("${p.firstName} already claimed their record")
+		if (p.sourceId == null) throw conflict("${p.firstName} joined through the portal, so there's no imported record to claim")
+		if (p.status == "removed") throw conflict("${p.firstName} was removed")
+		val addresses = listOfNotNull(p.schoolEmail, p.personalEmail, p.orgEmail).map { it.trim().lowercase() }.filter { it.isNotEmpty() }.distinct()
+		if (addresses.isEmpty()) throw conflict("${p.firstName} has no email address on file")
+		val now = OffsetDateTime.now()
+		dsl.update(CLAIM_LINK).set(CLAIM_LINK.EXPIRES_AT, now)
+			.where(CLAIM_LINK.PERSON_ID.eq(personId), CLAIM_LINK.USED_AT.isNull, CLAIM_LINK.EXPIRES_AT.gt(now)).execute()
+		val link = newClaimLink(personId, addresses, actor)
+		events.publishEvent(ClaimLinksCreated(listOf(link)))
+		audit(actor, "claims.send_one", "person", personId, null)
+		return ClaimSent(addresses.size, dsl.select(CLAIM_LINK.EXPIRES_AT).from(CLAIM_LINK).where(CLAIM_LINK.ID.eq(link)).fetchSingle().value1()!!)
+	}
+
+	/** A claim link row; the email, sent after commit, carries a new token (second review M4), so this one is a placeholder. */
+	private fun newClaimLink(person: UUID, addresses: List<String>, actor: UUID?): UUID =
+		dsl.insertInto(CLAIM_LINK).set(CLAIM_LINK.PERSON_ID, person).set(CLAIM_LINK.TOKEN_HASH, Tokens.hash(Tokens.new())).set(CLAIM_LINK.SENT_TO, addresses.toTypedArray())
+			.set(CLAIM_LINK.EXPIRES_AT, OffsetDateTime.now().plus(LINK_LIFETIME)).set(CLAIM_LINK.CREATED_BY, actor)
+			.returning(CLAIM_LINK.ID).fetchSingle().id!!
 
 	// ---- Helpers --------------------------------------------------------------------------------------------------------
 

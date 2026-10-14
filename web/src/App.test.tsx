@@ -99,7 +99,7 @@ describe('App', () => {
     render(<App />)
     expect(await screen.findByRole('heading', { name: 'Hack4Impact UMD' })).toBeInTheDocument()
     expect(screen.getByText('Registration link')).toHaveAttribute('href', 'https://join.hack4impact.org/umd')
-    const sync = await screen.findByRole('region', { name: 'Sync (dry run)' })
+    const sync = await screen.findByRole('region', { name: 'Sync' })
     expect(within(sync).getByText('Paused')).toBeInTheDocument() // a paused tool says so in words
     expect(within(sync).getByText(/1 to add, 1 drift/)).toBeInTheDocument()
     expect(within(sync).getByText('Not granted by the portal')).toBeInTheDocument()
@@ -108,10 +108,36 @@ describe('App', () => {
     const table = await screen.findByRole('table', { name: 'Members' })
     expect(within(table).getByText('Alumni')).toBeInTheDocument() // status in words, not just a colored dot
     expect(within(table).getByText('RISE DC Portal')).toBeInTheDocument()
+    expect(within(table).queryByRole('button', { name: /claim link/ })).not.toBeInTheDocument() // national only
 
     await userEvent.type(screen.getByRole('textbox', { name: 'Filter members' }), 'lena')
     await waitFor(() => expect(within(table).queryByText('Alan Alumnus')).not.toBeInTheDocument())
     expect(screen.getByText('1 of 2')).toBeInTheDocument()
+  })
+
+  it('lets national send one imported member a claim link from the members table', async () => {
+    window.history.pushState({}, '', '/chapters/umd/members')
+    api({
+      '/api/me': [200, { ...me([umd]), nationalAdmin: true }],
+      '/api/chapters/umd': [200, { id: 'c1', code: 'umd', name: 'Hack4Impact UMD', status: 'active', role: 'lead', stats: { activeMembers: 2, alumni: 1, liveProjects: 1, leads: 1 }, registrationLink: null }],
+      '/api/chapters/umd/sync': [200, { tools: [], changes: [] }],
+      '/api/chapters/umd/members': [200, [
+        { personId: 'p1', name: 'Lena Lead', email: 'lena@hack4impact.org', status: 'active', kind: 'student', chapterRole: 'lead', title: null, projects: [], accounts: [], claimed: true, claimable: false, claimLinkSentAt: null },
+        { personId: 'p2', name: 'Alan Alumnus', email: null, status: 'alumni', kind: 'student', chapterRole: null, title: null, projects: [], accounts: [], claimed: false, claimable: true, claimLinkSentAt: null },
+      ]],
+      'POST /api/national/claims/people/p2': [200, { addresses: 2, expiresAt: '2026-10-27T12:00:00Z' }],
+    })
+    render(<App />)
+    const table = await screen.findByRole('table', { name: 'Members' })
+    expect(within(table).getAllByRole('button', { name: 'Send claim link' })).toHaveLength(1) // only the imported, unclaimed one
+    await userEvent.click(within(table).getByRole('button', { name: 'Send claim link' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Send a claim link' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Send' }))
+    expect(await within(dialog).findByText(/Sent to 2 addresses on file/)).toBeInTheDocument()
+    const calls = () => vi.mocked(fetch).mock.calls.map(([r]) => r as Request)
+    expect(calls().some((r) => r.method === 'POST' && r.url.endsWith('/api/national/claims/people/p2'))).toBe(true)
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Done' }))
+    expect(within(table).getByRole('button', { name: 'Send a new link' })).toBeInTheDocument()
   })
 
   it('shows the adoption report, the people behind a resource, and lets a lead link an unmatched channel', async () => {
@@ -168,7 +194,10 @@ describe('App', () => {
       resources: [resource('r1', 'slack', 'umd-rise-dc', false), resource('r2', 'github', 'umd-rise-dc', true)],
       notion: { status: 'planned', title: 'RISE DC (Fall 2026)', pageId: null, parentPageId: 'x', parentPath: 'Hack4Impact-UMD / Long Term Success', matchedBy: 'tag lts' },
       preview: { people: 1, grants: 1, awaitingAgreement: 1, asIfActive: true },
-      planned: [{ kind: 'create_resource', tool: 'slack', resource: 'umd-rise-dc', person: null, accountId: null, fromAccess: null, toAccess: null }],
+      planned: [
+        { kind: 'create_resource', tool: 'github', resource: 'umd-rise-dc', person: null, accountId: null, fromAccess: null, toAccess: null, mode: 'dry_run', outcome: null },
+        { kind: 'add', tool: 'slack', resource: 'umd-rise-dc', person: 'Ada Lovelace', accountId: 'U1', fromAccess: null, toAccess: 'write', mode: 'apply', outcome: 'applied' },
+      ],
       lastDryRunAt: '2026-10-10T12:00:00Z', plannedOutOfDate: true,
       activity: [
         { at: '2026-10-11T12:00:00Z', kind: 'sync', text: 'Updated access for 5 people', actor: null, details: ['Ada Test added to #umd-rise-dc', 'Bo Test added to #umd-rise-dc', 'Cy Test added to #umd-rise-dc', 'Di Test added to #umd-rise-dc', 'Ed Test added to #umd-rise-dc'] },
@@ -209,6 +238,10 @@ describe('App', () => {
     expect(screen.getByText(/The project changed since then/)).toBeInTheDocument()
     expect(within(screen.getByRole('list', { name: 'Team' })).getByText('Ada Lovelace')).toBeInTheDocument() // the team, in the sidebar
     expect(screen.getByLabelText('Project agreement')).toHaveTextContent('0 of 1 signed')
+    // A dry run's plan and what a tool out of dry run did are shown apart, the latter with its result.
+    expect(within(screen.getByRole('table', { name: 'Would change' })).getAllByRole('row')).toHaveLength(2)
+    expect(within(screen.getByRole('table', { name: 'Changed' })).getByText('Done')).toBeInTheDocument()
+    expect(screen.queryByText(/every tool is in dry run/)).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Manage team' })) // changes happen in a dialog
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Agreement not sent yet')).toBeInTheDocument()

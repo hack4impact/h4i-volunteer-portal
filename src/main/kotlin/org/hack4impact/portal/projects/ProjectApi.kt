@@ -43,7 +43,7 @@ data class ProjectDetail(
 	val notion: NotionPlan,
 	/** Who would get access; for a draft project, as if it were active. */
 	val preview: AccessPreview,
-	/** The latest dry run's planned changes for this project's resources. */
+	/** Each tool's latest run for this project's resources: what a dry run would change, or what an applying run did. */
 	val planned: List<PlannedChange>,
 	val lastDryRunAt: OffsetDateTime?,
 	/** The project changed after the latest dry run, so [planned] may be out of date. */

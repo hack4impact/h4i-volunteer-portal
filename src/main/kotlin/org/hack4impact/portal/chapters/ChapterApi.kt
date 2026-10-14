@@ -51,6 +51,10 @@ data class MemberRow(
 	val accounts: List<AccountSummary>,
 	/** Whether the person has confirmed their details (claimed or registered). */
 	val claimed: Boolean,
+	/** Imported, not claimed, not removed, with an address on file: national can send them a claim link. */
+	val claimable: Boolean = false,
+	/** When their current claim link (unused, not expired) was made, if they have one. */
+	val claimLinkSentAt: java.time.OffsetDateTime? = null,
 )
 
 /** One tool account: [state] is unverified, invited, accepted, confirmed, suspended or removed. */
@@ -75,7 +79,11 @@ data class ToolSync(
 	val creates: Int,
 )
 
-/** [kind] is add, change, remove, drift, unmatched_account, missing_resource or create_resource. */
+/**
+ * A change from a tool's latest run. [kind] is add, change, remove, drift, unmatched_account, missing_resource or
+ * create_resource. [mode] dry_run: it would be made; apply: the run made or tried it, with [outcome] (applied,
+ * invited, waiting, held, failed, dead_letter, skipped, queued).
+ */
 data class PlannedChange(
 	val kind: String,
 	val tool: String,
@@ -84,4 +92,6 @@ data class PlannedChange(
 	val accountId: String?,
 	val fromAccess: String?,
 	val toAccess: String?,
+	val mode: String = "dry_run",
+	val outcome: String? = null,
 )

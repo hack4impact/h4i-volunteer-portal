@@ -189,4 +189,11 @@ class ClaimController(private val viewers: Viewers, private val registrations: R
 		registrations.sendClaims(input.chapter, input.limit, viewer.personId)
 		return registrations.claimPreview(input.chapter)
 	}
+
+	/** One person's claim link, sent again or for the first time; any earlier link of theirs stops working. */
+	@PostMapping("/people/{personId}")
+	fun sendOne(@AuthenticationPrincipal user: OidcUser, @PathVariable personId: java.util.UUID): ClaimSent {
+		val viewer = national(user)
+		return registrations.sendClaim(personId, viewer.personId)
+	}
 }

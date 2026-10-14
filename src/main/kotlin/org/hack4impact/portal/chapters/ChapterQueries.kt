@@ -4,6 +4,7 @@ import org.hack4impact.portal.auth.Viewer
 import org.hack4impact.portal.db.tables.references.CHAPTER
 import org.hack4impact.portal.db.tables.references.CHAPTER_MEMBERSHIP
 import org.hack4impact.portal.db.tables.references.CHAPTER_ROLE
+import org.hack4impact.portal.db.tables.references.CLAIM_LINK
 import org.hack4impact.portal.db.tables.references.NATIONAL_ADMIN
 import org.hack4impact.portal.db.tables.references.PERSON
 import org.hack4impact.portal.db.tables.references.PROJECT
@@ -71,13 +72,14 @@ class ChapterQueries(private val dsl: DSLContext) {
 			.distinctBy { it.tool }.filter { it.tool != null }
 		val runIds = latest.map { it.id!! }
 		val rows = dsl.select(SYNC_CHANGE.RUN_ID, SYNC_CHANGE.KIND, RESOURCE.TOOL, RESOURCE.NAME, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME,
-			SYNC_CHANGE.ACCOUNT_ID, SYNC_CHANGE.FROM_ACCESS, SYNC_CHANGE.TO_ACCESS)
+			SYNC_CHANGE.ACCOUNT_ID, SYNC_CHANGE.FROM_ACCESS, SYNC_CHANGE.TO_ACCESS, SYNC_CHANGE.OUTCOME)
 			.from(SYNC_CHANGE)
 			.join(RESOURCE).on(RESOURCE.ID.eq(SYNC_CHANGE.RESOURCE_ID))
 			.leftJoin(PERSON).on(PERSON.ID.eq(SYNC_CHANGE.PERSON_ID))
 			.where(SYNC_CHANGE.RUN_ID.`in`(runIds), RESOURCE.CHAPTER_ID.eq(chapterId))
 			.orderBy(RESOURCE.TOOL, RESOURCE.NAME, SYNC_CHANGE.KIND)
 			.fetch()
+		val modes = latest.associate { it.id!! to it.mode!! }
 		val counts = rows.groupBy { it.value1()!! }.mapValues { (_, r) -> r.groupingBy { it.value2()!! }.eachCount() }
 		return ChapterSync(
 			tools = latest.map { run ->
@@ -89,7 +91,7 @@ class ChapterQueries(private val dsl: DSLContext) {
 			}.sortedBy { it.tool },
 			changes = rows.take(limit).map {
 				val first = it.value7()?.takeIf { p -> p.isNotBlank() } ?: it.value5()
-				PlannedChange(it.value2()!!, it.value3()!!, it.value4()!!, first?.let { f -> "$f ${it.value6()}" }, it.value8(), it.value9(), it.value10())
+				PlannedChange(it.value2()!!, it.value3()!!, it.value4()!!, first?.let { f -> "$f ${it.value6()}" }, it.value8(), it.value9(), it.value10(), modes.getValue(it.value1()!!), it.value11())
 			},
 		)
 	}
@@ -101,7 +103,7 @@ class ChapterQueries(private val dsl: DSLContext) {
 	fun members(chapterId: UUID): List<MemberRow> {
 		val people = dsl.select(
 			PERSON.ID, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME, PERSON.ORG_EMAIL, PERSON.SCHOOL_EMAIL,
-			PERSON.STATUS, PERSON.KIND, PERSON.CLAIMED_AT,
+			PERSON.STATUS, PERSON.KIND, PERSON.CLAIMED_AT, PERSON.SOURCE_ID, PERSON.PERSONAL_EMAIL,
 		).from(PERSON)
 			.join(CHAPTER_MEMBERSHIP).on(CHAPTER_MEMBERSHIP.PERSON_ID.eq(PERSON.ID))
 			.where(CHAPTER_MEMBERSHIP.CHAPTER_ID.eq(chapterId), CHAPTER_MEMBERSHIP.LEFT_ON.isNull, PERSON.DELETED_AT.isNull)
@@ -114,6 +116,9 @@ class ChapterQueries(private val dsl: DSLContext) {
 			.join(PROJECT).on(PROJECT.ID.eq(PROJECT_MEMBER.PROJECT_ID))
 			.where(PROJECT.CHAPTER_ID.eq(chapterId), PROJECT.STATUS.`in`(LIVE), PROJECT_MEMBER.REMOVED_AT.isNull, PROJECT_MEMBER.PERSON_ID.`in`(ids))
 			.fetch().groupBy({ it.value1()!! }, { it.value2()!! })
+		val openLinks = dsl.select(CLAIM_LINK.PERSON_ID, org.jooq.impl.DSL.max(CLAIM_LINK.CREATED_AT)).from(CLAIM_LINK)
+			.where(CLAIM_LINK.PERSON_ID.`in`(ids), CLAIM_LINK.USED_AT.isNull, CLAIM_LINK.EXPIRES_AT.gt(java.time.OffsetDateTime.now()))
+			.groupBy(CLAIM_LINK.PERSON_ID).fetch().associate { it.value1()!! to it.value2()!! }
 		val accounts = dsl.select(TOOL_ACCOUNT.PERSON_ID, TOOL_ACCOUNT.TOOL, TOOL_ACCOUNT.STATE).from(TOOL_ACCOUNT)
 			.where(TOOL_ACCOUNT.PERSON_ID.`in`(ids))
 			.fetch().groupBy({ it.value1()!! }, { AccountSummary(it.value2()!!, it.value3()!!) })
@@ -131,6 +136,9 @@ class ChapterQueries(private val dsl: DSLContext) {
 				projects = projects[id].orEmpty().sorted(),
 				accounts = accounts[id].orEmpty().sortedBy { it.tool },
 				claimed = p.get(PERSON.CLAIMED_AT) != null,
+				claimable = p.get(PERSON.SOURCE_ID) != null && p.get(PERSON.CLAIMED_AT) == null && p.get(PERSON.STATUS) != "removed" &&
+					listOfNotNull(p.get(PERSON.ORG_EMAIL), p.get(PERSON.SCHOOL_EMAIL), p.get(PERSON.PERSONAL_EMAIL)).any { it.isNotBlank() },
+				claimLinkSentAt = openLinks[id],
 			)
 		}.sortedWith(compareBy({ it.chapterRole == null }, { it.status != "active" }, { it.name.lowercase() }))
 	}

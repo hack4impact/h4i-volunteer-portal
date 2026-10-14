@@ -20,8 +20,11 @@ export function filterMembers(members: MemberRow[], query: string, status: strin
  * The members table. Chapter role and status are separate columns (design draft review: the draft mixed
  * chapter roles, project roles and status in one "Role" column).
  */
-export function MembersTable({ code, members }: { code: string; members: MemberRow[] | null }) {
+export function MembersTable({ code, members, national = false }: { code: string; members: MemberRow[] | null; national?: boolean }) {
   const [why, setWhy] = useState<MemberRow | null>(null)
+  const [claim, setClaim] = useState<MemberRow | null>(null)
+  // Links sent from this page, until the members list is loaded again.
+  const [sent, setSent] = useState<Record<string, string>>({})
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [role, setRole] = useState('')
@@ -67,6 +70,14 @@ export function MembersTable({ code, members }: { code: string; members: MemberR
                     <div>
                       <strong>{m.name}</strong>
                       <div className="muted">{m.email ?? 'No H4I or school email'}{m.claimed ? '' : ' · not claimed yet'}</div>
+                      {national && m.claimable && (
+                        <div className="muted">
+                          {(sent[m.personId] ?? m.claimLinkSentAt) ? `Claim link sent ${new Date(sent[m.personId] ?? m.claimLinkSentAt!).toLocaleDateString()} · ` : ''}
+                          <button type="button" className="timeline-toggle" onClick={() => setClaim(m)}>
+                            {(sent[m.personId] ?? m.claimLinkSentAt) ? 'Send a new link' : 'Send claim link'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ),
                 },
@@ -100,12 +111,51 @@ export function MembersTable({ code, members }: { code: string; members: MemberR
         </div>
       </div>
       {why && <AccessWhy code={code} member={why} onClose={() => setWhy(null)} />}
+      {claim && <SendClaim member={claim} onClose={() => setClaim(null)} onSent={(at) => setSent((s) => ({ ...s, [claim.personId]: at }))} />}
     </div>
   )
 }
 
 const STATE: Record<string, [string, 'ok' | 'warn' | 'off']> = {
   ready: ['Ready', 'ok'], invited: ['Invited', 'warn'], setting_up: ['Being set up', 'off'], after_agreement: ['After the agreement', 'off'],
+}
+
+/**
+ * National sends one imported member a claim link: someone whose link ran out or went astray, or who was never sent
+ * one. It goes to every address on file, and any earlier link of theirs stops working.
+ */
+function SendClaim({ member, onClose, onSent }: { member: MemberRow; onClose: () => void; onSent: (at: string) => void }) {
+  const [state, setState] = useState<'ask' | 'sending' | { addresses: number; until: string }>('ask')
+  const [error, setError] = useState<string | null>(null)
+  const again = Boolean(member.claimLinkSentAt)
+  async function send() {
+    setState('sending')
+    const { data, error: failed, response } = await api.POST('/api/national/claims/people/{personId}', { params: { path: { personId: member.personId } } })
+    if (!data) {
+      setState('ask')
+      return setError(reason(failed, response, 'Not sent'))
+    }
+    setState({ addresses: data.addresses, until: data.expiresAt })
+    onSent(new Date().toISOString())
+  }
+  const done = typeof state === 'object'
+  return (
+    <Dialog title={again ? 'Send a new claim link' : 'Send a claim link'} subtitle={member.name} width="medium" onClose={onClose}
+      footerButtons={done ? [{ buttonType: 'primary', content: 'Done', onClick: onClose }] : [
+        { buttonType: 'default', content: 'Cancel', onClick: onClose },
+        { buttonType: 'primary', content: state === 'sending' ? 'Sending…' : 'Send', disabled: state === 'sending', onClick: () => void send() },
+      ]}>
+      {error && <Banner title="Not sent" description={error} variant="critical" />}
+      {done ? (
+        <p>Sent to {state.addresses} {state.addresses === 1 ? 'address' : 'addresses'} on file. The link works once, until {new Date(state.until).toLocaleDateString()}.</p>
+      ) : (
+        <p>
+          {member.name} gets a single-use link, valid 14 days, at every address on file, to claim their record without approval.
+          {again ? ' The link they already have stops working.' : ''} Their deadline to claim still counts from their first link.
+        </p>
+      )}
+    </Dialog>
+  )
 }
 
 /** Why a member has each of the chapter's resources (step 14): their project, a rule, a national default, the agreement. */

@@ -298,6 +298,39 @@ class RegistrationTests(
 	}
 
 	@Test
+	fun `national sends one person a claim link from the members table, and only the newest link works`() {
+		val ada = person("Ada", "alumni", school = "ada@umd.edu", imported = true)
+		dsl.update(PERSON).set(PERSON.PERSONAL_EMAIL, "ada@personal.test").where(PERSON.ID.eq(ada)).execute()
+		val bo = person("Bo", "active", school = "bo@umd.edu", imported = true) // not sent anything
+		val cy = person("Cy", "active", school = "cy@umd.edu") // joined through the portal
+		mvc.get("/api/chapters/umd/members") { with(signedIn("nora@hack4impact.org")) }.andExpect {
+			jsonPath("$[?(@.name == 'Ada Test')].claimable") { value(true) }
+			jsonPath("$[?(@.name == 'Cy Test')].claimable") { value(false) }
+			jsonPath("$[?(@.name == 'Ada Test')].claimLinkSentAt") { value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.nullValue())) }
+		}
+
+		json("/api/national/claims/people/$ada", "{}", as_ = "lena@hack4impact.org").andExpect { status { isForbidden() } } // national only
+		json("/api/national/claims/people/$ada", "{}", as_ = "nora@hack4impact.org").andExpect { status { isOk() }; jsonPath("$.addresses") { value(2) } }
+		mail.waitFor { s -> s.count { it.subject.startsWith("Claim") } >= 2 }
+		assertEquals(setOf("ada@umd.edu", "ada@personal.test"), mail.sent.filter { it.subject.startsWith("Claim") }.map { it.to }.toSet()) // her addresses only
+		val first = Regex("/claim/([A-Za-z0-9_-]+)").find(mail.last("ada@umd.edu").text)!!.groupValues[1]
+		mvc.get("/api/chapters/umd/members") { with(signedIn("nora@hack4impact.org")) }.andExpect {
+			jsonPath("$[?(@.name == 'Ada Test')].claimLinkSentAt") { value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.notNullValue())) }
+		}
+
+		mail.sent.clear()
+		json("/api/national/claims/people/$ada", "{}", as_ = "nora@hack4impact.org").andExpect { status { isOk() } }
+		val second = Regex("/claim/([A-Za-z0-9_-]+)").find(mail.last("ada@umd.edu").text)!!.groupValues[1]
+		json("/api/apply/claim", """{"token":"$first"}""").andExpect { status { isGone() } } // the earlier link stopped working
+		json("/api/apply/claim", """{"token":"$second"}""").andExpect { status { isOk() }; jsonPath("$.kind") { value("claim") } }
+		assertEquals(0, mail.sent.count { it.to.startsWith("bo@") }) // nobody else was emailed
+
+		json("/api/national/claims/people/$cy", "{}", as_ = "nora@hack4impact.org").andExpect { status { isConflict() } } // nothing to claim
+		dsl.update(PERSON).set(PERSON.CLAIMED_AT, OffsetDateTime.now()).where(PERSON.ID.eq(bo)).execute()
+		json("/api/national/claims/people/$bo", "{}", as_ = "nora@hack4impact.org").andExpect { status { isConflict() } } // already claimed
+	}
+
+	@Test
 	fun `a member of an inactive chapter can still open their claim (review H5)`() {
 		person("Ada", "active", school = "ada@umd.edu", imported = true)
 		dsl.update(org.hack4impact.portal.db.tables.references.CHAPTER).set(org.hack4impact.portal.db.tables.references.CHAPTER.STATUS, "inactive").execute()

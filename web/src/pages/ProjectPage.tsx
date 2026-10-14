@@ -3,9 +3,9 @@ import { ActionList, ActionMenu, Banner, Button, Checkbox, Dialog, IconButton, L
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import {
-  api, reason, type ChapterResourceOption, type ProjectDetail, type ProjectResourceRow, type ActivityItem, type ProjectRoleOption, type TeamCandidate, type TermOption,
+  api, reason, type ChapterResourceOption, type PlannedChange, type ProjectDetail, type ProjectResourceRow, type ActivityItem, type ProjectRoleOption, type TeamCandidate, type TermOption,
 } from '../api/client'
-import { CHANGE_LABEL, PROJECT_STATUS, STATUS_LABEL, Status, TOOL_NAME, resourceName } from '../components/Status'
+import { CHANGE_LABEL, OUTCOME_LABEL, PROJECT_STATUS, STATUS_LABEL, Status, TOOL_NAME, resourceName } from '../components/Status'
 import { ToolIcon } from '../components/ToolIcon'
 import { resourceTools, toolInfo } from '../api/tools'
 
@@ -20,13 +20,44 @@ const NEXT_STATUS: Record<string, [string, string][]> = {
   closed: [],
 }
 
+/** A dry run's planned changes, or what an applying run did (with each outcome). */
+function ChangeTable({ label, changes, outcomes = false }: { label: string; changes: PlannedChange[]; outcomes?: boolean }) {
+  if (changes.length === 0) return null
+  return (
+    <>
+      <div className="box-row pane-label">{label}</div>
+      <table className="list-table" aria-label={label}>
+        <colgroup><col style={{ width: 150 }} /><col /><col /><col className="wide-only" style={{ width: 130 }} />{outcomes && <col style={{ width: 150 }} />}</colgroup>
+        <thead>
+          <tr>
+            <th scope="col">Change</th><th scope="col">Person</th><th scope="col">Resource</th><th scope="col" className="wide-only">Access</th>
+            {outcomes && <th scope="col">Result</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {changes.slice(0, 50).map((c, i) => (
+            <tr key={i}>
+              <td><Label variant={CHANGE_VARIANT[c.kind] ?? 'secondary'}>{CHANGE_LABEL[c.kind] ?? c.kind}</Label></td>
+              <td>{c.person ?? <span className="muted">—</span>}</td>
+              <td><span className="tool-name"><ToolIcon tool={c.tool} />{resourceName(c.tool, c.resource)}</span></td>
+              <td className="wide-only">{c.fromAccess && c.toAccess ? `${c.fromAccess} → ${c.toAccess}` : (c.toAccess ?? c.fromAccess ?? '—')}</td>
+              {outcomes && <td>{c.outcome ? (OUTCOME_LABEL[c.outcome] ?? c.outcome) : <span className="muted">—</span>}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {changes.length > 50 && <div className="box-row muted">And {changes.length - 50} more.</div>}
+    </>
+  )
+}
+
 function audienceText(r: ProjectResourceRow) {
   return r.audience === 'role' ? `${r.role ?? 'One role'} only` : r.audience === 'leads' ? 'Project leads' : 'Whole team'
 }
 
 /**
  * One project (build plan step 8): its team, its resources with who gets each and why, where its Notion page goes,
- * and what the latest dry run would change. Every tool is still in dry run, so nothing here changes access yet.
+ * and what each tool's latest sync would change (a dry run) or changed (a tool out of dry run).
  */
 export function ProjectPage({ code, slug }: { code: string; slug: string }) {
   const [project, setProject] = useState<ProjectDetail | null>(null)
@@ -128,7 +159,7 @@ export function ProjectPage({ code, slug }: { code: string; slug: string }) {
 
         <section className="box" aria-labelledby="planned">
           <div className="box-head" id="planned">
-            Planned changes (dry run)
+            Sync
             {project.canEdit && (
               <Button size="small" style={{ marginLeft: 'auto' }} onClick={runDryRun} disabled={running}>
                 {running ? 'Running…' : 'Run dry run'}
@@ -136,28 +167,13 @@ export function ProjectPage({ code, slug }: { code: string; slug: string }) {
             )}
           </div>
           <div className="box-row muted">
-            {project.lastDryRunAt ? `Last dry run ${new Date(project.lastDryRunAt).toLocaleString()}.` : 'No dry run yet.'}
-            {project.lastDryRunAt && project.plannedOutOfDate ? ' The project changed since then: run it again to see the effect.' : ''}
-            {' '}Nothing is applied: every tool is in dry run.
+            {project.lastDryRunAt ? `Last sync ${new Date(project.lastDryRunAt).toLocaleString()}.` : 'No sync yet.'}
+            {project.lastDryRunAt && project.plannedOutOfDate ? ' The project changed since then: run a dry run to see the effect.' : ''}
+            {' '}A dry run only plans: it changes nothing in any tool.
           </div>
           {project.planned.length === 0 && project.lastDryRunAt && <div className="box-row muted">Nothing to change for this project.</div>}
-          {project.planned.length > 0 && (
-            <table className="list-table" aria-label="Planned changes">
-              <colgroup><col style={{ width: 150 }} /><col /><col /><col className="wide-only" style={{ width: 130 }} /></colgroup>
-              <thead><tr><th scope="col">Change</th><th scope="col">Person</th><th scope="col">Resource</th><th scope="col" className="wide-only">Access</th></tr></thead>
-              <tbody>
-                {project.planned.slice(0, 50).map((c, i) => (
-                  <tr key={i}>
-                    <td><Label variant={CHANGE_VARIANT[c.kind] ?? 'secondary'}>{CHANGE_LABEL[c.kind] ?? c.kind}</Label></td>
-                    <td>{c.person ?? <span className="muted">—</span>}</td>
-                    <td><span className="tool-name"><ToolIcon tool={c.tool} />{resourceName(c.tool, c.resource)}</span></td>
-                    <td className="wide-only">{c.fromAccess && c.toAccess ? `${c.fromAccess} → ${c.toAccess}` : (c.toAccess ?? c.fromAccess ?? '—')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-          {project.planned.length > 50 && <div className="box-row muted">And {project.planned.length - 50} more.</div>}
+          <ChangeTable label="Would change" changes={project.planned.filter((c) => c.mode !== 'apply')} />
+          <ChangeTable label="Changed" changes={project.planned.filter((c) => c.mode === 'apply')} outcomes />
         </section>
       </main>
 

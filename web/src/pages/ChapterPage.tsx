@@ -89,7 +89,7 @@ export function ChapterPage({ me, tab }: { me: Me; tab: ChapterTab }) {
           {tab === 'overview' ? (
             <Overview chapter={chapter} members={members} sync={sync} />
           ) : tab === 'members' ? (
-            <MembersTable code={chapter.code} members={members} />
+            <MembersTable code={chapter.code} members={members} national={me.nationalAdmin} />
           ) : tab === 'projects' && slug ? (
             <ProjectPage key={draft ?? 'live'} code={chapter.code} slug={slug} />
           ) : tab === 'projects' ? (

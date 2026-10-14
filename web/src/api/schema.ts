@@ -868,6 +868,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/national/claims/people/{personId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["sendOne"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/national/claims/preview": {
         parameters: {
             query?: never;
@@ -1334,6 +1350,12 @@ export interface components {
             /** Format: int32 */
             limit: number;
         };
+        ClaimSent: {
+            /** Format: int32 */
+            addresses: number;
+            /** Format: date-time */
+            expiresAt: string;
+        };
         CodeRequest: {
             email: string;
         };
@@ -1531,6 +1553,9 @@ export interface components {
         MemberRow: {
             accounts: components["schemas"]["AccountSummary"][];
             chapterRole: string | null;
+            /** Format: date-time */
+            claimLinkSentAt: string | null;
+            claimable: boolean;
             claimed: boolean;
             email: string | null;
             kind: string;
@@ -1638,6 +1663,8 @@ export interface components {
             accountId: string | null;
             fromAccess: string | null;
             kind: string;
+            mode: string;
+            outcome: string | null;
             person: string | null;
             resource: string;
             toAccess: string | null;
@@ -3709,6 +3736,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AgreementTemplates"];
+                };
+            };
+        };
+    };
+    sendOne: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClaimSent"];
                 };
             };
         };

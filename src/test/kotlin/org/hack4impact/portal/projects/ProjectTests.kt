@@ -11,6 +11,8 @@ import org.hack4impact.portal.db.tables.references.EVENT_PUBLICATION
 import org.hack4impact.portal.db.tables.references.INSTITUTION
 import org.hack4impact.portal.db.tables.references.NATIONAL_ADMIN
 import org.hack4impact.portal.db.tables.references.PERSON
+import org.hack4impact.portal.db.tables.references.SYNC_RUN
+import org.hack4impact.portal.db.tables.references.TOOL_SETTING
 import org.hack4impact.portal.db.tables.references.PROJECT_MEMBER
 import org.hack4impact.portal.db.tables.references.PROJECT_ROLE
 import org.hack4impact.portal.db.tables.references.RESOURCE
@@ -155,11 +157,26 @@ class ProjectTests(
 		assertEquals(false, after.path("plannedOutOfDate").asBoolean())
 		assertTrue(after.path("activity").any { it.path("kind").asString() == "change" && it.path("text").asString().startsWith("Created") && it.path("actor").asString() == "Lena Test" })
 
+		assertTrue(after.path("planned").all { it.path("mode").asString() == "dry_run" && it.path("outcome").isNull })
+
+		// "Run dry run" only plans, even for a tool that's out of dry run (Slack here).
+		dsl.update(TOOL_SETTING).set(TOOL_SETTING.DRY_RUN, false).where(TOOL_SETTING.TOOL.eq("slack")).execute()
+		slack.writes.clear()
+		val runsBefore = dsl.fetchCount(SYNC_RUN, SYNC_RUN.TOOL.eq("slack"), SYNC_RUN.MODE.eq("dry_run"))
 		send("POST", "/api/chapters/umd/sync/run").andExpect { status { isAccepted() } }
 		// The requested run happens in the background; wait for it so it doesn't overlap the next test.
 		val deadline = System.currentTimeMillis() + 15_000
 		while (dsl.fetchCount(EVENT_PUBLICATION, EVENT_PUBLICATION.COMPLETION_DATE.isNull) > 0 && System.currentTimeMillis() < deadline) Thread.sleep(100)
 		assertEquals(0, dsl.fetchCount(EVENT_PUBLICATION, EVENT_PUBLICATION.COMPLETION_DATE.isNull))
+		assertEquals(runsBefore + 1, dsl.fetchCount(SYNC_RUN, SYNC_RUN.TOOL.eq("slack"), SYNC_RUN.MODE.eq("dry_run")))
+		assertEquals(0, dsl.fetchCount(SYNC_RUN, SYNC_RUN.MODE.eq("apply")))
+		assertTrue(slack.writes.isEmpty(), slack.writes.toString())
+
+		// A real run of the live tool: the project shows what it did, with each outcome.
+		engine.run("manual", setOf(org.hack4impact.portal.resolver.Tool.SLACK))
+		val applied = body(send("GET", "/api/chapters/umd/projects/rise-dc")).path("planned").toList().filter { it.path("tool").asString() == "slack" }
+		assertEquals(setOf("create_resource:applied", "add:invited"), applied.map { "${it.path("kind").asString()}:${it.path("outcome").asString()}" }.toSet())
+		assertTrue(applied.all { it.path("mode").asString() == "apply" })
 	}
 
 	@Test

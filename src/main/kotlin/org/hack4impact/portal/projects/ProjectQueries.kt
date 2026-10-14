@@ -155,17 +155,21 @@ class ProjectQueries(
 			asIfActive = asIfActive,
 		)
 
-		// The latest dry run of each tool, limited to this project's resources.
+		// The latest run of each tool (a dry run's plan, or what an applying run did), limited to this project's resources.
 		val latest = dsl.selectFrom(SYNC_RUN).orderBy(SYNC_RUN.STARTED_AT.desc()).limit(500).fetch().filter { it.tool != null }.distinctBy { it.tool }
+		val modes = latest.associate { it.id!! to it.mode!! }
 		val planned = if (resourceIds.isEmpty() || latest.isEmpty()) emptyList() else dsl.select(
 			SYNC_CHANGE.KIND, RESOURCE.TOOL, RESOURCE.NAME, PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.PREFERRED_NAME,
-			SYNC_CHANGE.ACCOUNT_ID, SYNC_CHANGE.FROM_ACCESS, SYNC_CHANGE.TO_ACCESS,
+			SYNC_CHANGE.ACCOUNT_ID, SYNC_CHANGE.FROM_ACCESS, SYNC_CHANGE.TO_ACCESS, SYNC_CHANGE.RUN_ID, SYNC_CHANGE.OUTCOME,
 		).from(SYNC_CHANGE).join(RESOURCE).on(RESOURCE.ID.eq(SYNC_CHANGE.RESOURCE_ID)).leftJoin(PERSON).on(PERSON.ID.eq(SYNC_CHANGE.PERSON_ID))
 			.where(SYNC_CHANGE.RUN_ID.`in`(latest.map { it.id }), SYNC_CHANGE.RESOURCE_ID.`in`(resourceIds))
 			.orderBy(RESOURCE.TOOL, RESOURCE.NAME, SYNC_CHANGE.KIND)
 			.limit(500)
 			.fetch {
-				PlannedChange(it.value1()!!, it.value2()!!, it.value3()!!, it.value4()?.let { f -> name(it.value6(), f, it.value5()!!) }, it.value7(), it.value8(), it.value9())
+				PlannedChange(
+					it.value1()!!, it.value2()!!, it.value3()!!, it.value4()?.let { f -> name(it.value6(), f, it.value5()!!) }, it.value7(), it.value8(), it.value9(),
+					modes.getValue(it.value10()!!), it.value11(),
+				)
 			}
 		val lastRun = latest.mapNotNull { it.startedAt }.maxOrNull()
 

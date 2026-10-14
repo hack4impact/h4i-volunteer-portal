@@ -156,12 +156,15 @@ class ProjectController(
 		service.detachResource(chapter, project, resourceId, viewer)
 	}
 
-	/** Asks for a dry run of every tool now (through the outbox); its plan shows on the project once it finishes. */
+	/**
+	 * Asks for a dry run of every tool now (through the outbox); its plan shows on the project once it finishes.
+	 * Only plans: tools out of dry run aren't changed by it.
+	 */
 	@PostMapping("/chapters/{code}/sync/run")
 	@ResponseStatus(HttpStatus.ACCEPTED)
 	fun runDryRun(@AuthenticationPrincipal user: OidcUser, @PathVariable code: String) {
 		access.manage(user, code)
-		syncs.request("manual")
+		syncs.dryRun()
 	}
 
 	private fun project(chapterId: UUID, slug: String): ProjectRecord =

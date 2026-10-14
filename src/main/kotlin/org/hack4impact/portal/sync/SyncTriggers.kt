@@ -29,8 +29,15 @@ object SyncTriggers {
 	val ALL = setOf("schedule", "release", "manual", "agreement", "rule", "change", "recovery")
 }
 
+/** Asks for a dry run of every tool: each is planned and nothing is changed, even in tools that are out of dry run. */
+data class DryRunRequested(val trigger: String = "manual")
+
 @Component
 class SyncRequests(private val events: ApplicationEventPublisher) {
+	/** A dry run of every tool, after commit and in the background (a project page's "Run dry run"). */
+	@Transactional
+	fun dryRun() = events.publishEvent(DryRunRequested())
+
 	@Transactional
 	fun request(trigger: String, tools: Set<Tool>? = null) {
 		// Fails here, in the request that asked, rather than later in the background when the run is recorded (review H1).
@@ -85,6 +92,21 @@ class SyncListener(private val engine: SyncEngine, @org.springframework.beans.fa
 				log.error("Sync ({}) failed", which, e)
 			}
 		}
+	}
+}
+
+/**
+ * Runs requested dry runs in the background, outside any transaction like [SyncListener], and never applying: a lead
+ * asking to see the plan mustn't change Slack or Google because those tools are live.
+ */
+@Component
+class DryRunListener(private val engine: SyncEngine, @org.springframework.beans.factory.annotation.Value("\${portal.sync.on-request:true}") private val enabled: Boolean) {
+	private val log = LoggerFactory.getLogger(javaClass)
+
+	@ApplicationModuleListener(propagation = Propagation.NOT_SUPPORTED)
+	fun on(event: DryRunRequested) {
+		if (!enabled) return
+		engine.dryRun(event.trigger).forEach { log.info("Dry run {} ({}): {}", it.tool, event.trigger, it) }
 	}
 }
 

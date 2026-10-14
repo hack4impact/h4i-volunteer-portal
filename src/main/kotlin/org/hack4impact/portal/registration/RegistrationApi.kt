@@ -121,3 +121,6 @@ data class RosterResult(val invited: Int, val skipped: List<String>, val invites
 data class ClaimPreview(val eligible: Int, val alreadySent: Int, val withoutEmail: Int)
 
 data class ClaimSend(val chapter: String? = null, val limit: Int = 200)
+
+/** A claim link sent to one person: how many addresses it went to, and until when it works. */
+data class ClaimSent(val addresses: Int, val expiresAt: java.time.OffsetDateTime)

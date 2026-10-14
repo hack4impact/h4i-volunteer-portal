@@ -522,6 +522,19 @@
         },
         "type" : "object"
       },
+      "ClaimSent" : {
+        "properties" : {
+          "addresses" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "expiresAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "CodeRequest" : {
         "properties" : {
           "email" : {
@@ -1044,6 +1057,13 @@
           "chapterRole" : {
             "type" : [ "string", "null" ]
           },
+          "claimLinkSentAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "claimable" : {
+            "type" : "boolean"
+          },
           "claimed" : {
             "type" : "boolean"
           },
@@ -1370,6 +1390,12 @@
           },
           "kind" : {
             "type" : "string"
+          },
+          "mode" : {
+            "type" : "string"
+          },
+          "outcome" : {
+            "type" : [ "string", "null" ]
           },
           "person" : {
             "type" : [ "string", "null" ]
@@ -4940,6 +4966,33 @@
           }
         },
         "tags" : [ "agreement-template-controller" ]
+      }
+    },
+    "/api/national/claims/people/{personId}" : {
+      "post" : {
+        "operationId" : "sendOne",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "personId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClaimSent"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "claim-controller" ]
       }
     },
     "/api/national/claims/preview" : {
