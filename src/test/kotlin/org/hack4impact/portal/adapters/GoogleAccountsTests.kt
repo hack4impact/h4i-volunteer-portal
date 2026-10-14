@@ -31,14 +31,27 @@ class GoogleAccountsTests {
 		.willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""{"id":"x","primaryEmail":"$email","orgUnitPath":"$ou"}""")))
 
 	@Test
-	fun `addresses are the first name without accents, with a number when taken`() {
+	fun `addresses are the first name, then first-dot-last, then initial-dot-last, then numbered, without accents`() {
 		assertEquals("zoeann", GoogleAccounts.localPart("Zoë-Ann"))
 		assertEquals("member", GoogleAccounts.localPart("李"))
+		assertEquals(listOf("ada", "ada.lovelace", "a.lovelace", "ada2", "ada3"), GoogleAccounts.candidates("Ada", "Lovelace").take(5))
+		assertEquals(listOf("zoeann", "zoeann.ohare", "z.ohare", "zoeann2"), GoogleAccounts.candidates("Zoë-Ann", "O'Hare").take(4))
+		assertEquals(listOf("cher", "cher2"), GoogleAccounts.candidates("Cher", "").take(2)) // no last name: numbers only
+		assertEquals(listOf("a", "a.bo", "a2"), GoogleAccounts.candidates("A", "Bo").take(3)) // "a.bo" twice is tried once
+
 		server.stubFor(get(com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching("$users/.*")).atPriority(9).willReturn(aResponse().withStatus(404).withBody("{}")))
-		exists("ada@umd.hack4impact.org"); exists("ada2@umd.hack4impact.org")
 		server.stubFor(post(urlEqualTo(users)).willReturn(aResponse().withHeader("Content-Type", "application/json").withBody("""{"id":"g1"}""")))
-		val account = accounts.create("Ada", "Lovelace", "UMD.hack4impact.org", "/Sandbox/E2E", "ada@personal.test")
-		assertEquals("ada3@umd.hack4impact.org", account.email)
+		val create = { accounts.create("Ada", "Lovelace", "UMD.hack4impact.org", "/Sandbox/E2E", "ada@personal.test").email }
+		assertEquals("ada@umd.hack4impact.org", create())
+		exists("ada@umd.hack4impact.org")
+		assertEquals("ada.lovelace@umd.hack4impact.org", create())
+		exists("ada.lovelace@umd.hack4impact.org")
+		assertEquals("a.lovelace@umd.hack4impact.org", create())
+		exists("a.lovelace@umd.hack4impact.org")
+		assertEquals("ada2@umd.hack4impact.org", create())
+		exists("ada2@umd.hack4impact.org")
+		val account = accounts.create("Ada", "Lovelace", "UMD.hack4impact.org", "/Sandbox/E2E", "ada@personal.test") { it == "ada3@umd.hack4impact.org" } // the portal holds it
+		assertEquals("ada4@umd.hack4impact.org", account.email)
 		assertEquals(16, account.temporaryPassword.length)
 	}
 

@@ -10,9 +10,10 @@ import java.security.SecureRandom
 import java.text.Normalizer
 
 /**
- * Creates Google Workspace accounts for approved members and claims (build plan step 10, decision 108): first name
- * at the chapter's domain (`ada@umd.hack4impact.org`, then `ada2@…` if taken), in the chapter's org unit, with a
- * temporary password to change at first sign-in. Needs the user scope ([GoogleServiceAccountToken.USER_SCOPES]).
+ * Creates Google Workspace accounts for approved members and claims (build plan step 10, decisions 108 and 161): at
+ * the chapter's domain, the first free of `ada@`, `ada.lovelace@`, `a.lovelace@`, then `ada2@`, `ada3@`, …, in the
+ * chapter's org unit, with a temporary password to change at first sign-in. Needs the user scope
+ * ([GoogleServiceAccountToken.USER_SCOPES]).
  *
  * With [orgUnitScope] set, accounts are only created in, and deleted from, org units under it (the sandbox shares
  * the real Workspace, like groups do, decision 69).
@@ -29,7 +30,7 @@ class GoogleAccounts(
 
 	/** [taken]: addresses the portal still holds for someone (a deleted account's old address isn't reused, second review H4). */
 	fun create(firstName: String, lastName: String, domain: String, orgUnit: String, recoveryEmail: String?, taken: (String) -> Boolean = { false }): NewAccount =
-		createAt(freeAddress(localPart(firstName), domain.lowercase(), taken), firstName, lastName, orgUnit, recoveryEmail)
+		createAt(freeAddress(candidates(firstName, lastName), domain.lowercase(), taken), firstName, lastName, orgUnit, recoveryEmail)
 
 	/** An account at exactly [email] (the staging demo's persona accounts), inside the org-unit scope. */
 	fun createAt(email: String, firstName: String, lastName: String, orgUnit: String, recoveryEmail: String?): NewAccount {
@@ -66,10 +67,10 @@ class GoogleAccounts(
 			.mapNotNull { it.text("primaryEmail") }.filter { it.startsWith(prefix) }
 	}
 
-	/** The first of `name@domain`, `name2@domain`, … that no account or alias uses and the portal doesn't hold for anyone. */
-	private fun freeAddress(local: String, domain: String, taken: (String) -> Boolean): String {
-		for (n in 1..99) {
-			val candidate = "${if (n == 1) local else "$local$n"}@$domain"
+	/** The first of [locals] at [domain] that no account or alias uses and the portal doesn't hold for anyone. */
+	private fun freeAddress(locals: List<String>, domain: String, taken: (String) -> Boolean): String {
+		for (local in locals) {
+			val candidate = "$local@$domain"
 			if (taken(candidate)) continue
 			try {
 				http.get("$users/${HttpJson.encode(candidate)}", headers())
@@ -77,7 +78,7 @@ class GoogleAccounts(
 				return candidate
 			}
 		}
-		throw Rejected(Tool.GOOGLE, "no free address for $local@$domain")
+		throw Rejected(Tool.GOOGLE, "no free address for ${locals.first()}@$domain")
 	}
 
 	private fun inScope(orgUnit: String) {
@@ -92,9 +93,22 @@ class GoogleAccounts(
 		private const val PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
 
 		/** The first name as an address: letters and digits only, accents removed ("Zoë-Ann" → "zoeann"). */
-		fun localPart(firstName: String): String =
-			Normalizer.normalize(firstName, Normalizer.Form.NFD).replace(Regex("\\p{M}"), "").lowercase().filter { it in 'a'..'z' || it in '0'..'9' }
-				.ifEmpty { "member" }
+		fun localPart(firstName: String): String = clean(firstName).ifEmpty { "member" }
+
+		/**
+		 * The addresses to try, in order (decision 161): first name, first.last, first initial.last, then the first name
+		 * numbered from 2 ("ada", "ada.lovelace", "a.lovelace", "ada2", …, "ada99"). Without a usable last name, only the
+		 * first name and its numbers.
+		 */
+		fun candidates(firstName: String, lastName: String): List<String> {
+			val first = localPart(firstName)
+			val last = clean(lastName)
+			val dotted = if (last.isEmpty()) emptyList() else listOf("$first.$last", "${first.first()}.$last")
+			return (listOf(first) + dotted + (2..99).map { "$first$it" }).distinct()
+		}
+
+		private fun clean(name: String) =
+			Normalizer.normalize(name, Normalizer.Form.NFD).replace(Regex("\\p{M}"), "").lowercase().filter { it in 'a'..'z' || it in '0'..'9' }
 
 		/** An org unit as Google wants it: a leading slash, no trailing one ("Sandbox/" → "/Sandbox"). */
 		fun orgUnitPath(value: String): String = "/" + value.trim().trim('/')
