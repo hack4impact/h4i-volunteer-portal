@@ -800,6 +800,32 @@
         },
         "type" : "object"
       },
+      "GitHubRepoOptions" : {
+        "properties" : {
+          "available" : {
+            "type" : "boolean"
+          },
+          "linkAny" : {
+            "type" : "boolean"
+          },
+          "prefix" : {
+            "type" : "string"
+          },
+          "repos" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RepoOption"
+            },
+            "type" : "array"
+          },
+          "templates" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
       "JsonNode" : {
         "properties" : {
           "array" : {
@@ -1626,6 +1652,12 @@
           "name" : {
             "type" : "string"
           },
+          "repos" : {
+            "items" : {
+              "$ref" : "#/components/schemas/RepoRow"
+            },
+            "type" : [ "array", "null" ]
+          },
           "requiresAgreement" : {
             "type" : "boolean"
           },
@@ -1940,6 +1972,70 @@
           },
           "released" : {
             "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "RepoInput" : {
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "permission" : {
+            "type" : [ "string", "null" ]
+          },
+          "private" : {
+            "type" : "boolean"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "template" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "RepoOption" : {
+        "properties" : {
+          "linkedTo" : {
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "RepoRow" : {
+        "properties" : {
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "permission" : {
+            "type" : "string"
+          },
+          "private" : {
+            "type" : "boolean"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "template" : {
+            "type" : [ "string", "null" ]
+          },
+          "url" : {
+            "type" : [ "string", "null" ]
           }
         },
         "type" : "object"
@@ -3449,6 +3545,32 @@
         "tags" : [ "draft-controller" ]
       }
     },
+    "/api/chapters/{code}/github-repos" : {
+      "get" : {
+        "operationId" : "repoOptions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GitHubRepoOptions"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
     "/api/chapters/{code}/members" : {
       "get" : {
         "operationId" : "members",
@@ -4013,6 +4135,96 @@
         "tags" : [ "project-controller" ]
       }
     },
+    "/api/chapters/{code}/projects/{slug}/repos/{repoId}" : {
+      "delete" : {
+        "operationId" : "forgetRepo",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "repoId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/projects/{slug}/repos/{repoId}/retry" : {
+      "post" : {
+        "operationId" : "retryRepo",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "repoId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
     "/api/chapters/{code}/projects/{slug}/resources" : {
       "post" : {
         "operationId" : "attach",
@@ -4150,6 +4362,65 @@
             "application/json" : {
               "schema" : {
                 "$ref" : "#/components/schemas/ResourceInput"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "project-controller" ]
+      }
+    },
+    "/api/chapters/{code}/projects/{slug}/resources/{resourceId}/repos" : {
+      "post" : {
+        "operationId" : "addRepo",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "resourceId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "draft",
+          "required" : false,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RepoInput"
               }
             }
           },

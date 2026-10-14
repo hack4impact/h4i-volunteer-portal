@@ -59,6 +59,7 @@ class Drafts(
 	private val mapper: JsonMapper,
 	private val syncs: SyncRequests,
 	private val events: ApplicationEventPublisher,
+	private val repos: org.hack4impact.portal.projects.ProjectRepos,
 ) {
 	/**
 	 * A project or rule operation as a draft records it. [targetId] is the project or rule; it's chosen up front for one
@@ -348,6 +349,8 @@ class Drafts(
 				newResourceId = op.payload.path("newResourceId").takeIf { it.isString }?.let { UUID.fromString(it.asString()) })
 			"update_resource" -> projects.updateResource(chapterId, open(), uuid(op, "resourceId"), input(op, ResourceInput::class.java), viewer)
 			"detach_resource" -> projects.detachResource(chapterId, open(), uuid(op, "resourceId"), viewer)
+			"add_repo" -> repos.add(chapterId, open(), uuid(op, "resourceId"), input(op, org.hack4impact.portal.projects.RepoInput::class.java), viewer, id = uuid(op, "newRepoId"))
+			"forget_repo" -> repos.forget(chapterId, open(), uuid(op, "repoId"), viewer)
 			"create_rule" -> rules.create(chapterId, input(op, RuleInput::class.java), viewer, id = op.targetId)
 			"update_rule" -> rules.update(chapterId, op.targetId, input(op, RuleInput::class.java), viewer)
 			"set_rule_enabled" -> rules.setEnabled(chapterId, op.targetId, op.payload.path("enabled").asBoolean(), viewer)
@@ -383,6 +386,10 @@ class Drafts(
 			}
 			"update_resource" -> "Change who gets ${resource(uuid(op, "resourceId"))} on $project"
 			"detach_resource" -> "Detach ${resource(uuid(op, "resourceId"))} from $project"
+			"add_repo" -> input(op, org.hack4impact.portal.projects.RepoInput::class.java).let { i ->
+				"${if (i.source == "linked") "Link" else "Add"} the repository ${i.name} to ${resource(uuid(op, "resourceId"))} on $project"
+			}
+			"forget_repo" -> "Remove the repository ${op.payload.path("name").asString("")} from $project"
 			"create_rule" -> "Add the rule $rule"
 			"update_rule" -> "Edit the rule $rule"
 			"set_rule_enabled" -> if (op.payload.path("enabled").asBoolean()) "Turn on the rule $rule" else "Turn off the rule $rule"

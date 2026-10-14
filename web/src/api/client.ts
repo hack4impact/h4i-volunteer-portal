@@ -45,6 +45,9 @@ export type RulePreview = components['schemas']['RulePreview']
 export type RulePreviewInput = components['schemas']['RulePreviewInput']
 export type MyAccess = components['schemas']['MyAccess']
 export type ToolInfo = components['schemas']['ToolInfo']
+export type RepoRow = components['schemas']['RepoRow']
+export type RepoInput = components['schemas']['RepoInput']
+export type GitHubRepoOptions = components['schemas']['GitHubRepoOptions']
 
 /** Typed client for the portal API; types come from web/openapi.json (`npm run gen:api`). */
 export const api = createClient<paths>({

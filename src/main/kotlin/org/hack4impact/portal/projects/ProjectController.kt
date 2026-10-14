@@ -36,6 +36,7 @@ class ProjectController(
 	private val drafts: Drafts,
 	private val projectActivity: ProjectActivity,
 	private val transactions: org.springframework.transaction.support.TransactionTemplate,
+	private val repos: ProjectRepos,
 ) {
 	@GetMapping("/project-roles")
 	fun roles(): List<ProjectRoleOption> = queries.roles()
@@ -165,6 +166,37 @@ class ProjectController(
 	fun runDryRun(@AuthenticationPrincipal user: OidcUser, @PathVariable code: String) {
 		access.manage(user, code)
 		syncs.dryRun()
+	}
+
+	/** Adds a repository to one of the project's GitHub teams: created empty or from a template, or linked (wiki: github-repos). */
+	@PostMapping("/chapters/{code}/projects/{slug}/resources/{resourceId}/repos")
+	fun addRepo(
+		@AuthenticationPrincipal user: OidcUser, @PathVariable code: String, @PathVariable slug: String, @PathVariable resourceId: UUID,
+		@RequestBody input: RepoInput, @RequestParam(required = false) draft: UUID?,
+	) = change(user, code, slug, draft, { p ->
+		drafts.operation("add_repo", p.id!!, "resourceId" to resourceId, "input" to input, "newRepoId" to UUID.randomUUID())
+	}) { chapter, project, viewer -> repos.add(chapter, project, resourceId, input, viewer) }
+
+	/** Forgets a repository: the team loses the access the portal gave; the repository stays in GitHub. */
+	@DeleteMapping("/chapters/{code}/projects/{slug}/repos/{repoId}")
+	fun forgetRepo(
+		@AuthenticationPrincipal user: OidcUser, @PathVariable code: String, @PathVariable slug: String, @PathVariable repoId: UUID, @RequestParam(required = false) draft: UUID?,
+	) = change(user, code, slug, draft, { p -> drafts.operation("forget_repo", p.id!!, "repoId" to repoId, "name" to repos.name(repoId)) }) { chapter, project, viewer ->
+		repos.forget(chapter, project, repoId, viewer)
+	}
+
+	/** Tries a failed repository again at the next sync (not in a draft: it's about GitHub, not the plan). */
+	@PostMapping("/chapters/{code}/projects/{slug}/repos/{repoId}/retry")
+	fun retryRepo(@AuthenticationPrincipal user: OidcUser, @PathVariable code: String, @PathVariable slug: String, @PathVariable repoId: UUID) =
+		change(user, code, slug, null, { throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Not in a draft") }) { chapter, project, viewer ->
+			repos.retry(chapter, project, repoId, viewer)
+		}
+
+	/** The org's template repositories and the repositories this viewer may link, live from GitHub. */
+	@GetMapping("/chapters/{code}/github-repos")
+	fun repoOptions(@AuthenticationPrincipal user: OidcUser, @PathVariable code: String): GitHubRepoOptions {
+		val (viewer, chapter) = access.manage(user, code)
+		return repos.options(chapter.id, viewer)
 	}
 
 	private fun project(chapterId: UUID, slug: String): ProjectRecord =

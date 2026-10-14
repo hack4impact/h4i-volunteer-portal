@@ -113,7 +113,44 @@ data class ProjectResourceRow(
 	val url: String? = null,
 	/** How the sync stands for it, person by person. */
 	val sync: ResourceSync = ResourceSync(),
+	/** A GitHub team's repositories (wiki: github-repos); null for every other kind of resource. */
+	val repos: List<RepoRow>? = null,
 )
+
+/** A repository on a project's GitHub team: the team gets [permission] on it (wiki: github-repos). */
+data class RepoRow(
+	val id: UUID,
+	val name: String,
+	/** empty, template or linked. */
+	val source: String,
+	val template: String?,
+	val private: Boolean,
+	/** pull (read), push (write) or maintain. */
+	val permission: String,
+	/** pending (to be created or linked), ready, failed or forgetting (the team's access being taken away). */
+	val state: String,
+	val error: String?,
+	val url: String?,
+)
+
+/** A repository to add to a GitHub team. [permission] defaults to the team's level on the project (read → pull, write → push, admin → maintain). */
+data class RepoInput(
+	val name: String,
+	/** empty, template or linked. */
+	val source: String = "empty",
+	val template: String? = null,
+	val private: Boolean = false,
+	val permission: String? = null,
+)
+
+/**
+ * What the Add a repository dialog offers: the org's template repositories, and its repositories to link. [linkAny]:
+ * national may link any; leads only ones named [prefix]… that no team has yet.
+ */
+data class GitHubRepoOptions(val available: Boolean, val templates: List<String>, val repos: List<RepoOption>, val linkAny: Boolean, val prefix: String)
+
+/** A repository in the org; [linkedTo] is the team that has it through the portal, if any. */
+data class RepoOption(val name: String, val linkedTo: String?)
 
 /** Sync records for one resource, counted by state (in sync, invited and not accepted yet, …). */
 data class ResourceSync(val inSync: Int = 0, val waitingOnMember: Int = 0, val manualTask: Int = 0, val pending: Int = 0, val failing: Int = 0)

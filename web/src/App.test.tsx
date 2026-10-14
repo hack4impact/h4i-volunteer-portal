@@ -181,6 +181,65 @@ describe('App', () => {
     expect(within(list).getByText(/For chapter members · linked by hand/)).toBeInTheDocument()
   })
 
+  it("shows a GitHub team's repositories and lets a lead add one from a template (wiki: github-repos)", async () => {
+    window.history.pushState({}, '', '/chapters/umd/projects/rise-dc')
+    const repo = (id: string, name: string, over: object = {}) => ({
+      id, name, source: 'empty', template: null, private: false, permission: 'push', state: 'ready', error: null, url: `https://github.com/h4i/${name}`, ...over,
+    })
+    const project = {
+      id: 'pr1', name: 'RISE DC', slug: 'rise-dc', status: 'active', type: null, tags: [], termId: null, term: null, partner: null,
+      startsOn: null, endsOn: null, agreementsSigned: 0, canEdit: true, canEditTeam: true, pendingChanges: [], members: [],
+      resources: [{
+        resourceId: 'r2', tool: 'github', name: 'umd-rise-dc', state: 'exists', audience: 'team', roleId: null, role: null, access: 'write', requiresAgreement: true,
+        tags: [], sharedWith: [], existsInTool: false, getting: 0, awaitingAgreement: 0, url: null,
+        sync: { inSync: 0, waitingOnMember: 0, manualTask: 0, pending: 0, failing: 0 },
+        repos: [repo('g1', 'umd-rise-dc'), repo('g2', 'umd-rise-dc-old', { state: 'failed', error: 'a repository called umd-rise-dc-old may already exist: link it instead', url: null })],
+      }],
+      notion: { status: 'not_set_up', title: 'RISE DC', pageId: null, parentPageId: null, parentPath: null, matchedBy: null },
+      preview: { people: 0, grants: 0, awaitingAgreement: 0, asIfActive: false }, planned: [], lastDryRunAt: null, plannedOutOfDate: false,
+      activity: [], activityMore: false,
+    }
+    api({
+      '/api/me': [200, me([umd])],
+      '/api/chapters/umd': [200, { id: 'c1', code: 'umd', name: 'Hack4Impact UMD', status: 'active', role: 'lead', stats: { activeMembers: 0, alumni: 0, liveProjects: 1, leads: 1 }, registrationLink: null }],
+      '/api/chapters/umd/members': [200, []],
+      '/api/chapters/umd/sync': [200, { tools: [], changes: [] }],
+      '/api/project-roles': [200, []],
+      '/api/chapters/umd/projects/rise-dc': [200, project],
+      '/api/chapters/umd/github-repos': [200, { available: true, templates: ['starter'], repos: [{ name: 'umd-site', linkedTo: null }], linkAny: false, prefix: 'umd-' }],
+      'POST /api/chapters/umd/projects/rise-dc/resources/r2/repos': [200, project],
+      'POST /api/chapters/umd/projects/rise-dc/repos/g2/retry': [200, project],
+    })
+    render(<App />)
+    const repos = await screen.findByRole('list', { name: 'Repositories of umd-rise-dc' })
+    const ready = within(repos).getByRole('listitem', { name: 'Repository umd-rise-dc' })
+    expect(within(ready).getByRole('link', { name: 'umd-rise-dc' })).toHaveAttribute('href', 'https://github.com/h4i/umd-rise-dc')
+    expect(within(ready).getByText('Empty · Public · Write access')).toBeInTheDocument()
+    const failed = within(repos).getByRole('listitem', { name: 'Repository umd-rise-dc-old' })
+    expect(within(failed).getByText('Failed')).toBeInTheDocument()
+    expect(within(failed).getByText(/link it instead/)).toBeInTheDocument()
+    await userEvent.click(within(failed).getByRole('button', { name: 'Try again' }))
+    const calls = () => vi.mocked(fetch).mock.calls.map(([r]) => r as Request)
+    await waitFor(() => expect(calls().some((r) => r.method === 'POST' && r.url.endsWith('/repos/g2/retry'))).toBe(true))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Actions for umd-rise-dc' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Add a repository' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Add a repository' })
+    expect(within(dialog).getByRole('textbox', { name: /^Name/ })).toHaveValue('umd-rise-dc') // the team's name to start
+    await userEvent.clear(within(dialog).getByRole('textbox', { name: /^Name/ }))
+    await userEvent.type(within(dialog).getByRole('textbox', { name: /^Name/ }), 'bad name!')
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(/Letters, digits/)
+    expect(within(dialog).getByRole('button', { name: 'Add' })).toBeDisabled()
+    await userEvent.clear(within(dialog).getByRole('textbox', { name: /^Name/ }))
+    await userEvent.type(within(dialog).getByRole('textbox', { name: /^Name/ }), 'umd-rise-dc-site')
+    await userEvent.selectOptions(within(dialog).getByRole('combobox', { name: 'Start from' }), 'template')
+    expect(within(dialog).getByRole('button', { name: 'Add' })).toBeDisabled() // which template?
+    await userEvent.selectOptions(await within(dialog).findByRole('combobox', { name: 'Template' }), 'starter')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add' }))
+    const add = await waitFor(() => calls().find((r) => r.method === 'POST' && r.url.endsWith('/resources/r2/repos'))!)
+    expect(await add.clone().json()).toEqual({ name: 'umd-rise-dc-site', source: 'template', template: 'starter', private: false, permission: 'push' })
+  })
+
   it('lets a lead create a project and shows its resources, team and planned changes', async () => {
     window.history.pushState({}, '', '/chapters/umd/projects')
     const resource = (id: string, tool: string, name: string, gated: boolean) => ({

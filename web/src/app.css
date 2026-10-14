@@ -263,6 +263,12 @@ a.res-name:hover { text-decoration-color: currentColor; }
 .add-resource .box-row { border-top: 0; }
 @media (max-width: 700px) { .res-row { grid-template-columns: minmax(0, 1fr) auto; } .res-state { grid-column: 1; } }
 
+/* A GitHub team's repositories, under the team (wiki: github-repos). */
+.repo-list { list-style: none; margin: 8px 0 0; padding: 0 0 0 12px; border-left: 2px solid var(--h4i-border-muted); display: grid; gap: 6px; }
+.repo-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.repo-row .repo-name { font-weight: 600; color: var(--h4i-fg-strong); }
+.repo-row .repo-actions { margin-left: auto; display: flex; gap: 4px; }
+
 /* Member page access rows: icon column, then the name, tool and state on one line and why beneath. */
 .access-row { display: grid; grid-template-columns: 16px minmax(0, 1fr); column-gap: 10px; padding: 10px 16px; }
 .access-icon { display: flex; height: 21px; align-items: center; }

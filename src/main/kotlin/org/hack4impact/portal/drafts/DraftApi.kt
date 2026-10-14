@@ -23,7 +23,7 @@ data class DraftChange(
 	val position: Int,
 	/**
 	 * create_project, update_project, set_status, add_member, set_member_role, remove_member, attach_resource, update_resource,
-	 * detach_resource; create_rule, update_rule, set_rule_enabled, delete_rule (step 14).
+	 * detach_resource, add_repo, forget_repo (GitHub repositories); create_rule, update_rule, set_rule_enabled, delete_rule (step 14).
 	 */
 	val operation: String,
 	val summary: String,

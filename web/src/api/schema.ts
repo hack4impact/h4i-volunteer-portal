@@ -372,6 +372,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chapters/{code}/github-repos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["repoOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chapters/{code}/members": {
         parameters: {
             query?: never;
@@ -532,6 +548,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/chapters/{code}/projects/{slug}/repos/{repoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["forgetRepo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/repos/{repoId}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["retryRepo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/chapters/{code}/projects/{slug}/resources": {
         parameters: {
             query?: never;
@@ -559,6 +607,22 @@ export interface paths {
         put: operations["updateResource"];
         post?: never;
         delete: operations["detach"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/chapters/{code}/projects/{slug}/resources/{resourceId}/repos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["addRepo"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1463,6 +1527,13 @@ export interface components {
             scheduledFor: string | null;
             status: string;
         };
+        GitHubRepoOptions: {
+            available: boolean;
+            linkAny: boolean;
+            prefix: string;
+            repos: components["schemas"]["RepoOption"][];
+            templates: string[];
+        };
         JsonNode: {
             array: boolean;
             bigDecimal: boolean;
@@ -1744,6 +1815,7 @@ export interface components {
             /** Format: int32 */
             getting: number;
             name: string;
+            repos: components["schemas"]["RepoRow"][] | null;
             requiresAgreement: boolean;
             /** Format: uuid */
             resourceId: string;
@@ -1854,6 +1926,29 @@ export interface components {
             conflicts: components["schemas"]["DraftConflict"][];
             preview: components["schemas"]["DraftPreview"] | null;
             released: boolean;
+        };
+        RepoInput: {
+            name: string;
+            permission: string | null;
+            private: boolean;
+            source: string;
+            template: string | null;
+        };
+        RepoOption: {
+            linkedTo: string | null;
+            name: string;
+        };
+        RepoRow: {
+            error: string | null;
+            /** Format: uuid */
+            id: string;
+            name: string;
+            permission: string;
+            private: boolean;
+            source: string;
+            state: string;
+            template: string | null;
+            url: string | null;
         };
         ResourceInput: {
             access: string;
@@ -2722,6 +2817,28 @@ export interface operations {
             };
         };
     };
+    repoOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["GitHubRepoOptions"];
+                };
+            };
+        };
+    };
     members: {
         parameters: {
             query?: never;
@@ -3077,6 +3194,56 @@ export interface operations {
             };
         };
     };
+    forgetRepo: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+                repoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    retryRepo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+                repoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
     attach: {
         parameters: {
             query?: {
@@ -3150,6 +3317,36 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProjectDetail"];
+                };
+            };
+        };
+    };
+    addRepo: {
+        parameters: {
+            query?: {
+                draft?: string;
+            };
+            header?: never;
+            path: {
+                code: string;
+                slug: string;
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepoInput"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

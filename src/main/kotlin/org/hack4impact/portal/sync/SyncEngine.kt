@@ -79,6 +79,7 @@ class SyncEngine(
 	private val transactions: TransactionTemplate,
 	private val locks: RunLocks,
 	private val tools: org.hack4impact.portal.tools.ToolRegistry,
+	private val githubRepos: org.hack4impact.portal.projects.GitHubRepoSync,
 ) {
 	private val log = LoggerFactory.getLogger(javaClass)
 	private val json = JsonMapper.builder().build()
@@ -131,6 +132,14 @@ class SyncEngine(
 			if (notion?.enabled == true && notion.dryRun == false) {
 				val pages = notionPages.sync()
 				if (pages.created + pages.archived + pages.failed > 0) log.info("Notion pages: {} created, {} archived, {} failed", pages.created, pages.archived, pages.failed)
+			}
+		}
+		// Project repositories, after the GitHub team step, when GitHub is out of dry run with its write switch on (wiki: github-repos).
+		if (!forceDryRun && (tools == null || Tool.GITHUB in tools) && githubRepos.canWrite()) {
+			val github = dsl.selectFrom(TOOL_SETTING).where(TOOL_SETTING.TOOL.eq(Tool.GITHUB.name.lowercase())).fetchOne()
+			if (github?.enabled == true && github.dryRun == false) {
+				val repos = githubRepos.sync()
+				if (repos != org.hack4impact.portal.projects.GitHubRepoSync.Report()) log.info("GitHub repositories: {}", repos)
 			}
 		}
 		return reports

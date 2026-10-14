@@ -3,6 +3,8 @@ package org.hack4impact.portal.adapters
 import org.hack4impact.portal.adapters.documenso.DocumensoClient
 import org.hack4impact.portal.adapters.github.GitHubAppToken
 import org.hack4impact.portal.adapters.github.GitHubReadAdapter
+import org.hack4impact.portal.adapters.github.GitHubRepoApi
+import org.hack4impact.portal.adapters.github.GitHubRepoClient
 import org.hack4impact.portal.adapters.github.GitHubWriteAdapter
 import org.hack4impact.portal.adapters.google.GoogleAccounts
 import org.hack4impact.portal.adapters.google.GoogleReadAdapter
@@ -119,6 +121,17 @@ class AdapterConfiguration {
 	@ConditionalOnBooleanProperty("portal.adapters.github.enabled")
 	fun gitHubReadAdapter(p: AdapterProperties): ReadAdapter = with(p.github) {
 		GitHubReadAdapter(
+			baseUrl, githubOrg(required("github.org", org)),
+			GitHubAppToken(baseUrl, required("github.app-id", appId), required("github.installation-id", installationId), inlineOrFile(privateKey)),
+			http = patient(Tool.GITHUB),
+		)
+	}
+
+	/** Project repositories (wiki: github-repos): listing needs GitHub enabled; the sync creates them only with its write switch. */
+	@Bean
+	@ConditionalOnBooleanProperty("portal.adapters.github.enabled")
+	fun gitHubRepos(p: AdapterProperties): GitHubRepoApi = with(p.github) {
+		GitHubRepoClient(
 			baseUrl, githubOrg(required("github.org", org)),
 			GitHubAppToken(baseUrl, required("github.app-id", appId), required("github.installation-id", installationId), inlineOrFile(privateKey)),
 			http = patient(Tool.GITHUB),

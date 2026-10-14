@@ -33,6 +33,7 @@ import java.util.UUID
 class ProjectQueries(
 	private val dsl: DSLContext, private val worlds: WorldLoader, private val notion: NotionSettings, private val activity: ProjectActivity,
 	private val links: org.hack4impact.portal.adapters.ToolLinks,
+	private val repos: ProjectRepos,
 ) {
 	/** Who could join the team: the chapter's active members and alumni not on it yet (PRD: alumni can join). */
 	/** Who could join the team: the chapter's members, or for national's own projects anyone in the org (decision 141). */
@@ -130,6 +131,7 @@ class ProjectQueries(
 				val c = counts.toMap()
 				ResourceSync(c["in_sync"] ?: 0, c["waiting_on_member"] ?: 0, c["manual_task"] ?: 0, c["pending"] ?: 0, (c["failed"] ?: 0) + (c["dead_letter"] ?: 0))
 			}
+		val repoRows = repos.rows(resourceRows.filter { it.value2() == ProjectRepos.TOOL }.map { it.value1()!! })
 		val resources = resourceRows.map { r ->
 			val rid = r.value1()!!
 			ProjectResourceRow(
@@ -146,6 +148,7 @@ class ProjectQueries(
 				awaitingAgreement = resolution.withheld.count { it.resourceId == rid && it.why is WithheldReason.AwaitingAgreement },
 				url = links.url(r.value2()!!, r.value3()!!, r.value4()),
 				sync = syncCounts[rid] ?: ResourceSync(),
+				repos = if (r.value2() == ProjectRepos.TOOL) repoRows[rid].orEmpty() else null,
 			)
 		}
 		val grants = resolution.grants.filter { it.resourceId in resourceIds }

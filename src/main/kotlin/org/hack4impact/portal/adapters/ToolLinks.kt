@@ -10,4 +10,8 @@ class ToolLinks(private val adapters: AdapterProperties, private val tools: org.
 		externalId ?: return null
 		return tools.find(tool)?.link?.invoke(adapters, name, externalId)
 	}
+
+	/** A project repository in the GitHub organization (wiki: github-repos). */
+	fun githubRepo(name: String): String? =
+		adapters.github.org.takeIf { it.isNotBlank() }?.let { "https://github.com/${githubOrg(it)}/$name" }
 }

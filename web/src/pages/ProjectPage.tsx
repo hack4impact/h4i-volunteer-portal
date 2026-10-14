@@ -3,7 +3,7 @@ import { ActionList, ActionMenu, Banner, Button, Checkbox, Dialog, IconButton, L
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import {
-  api, reason, type ChapterResourceOption, type PlannedChange, type ProjectDetail, type ProjectResourceRow, type ActivityItem, type ProjectRoleOption, type TeamCandidate, type TermOption,
+  api, reason, type ChapterResourceOption, type GitHubRepoOptions, type PlannedChange, type ProjectDetail, type RepoInput, type RepoRow, type ProjectResourceRow, type ActivityItem, type ProjectRoleOption, type TeamCandidate, type TermOption,
 } from '../api/client'
 import { CHANGE_LABEL, OUTCOME_LABEL, PROJECT_STATUS, STATUS_LABEL, Status, TOOL_NAME, resourceName } from '../components/Status'
 import { ToolIcon } from '../components/ToolIcon'
@@ -155,6 +155,15 @@ export function ProjectPage({ code, slug }: { code: string; slug: string }) {
               ? `The team stops getting it through this project at the next sync; anyone who also gets it another way keeps it. It isn't deleted from ${TOOL_NAME[r.tool] ?? r.tool}.`
               : `It hasn't been created in ${TOOL_NAME[r.tool] ?? r.tool} yet, so it won't be.`),
           ) && apply(api.DELETE('/api/chapters/{code}/projects/{slug}/resources/{resourceId}', { params: { path: { code, slug, resourceId: r.resourceId } } }))}
+          repoActions={{
+            add: (resourceId, body) => apply(api.POST('/api/chapters/{code}/projects/{slug}/resources/{resourceId}/repos', { params: { path: { code, slug, resourceId } }, body })),
+            forget: (repo) => window.confirm(
+              `Remove ${repo.name} from the team?\n\n` + (repo.state === 'ready'
+                ? 'The team loses the access the portal gave it at the next sync. The repository itself stays in GitHub.'
+                : 'It hasn’t been made in GitHub yet, so it won’t be.'),
+            ) && apply(api.DELETE('/api/chapters/{code}/projects/{slug}/repos/{repoId}', { params: { path: { code, slug, repoId: repo.id } } })),
+            retry: (repo) => apply(api.POST('/api/chapters/{code}/projects/{slug}/repos/{repoId}/retry', { params: { path: { code, slug, repoId: repo.id } } })),
+          }}
         />
 
         <section className="box" aria-labelledby="planned">
@@ -318,11 +327,13 @@ function syncState(r: ProjectResourceRow, draft: boolean): [string, 'ok' | 'warn
  * The project's resources, one box per tool (Slack channels, GitHub teams, …), each with its own Add: who gets each
  * resource, whether it needs the agreement, and how the sync stands.
  */
-function ResourceGroups({ project, tools, roles, edit, code, onAdd, onSave, onDetach }: {
+function ResourceGroups({ project, tools, roles, edit, code, onAdd, onSave, onDetach, repoActions }: {
   project: ProjectDetail; tools: string[]; roles: ProjectRoleOption[]; edit: boolean; code: string
   onAdd: (b: ResourceBody) => Promise<boolean>; onSave: (resourceId: string, b: ResourceBody) => Promise<boolean>; onDetach: (r: ProjectResourceRow) => void
+  repoActions: RepoActions
 }) {
   const [editing, setEditing] = useState<{ id: string; body: ResourceBody } | null>(null)
+  const [addingRepo, setAddingRepo] = useState<ProjectResourceRow | null>(null)
   const [adding, setAdding] = useState<string | null>(null)
   const draft = project.preview.asIfActive
   // One box per tool chapters attach to projects, in the project page's order (tool registry); then any other tool the project has.
@@ -360,6 +371,11 @@ function ResourceGroups({ project, tools, roles, edit, code, onAdd, onSave, onDe
                         <span className="muted"> (found by the adoption scan). If it's this project's, link it on the Adoption tab instead of creating a new one.</span>
                       </div>
                     )}
+                    {r.repos && r.repos.length > 0 && (
+                      <ul className="repo-list" aria-label={`Repositories of ${r.name}`}>
+                        {r.repos.map((g) => <RepoItem key={g.id} repo={g} edit={edit} actions={repoActions} />)}
+                      </ul>
+                    )}
                     {editing?.id === r.resourceId && (
                       <div className="inline-form" style={{ marginTop: 8 }}>
                         <AccessFields value={editing.body} onChange={(body) => setEditing({ id: r.resourceId, body })} roles={roles} />
@@ -377,6 +393,7 @@ function ResourceGroups({ project, tools, roles, edit, code, onAdd, onSave, onDe
                           <ActionList.Item onSelect={() => setEditing({ id: r.resourceId, body: { resourceId: null, tool: null, name: null, audience: r.audience, roleId: r.roleId, access: r.access, requiresAgreement: r.requiresAgreement, tags: r.tags } })}>
                             Change who gets it
                           </ActionList.Item>
+                          {r.repos && r.state !== 'archived' && <ActionList.Item onSelect={() => setAddingRepo(r)}>Add a repository</ActionList.Item>}
                           <ActionList.Item variant="danger" onSelect={() => onDetach(r)}>Remove from project</ActionList.Item>
                         </ActionList>
                       </ActionMenu.Overlay>
@@ -388,7 +405,129 @@ function ResourceGroups({ project, tools, roles, edit, code, onAdd, onSave, onDe
           </section>
         )
       })}
+      {addingRepo && <AddRepo code={code} team={addingRepo} onAdd={(body) => repoActions.add(addingRepo.resourceId, body)} onClose={() => setAddingRepo(null)} />}
     </>
+  )
+}
+
+type RepoActions = {
+  add: (resourceId: string, body: RepoInput) => Promise<boolean>
+  forget: (repo: RepoRow) => void
+  retry: (repo: RepoRow) => void
+}
+
+const ACCESS_WORDS: Record<string, string> = { pull: 'Read', push: 'Write', maintain: 'Maintain' }
+const PERMISSION_OF: Record<string, string> = { read: 'pull', write: 'push', admin: 'maintain' }
+
+function repoState(g: RepoRow): [string, 'ok' | 'warn' | 'off' | 'danger'] {
+  if (g.state === 'ready') return ['Ready', 'ok']
+  if (g.state === 'failed') return ['Failed', 'danger']
+  if (g.state === 'forgetting') return ['Being removed', 'off']
+  return [g.source === 'linked' ? 'To be linked' : 'To be created', 'off']
+}
+
+/** One repository under its team: how it started, what the team gets, and how it stands in GitHub. */
+function RepoItem({ repo, edit, actions }: { repo: RepoRow; edit: boolean; actions: RepoActions }) {
+  const [state, tone] = repoState(repo)
+  const start = repo.source === 'linked' ? 'Linked' : repo.source === 'template' ? `From ${repo.template}` : 'Empty'
+  return (
+    <li className="repo-row" aria-label={`Repository ${repo.name}`}>
+      {repo.url ? <a className="repo-name" href={repo.url} target="_blank" rel="noreferrer">{repo.name}</a> : <span className="repo-name">{repo.name}</span>}
+      <span className="muted">{[start, repo.source === 'linked' ? null : repo.private ? 'Private' : 'Public', `${ACCESS_WORDS[repo.permission] ?? repo.permission} access`].filter(Boolean).join(' · ')}</span>
+      <Status tone={tone}>{state}</Status>
+      {repo.state === 'failed' && repo.error && <span className="muted">{repo.error}</span>}
+      {edit && repo.state !== 'forgetting' && (
+        <span className="repo-actions">
+          {repo.state === 'failed' && <Button size="small" variant="invisible" onClick={() => actions.retry(repo)}>Try again</Button>}
+          <Button size="small" variant="invisible" onClick={() => actions.forget(repo)} aria-label={`Remove ${repo.name}`}>Remove</Button>
+        </span>
+      )}
+    </li>
+  )
+}
+
+/** GitHub's repository names: letters, digits, '.', '-' and '_' (checked again on the server). */
+function repoNameProblem(name: string): string | null {
+  if (!name) return null
+  if (!/^[A-Za-z0-9._-]{1,100}$/.test(name)) return 'Letters, digits, ., - and _ only (at most 100)'
+  if (name === '.' || name === '..' || name.toLowerCase().endsWith('.git')) return 'GitHub doesn’t allow that name'
+  return null
+}
+
+/**
+ * Adds a repository to a GitHub team (wiki: github-repos): a new one, empty or from one of the org's template
+ * repositories, or an existing one linked. The team gets its access; the sync makes it in GitHub.
+ */
+function AddRepo({ code, team, onAdd, onClose }: { code: string; team: ProjectResourceRow; onAdd: (b: RepoInput) => Promise<boolean>; onClose: () => void }) {
+  const [options, setOptions] = useState<GitHubRepoOptions | null>(null)
+  const [form, setForm] = useState<RepoInput>({ name: team.name, source: 'empty', template: null, private: false, permission: PERMISSION_OF[team.access] ?? 'push' })
+  useEffect(() => { void api.GET('/api/chapters/{code}/github-repos', { params: { path: { code } } }).then(({ data }) => setOptions(data ?? null)) }, [code])
+  const linkable = options?.repos.filter((r) => !r.linkedTo) ?? []
+  const problem = form.source === 'linked' ? null : repoNameProblem(form.name)
+  const ready = Boolean(form.name) && !problem && (form.source !== 'template' || Boolean(form.template))
+  return (
+    <Dialog title="Add a repository" subtitle={`On the team ${team.name}; everyone on the team gets it`} width="large" onClose={onClose}
+      footerButtons={[
+        { buttonType: 'default', content: 'Cancel', onClick: onClose },
+        { buttonType: 'primary', content: form.source === 'linked' ? 'Link' : 'Add', disabled: !ready, onClick: async () => { if (await onAdd(form)) onClose() } },
+      ]}>
+      <div className="form-grid">
+        {options && !options.available && (
+          <Banner variant="warning" title="GitHub can’t be reached" description="Templates and repositories to link can’t be listed now. An empty repository can still be added." />
+        )}
+        <label>Start from
+          <Select block value={form.source} onChange={(e) => {
+            const source = e.target.value
+            // A typed name stays when switching between new kinds; linking picks from the org's repositories instead.
+            const name = source === 'linked' ? '' : form.source === 'linked' ? team.name : form.name
+            setForm({ ...form, source, template: null, name })
+          }}>
+            <Select.Option value="empty">Empty (a README only)</Select.Option>
+            <Select.Option value="template">A template repository</Select.Option>
+            <Select.Option value="linked">An existing repository</Select.Option>
+          </Select>
+        </label>
+        {form.source === 'template' && (
+          <label>Template
+            {options?.templates.length ? (
+              <Select block value={form.template ?? ''} onChange={(e) => setForm({ ...form, template: e.target.value || null })}>
+                <Select.Option value="">Choose…</Select.Option>
+                {options.templates.map((t) => <Select.Option key={t} value={t}>{t}</Select.Option>)}
+              </Select>
+            ) : <span className="muted">{options ? 'The org has no template repositories yet (a repository is one when “Template repository” is ticked in its GitHub settings).' : 'Loading…'}</span>}
+          </label>
+        )}
+        {form.source === 'linked' ? (
+          <label>Repository
+            <Select block value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}>
+              <Select.Option value="">Choose…</Select.Option>
+              {linkable.map((r) => <Select.Option key={r.name} value={r.name}>{r.name}</Select.Option>)}
+            </Select>
+            {options && !options.linkAny && <span className="muted">Leads can link repositories named {options.prefix}… that no team has yet; national can link any other.</span>}
+          </label>
+        ) : (
+          <label>Name
+            <TextInput block value={form.name} aria-invalid={Boolean(problem)} onChange={(e) => setForm({ ...form, name: e.target.value.trim() })} />
+            {problem && <span className="muted" role="alert">{problem}</span>}
+          </label>
+        )}
+        <label>Team access
+          <Select block value={form.permission ?? 'push'} onChange={(e) => setForm({ ...form, permission: e.target.value })}>
+            <Select.Option value="pull">Read</Select.Option>
+            <Select.Option value="push">Write</Select.Option>
+            <Select.Option value="maintain">Maintain</Select.Option>
+          </Select>
+        </label>
+        {form.source !== 'linked' && (
+          <label>Visibility
+            <Select block value={form.private ? 'private' : 'public'} onChange={(e) => setForm({ ...form, private: e.target.value === 'private' })}>
+              <Select.Option value="public">Public: anyone can see it; only the team can change it</Select.Option>
+              <Select.Option value="private">Private: only people with access can see it</Select.Option>
+            </Select>
+          </label>
+        )}
+      </div>
+    </Dialog>
   )
 }
 
