@@ -10,6 +10,11 @@ type Details = ApplicantView['details']
  * The applicant's pages (build plan step 10), outside Google sign-in: /join/<chapter> (with ?invite= for a roster
  * invite), /claim/<token>, and /apply once a session exists. One checklist: school email, GitHub, details, send.
  */
+
+/** The member database keeps degree as free text; these keep it consistent. */
+const DEGREES = ["Associate's", "Bachelor's", "Master's", 'PhD', 'Other']
+const SEASONS: [string, string][] = [['spring', 'Spring'], ['summer', 'Summer'], ['fall', 'Fall'], ['winter', 'Winter']]
+
 export function ApplyApp() {
   const path = window.location.pathname
   const params = new URLSearchParams(window.location.search)
@@ -208,6 +213,29 @@ function Application({ view, onChange, initialError }: { view: ApplicantView; on
           Personal email
           <TextInput type="email" value={details.personalEmail ?? ''} onChange={(e) => set({ personalEmail: e.target.value })} placeholder="For after you graduate" />
         </label>
+        <fieldset className="choice">
+          <legend>Your studies</legend>
+          <div className="two-up">
+            <label>Major <TextInput required value={details.major ?? ''} onChange={(e) => set({ major: e.target.value })} placeholder="e.g. Computer Science" /></label>
+            <label>
+              Degree
+              <Select required value={details.degreeType ?? ''} onChange={(e) => set({ degreeType: e.target.value || null })}>
+                <Select.Option value="">Choose…</Select.Option>
+                {DEGREES.map((d) => <Select.Option key={d} value={d}>{d}</Select.Option>)}
+              </Select>
+            </label>
+          </div>
+          <div className="two-up">
+            <label>
+              Graduating in
+              <Select required value={details.graduationSeason ?? ''} onChange={(e) => set({ graduationSeason: e.target.value || null })}>
+                <Select.Option value="">Season…</Select.Option>
+                {SEASONS.map(([value, label]) => <Select.Option key={value} value={value}>{label}</Select.Option>)}
+              </Select>
+            </label>
+            <label>Year <TextInput type="number" required value={details.graduationYear?.toString() ?? ''} onChange={(e) => set({ graduationYear: e.target.value ? Number(e.target.value) : null })} placeholder="2028" /></label>
+          </div>
+        </fieldset>
         {claim ? (
           <fieldset className="choice">
             <legend>Are you still part of {view.chapter.name}?</legend>
@@ -216,16 +244,13 @@ function Application({ view, onChange, initialError }: { view: ApplicantView; on
           </fieldset>
         ) : (
           <>
-            <div className="two-up">
-              <label>Graduation year <TextInput type="number" required value={details.graduationYear?.toString() ?? ''} onChange={(e) => set({ graduationYear: e.target.value ? Number(e.target.value) : null })} /></label>
-              <label>
-                Role you’re interested in
-                <Select value={details.roleInterest ?? ''} onChange={(e) => set({ roleInterest: e.target.value || null })}>
-                  <Select.Option value="">Not sure yet</Select.Option>
-                  {['Developer', 'Designer', 'Product manager', 'Tech lead'].map((r) => <Select.Option key={r} value={r}>{r}</Select.Option>)}
-                </Select>
-              </label>
-            </div>
+            <label>
+              Role you’re interested in
+              <Select value={details.roleInterest ?? ''} onChange={(e) => set({ roleInterest: e.target.value || null })}>
+                <Select.Option value="">Not sure yet</Select.Option>
+                {['Developer', 'Designer', 'Product manager', 'Tech lead'].map((r) => <Select.Option key={r} value={r}>{r}</Select.Option>)}
+              </Select>
+            </label>
             {view.chapter.questions.map((q) => (
               <label key={q.id}>
                 {q.label}{q.required ? '' : ' (optional)'}

@@ -88,7 +88,8 @@ function Pending({ r, canEdit, onApprove, onDecline }: {
         <dl className="facts">
           <dt>School email</dt><dd>{r.schoolEmail ?? '—'}</dd>
           <dt>GitHub</dt><dd>{r.githubLogin ?? '—'}</dd>
-          <dt>Graduates</dt><dd>{r.graduationYear ?? '—'}</dd>
+          <dt>Studies</dt><dd>{[r.major, r.degreeType].filter(Boolean).join(', ') || '—'}</dd>
+          <dt>Graduates</dt><dd>{r.graduationYear ? `${r.graduationSeason ? `${r.graduationSeason[0]!.toUpperCase()}${r.graduationSeason.slice(1)} ` : ''}${r.graduationYear}` : '—'}</dd>
           <dt>Interested in</dt><dd>{r.roleInterest ?? 'Not sure yet'}</dd>
           {Object.entries(r.answers).map(([q, a]) => <Fragment key={q}><dt>{q}</dt><dd>{a || '—'}</dd></Fragment>)}
         </dl>

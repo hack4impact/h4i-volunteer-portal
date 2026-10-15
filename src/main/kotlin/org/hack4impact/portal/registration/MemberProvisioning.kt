@@ -10,6 +10,7 @@ import org.hack4impact.portal.db.tables.references.CHAPTER_MEMBERSHIP
 import org.hack4impact.portal.db.tables.references.PERSON
 import org.hack4impact.portal.db.tables.references.REGISTRATION
 import org.hack4impact.portal.db.tables.references.ROSTER_INVITE
+import org.hack4impact.portal.db.tables.references.TERM
 import org.hack4impact.portal.db.tables.references.TOOL_ACCOUNT
 import org.hack4impact.portal.mail.Emails
 import org.hack4impact.portal.mail.Mailer
@@ -17,6 +18,7 @@ import org.hack4impact.portal.mail.NewAccount
 import org.hack4impact.portal.sync.SyncRequests
 import org.jooq.DSLContext
 import org.jooq.JSONB
+import org.jooq.impl.DSL
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Value
@@ -43,6 +45,7 @@ class MemberProvisioning(
 	private val sessions: ApplicantSessions,
 	private val syncs: SyncRequests,
 	private val transactions: TransactionTemplate,
+	private val memberDb: org.hack4impact.portal.memberdb.MemberDbWrites,
 	private val agreements: org.hack4impact.portal.agreements.AgreementService,
 	@Value("\${portal.base-url}") private val baseUrl: String,
 ) {
@@ -56,6 +59,8 @@ class MemberProvisioning(
 			val claim = r.kind == "claim"
 			val person = (if (claim) r.personId else target) ?: newPerson(r)
 			updatePerson(person, r, claim)
+			// The member database gets the record in the same commit as the change (wiki: staged-rollout).
+			memberDb.request(person)
 			dsl.insertInto(CHAPTER_MEMBERSHIP).set(CHAPTER_MEMBERSHIP.PERSON_ID, person).set(CHAPTER_MEMBERSHIP.CHAPTER_ID, r.chapterId)
 				.onConflictDoNothing().execute()
 			dsl.update(CHAPTER_MEMBERSHIP).setNull(CHAPTER_MEMBERSHIP.LEFT_ON)
@@ -65,8 +70,8 @@ class MemberProvisioning(
 				.set(REGISTRATION.STATUS, if (claim) "completed" else "approved").set(REGISTRATION.PERSON_ID, person)
 				.set(REGISTRATION.DECIDED_BY, decidedBy).set(REGISTRATION.DECIDED_AT, OffsetDateTime.now()).set(REGISTRATION.UPDATED_AT, OffsetDateTime.now())
 				.where(REGISTRATION.ID.eq(registration)).execute()
-			r.rosterInviteId?.let { dsl.update(ROSTER_INVITE).set(ROSTER_INVITE.STATUS, "completed").where(ROSTER_INVITE.ID.eq(it)).execute() }
 			agreements.attach(registration, person) // the volunteer agreement and code of conduct they signed are now theirs
+			r.rosterInviteId?.let { dsl.update(ROSTER_INVITE).set(ROSTER_INVITE.STATUS, "completed").where(ROSTER_INVITE.ID.eq(it)).execute() }
 			audit(decidedBy, if (claim) "registration.claim" else "registration.approve", registration, r.chapterId!!, person)
 			r to person
 		}
@@ -95,9 +100,22 @@ class MemberProvisioning(
 		r.preferredName?.let { update = update.set(PERSON.PREFERRED_NAME, it.trim().ifEmpty { null }) }
 		r.schoolEmail?.let { update = update.set(PERSON.SCHOOL_EMAIL, it.trim().lowercase()) }
 		r.personalEmail?.takeIf { it.isNotBlank() }?.let { update = update.set(PERSON.PERSONAL_EMAIL, it.trim().lowercase()) }
-		if (claim) update = update.set(PERSON.CLAIMED_AT, OffsetDateTime.now())
+		r.major?.takeIf { it.isNotBlank() }?.let { update = update.set(PERSON.MAJOR, it.trim()) }
+		r.degreeType?.takeIf { it.isNotBlank() }?.let { update = update.set(PERSON.DEGREE_TYPE, it.trim()) }
+		if (r.graduationSeason != null && r.graduationYear != null) {
+			update = update.set(PERSON.GRADUATION_SEASON, r.graduationSeason).set(PERSON.GRADUATION_YEAR, r.graduationYear!!.toShort())
+				.set(PERSON.GRADUATION_TERM_ID, graduationTerm(r.chapterId!!, r.graduationSeason!!, r.graduationYear!!))
+		}
+		// They confirmed their details (a claim, an approval or a roster invite): from now on the portal's version wins,
+		// and an imported record they were matched to no longer waits for a claim.
+		update = update.set(PERSON.CLAIMED_AT, DSL.coalesce(PERSON.CLAIMED_AT, DSL.currentOffsetDateTime()))
 		update.where(PERSON.ID.eq(person)).execute()
 	}
+
+	/** The term at the chapter's school for that season and year, if national has seeded it (Q51); else none yet. */
+	private fun graduationTerm(chapter: UUID, season: String, year: Int): UUID? =
+		dsl.select(TERM.ID).from(TERM).join(CHAPTER).on(CHAPTER.INSTITUTION_ID.eq(TERM.INSTITUTION_ID))
+			.where(CHAPTER.ID.eq(chapter), TERM.SEASON.eq(season), TERM.YEAR.eq(year.toShort())).limit(1).fetchOne()?.value1()
 
 	/**
 	 * Records the GitHub account they signed in with (verified by OAuth). An imported login-only row becomes the
@@ -143,6 +161,7 @@ class MemberProvisioning(
 			dsl.update(PERSON).set(PERSON.ORG_EMAIL, account.email).where(PERSON.ID.eq(person)).execute()
 			dsl.insertInto(TOOL_ACCOUNT).set(TOOL_ACCOUNT.PERSON_ID, person).set(TOOL_ACCOUNT.TOOL, "google").set(TOOL_ACCOUNT.EXTERNAL_ID, account.userId)
 				.set(TOOL_ACCOUNT.EXTERNAL_LOGIN, account.email).set(TOOL_ACCOUNT.STATE, "confirmed").set(TOOL_ACCOUNT.VERIFIED_AT, OffsetDateTime.now()).execute()
+			memberDb.request(person) // again, now with their H4I address
 			account
 		} catch (e: AdapterException) {
 			log.warn("Google account for {} not created: {}", name, e.message)

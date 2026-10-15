@@ -48,6 +48,14 @@ portal:
   adoption:
     # When grandfathered access ends for chapters without their own date (wiki decision 80: end of May for now).
     default-grandfather-until: ${PORTAL_ADOPTION_DEFAULTGRANDFATHERUNTIL:2027-05-31}
+  # The member database as an integration (wiki: staged-rollout). Pulling and writing are each off unless set; writes
+  # also start in dry run until national turns them on from the National page.
+  member-db:
+    url: ${MEMBER_DB_URL:}
+    username: ${MEMBER_DB_USERNAME:}
+    password: ${MEMBER_DB_PASSWORD:}
+    pull: ${PORTAL_MEMBERDB_PULL:false}
+    write: ${PORTAL_MEMBERDB_WRITE:false}
   import:
     member-db:
       url: ${MEMBER_DB_URL:}

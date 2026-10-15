@@ -20,9 +20,20 @@ Kotlin + Spring Boot 4 on Java 25, PostgreSQL 17 with Flyway and jOOQ, built wit
 
 The portal's own database is the source of truth. Migrations are in `src/main/resources/db/migration` (schema `portal`) and run on startup. jOOQ classes are generated from them into `build/generated/jooq` by `./gradlew generateJooq`, which runs automatically before compiling.
 
+## The member database
+
+Since 2026-10-14 the national member database is an integration (wiki: staged-rollout, decisions 159 and 162), the same as in the stage 1 app (`../Membership-Portal-Stage-1`):
+
+- **Pull** (`PORTAL_MEMBERDB_PULL=true`, every 15 minutes, skipped when no table changed): the importer below, run on a schedule. A record its person confirmed is never overwritten.
+- **Write**: approving, claiming or finishing a roster invite queues the person (`member_db_write`); a worker writes their volunteer row, school profile and GitHub and Google accounts, one member-database transaction each, with retries. It never deletes. Writes start in dry run (national sees what would be written on the National page); leaving it needs `PORTAL_MEMBERDB_WRITE=true`.
+- **Drift**: a field the portal owns that someone changes in the member database is reported on the National page, not taken.
+- **Join and Claim ask** major, degree type and graduation season and year (the member database requires them on a school profile). **National seeds `academic_terms`** before Join opens.
+- **Changes for Khoa**: `scripts/member-db-changes.sql`.
+- Settings: `MEMBER_DB_URL`, `MEMBER_DB_USERNAME`, `MEMBER_DB_PASSWORD`, `PORTAL_MEMBERDB_PULL`, `PORTAL_MEMBERDB_WRITE`.
+
 ## Importing the national member database
 
-The member DB is read-only to the portal and only used for seeding. The importer copies it in, never overwrites anything edited or claimed in the portal, and writes a report of everything that needs a person to look at.
+The importer copies it in, never overwrites anything edited or claimed in the portal, and writes a report of everything that needs a person to look at. It runs once from the command line (below), or on a schedule as the pull above.
 
 ```sh
 # Against the fake member DB that compose.yaml starts (no real people):

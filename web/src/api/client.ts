@@ -48,6 +48,8 @@ export type ToolInfo = components['schemas']['ToolInfo']
 export type RepoRow = components['schemas']['RepoRow']
 export type RepoInput = components['schemas']['RepoInput']
 export type GitHubRepoOptions = components['schemas']['GitHubRepoOptions']
+export type MemberDbStatus = components['schemas']['MemberDbStatus']
+export type MemberDbPreview = components['schemas']['MemberDbPreview']
 
 /** Typed client for the portal API; types come from web/openapi.json (`npm run gen:api`). */
 export const api = createClient<paths>({

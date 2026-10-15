@@ -186,11 +186,11 @@ class RegistrationTests(
 		val cookie = verified("ada@umd.edu")
 		me(cookie).andExpect {
 			jsonPath("$.emailVerified") { value(true) }
-			jsonPath("$.missing") { value(org.hamcrest.Matchers.hasItems("your GitHub account", "your name", "“Why do you want to join?”")) }
+			jsonPath("$.missing") { value(org.hamcrest.Matchers.hasItems("your GitHub account", "your name", "your major", "your degree", "when you graduate", "“Why do you want to join?”")) }
 		}
 		linkGitHub(cookie, 777, "ada-gh")
 		val question = body(mvc.get("/api/apply/chapters/umd")).path("questions")[0].path("id").asString()
-		json("/api/apply/me", """{"details":{"firstName":"Ada","lastName":"Lovelace","personalEmail":"ada@personal.test","graduationYear":2028},"answers":{"$question":"To build things"}}""",
+		json("/api/apply/me", """{"details":{"major":"Computer Science","degreeType":"Bachelor's","graduationSeason":"spring","firstName":"Ada","lastName":"Lovelace","personalEmail":"ada@personal.test","graduationYear":2028},"answers":{"$question":"To build things"}}""",
 			cookie, method = "PUT").andExpect { jsonPath("$.missing.length()") { value(0) } }
 		json("/api/apply/me/submit", "{}", cookie).andExpect { jsonPath("$.status") { value("submitted") } }
 
@@ -204,6 +204,12 @@ class RegistrationTests(
 		assertEquals("active", ada.status)
 		assertEquals("ada@umd.hack4impact.org", ada.orgEmail) // first@<chapter>.hack4impact.org (decision 108)
 		assertTrue(dsl.fetchExists(CHAPTER_MEMBERSHIP, CHAPTER_MEMBERSHIP.PERSON_ID.eq(ada.id), CHAPTER_MEMBERSHIP.CHAPTER_ID.eq(umd)))
+		// What the member database's school profile needs (Q48), and her record queued for it (wiki: staged-rollout).
+		assertEquals(listOf("Computer Science", "Bachelor's", "spring"), listOf(ada.major, ada.degreeType, ada.graduationSeason))
+		assertEquals(2028.toShort(), ada.graduationYear)
+		assertNotNull(ada.claimedAt) // she confirmed her details: nothing left to claim
+		assertEquals("pending", dsl.select(org.hack4impact.portal.db.tables.references.MEMBER_DB_WRITE.STATE).from(org.hack4impact.portal.db.tables.references.MEMBER_DB_WRITE)
+			.where(org.hack4impact.portal.db.tables.references.MEMBER_DB_WRITE.PERSON_ID.eq(ada.id)).fetchSingle().value1())
 		assertEquals("777", dsl.select(TOOL_ACCOUNT.EXTERNAL_ID).from(TOOL_ACCOUNT).where(TOOL_ACCOUNT.PERSON_ID.eq(ada.id), TOOL_ACCOUNT.TOOL.eq("github")).fetchSingle().value1())
 		val created = HttpJson.MAPPER.readTree(server.allServeEvents.single { it.request.method.name == "POST" && it.request.url == "/admin/directory/v1/users" }.request.bodyAsString)
 		assertEquals("/UMD", created.path("orgUnitPath").asString())
@@ -240,7 +246,7 @@ class RegistrationTests(
 		val cookie = verified("ada@umd.edu")
 		linkGitHub(cookie, 777, "ada-gh")
 		val question = body(mvc.get("/api/apply/chapters/umd")).path("questions")[0].path("id").asString()
-		json("/api/apply/me", """{"details":{"firstName":"Ada","lastName":"Test","graduationYear":2028},"answers":{"$question":"Back again"}}""", cookie, method = "PUT")
+		json("/api/apply/me", """{"details":{"major":"Computer Science","degreeType":"Bachelor's","graduationSeason":"spring","firstName":"Ada","lastName":"Test","graduationYear":2028},"answers":{"$question":"Back again"}}""", cookie, method = "PUT")
 		json("/api/apply/me/submit", "{}", cookie)
 		val reg = body(mvc.get("/api/chapters/umd/registrations") { with(signedIn("lena@hack4impact.org")) })[0]
 		assertEquals("alumni", reg.path("matchStatus").asString()) // "alumni record found"
@@ -256,7 +262,7 @@ class RegistrationTests(
 		val cookie = verified("ada@umd.edu")
 		linkGitHub(cookie, 777, "ada-gh")
 		val question = body(mvc.get("/api/apply/chapters/umd")).path("questions")[0].path("id").asString()
-		json("/api/apply/me", """{"details":{"firstName":"Ada","lastName":"Lovelace","graduationYear":2028},"answers":{"$question":"x"}}""", cookie, method = "PUT")
+		json("/api/apply/me", """{"details":{"major":"Computer Science","degreeType":"Bachelor's","graduationSeason":"spring","firstName":"Ada","lastName":"Lovelace","graduationYear":2028},"answers":{"$question":"x"}}""", cookie, method = "PUT")
 		json("/api/apply/me/submit", "{}", cookie)
 		val id = body(mvc.get("/api/chapters/umd/registrations") { with(signedIn("lena@hack4impact.org")) })[0].path("id").asString()
 		json("/api/chapters/umd/registrations/$id/decline", """{"reason":" "}""", as_ = "lena@hack4impact.org").andExpect { status { isBadRequest() } }
@@ -284,7 +290,7 @@ class RegistrationTests(
 		}.andReturn().response.getCookie("h4i_applicant")!!
 		json("/api/apply/claim", """{"token":"$token"}""").andExpect { status { isGone() } } // single use
 		linkGitHub(cookie, 999, "new-login")
-		json("/api/apply/me", """{"details":{"firstName":"Ada","lastName":"Test","stillActive":false}}""", cookie, method = "PUT")
+		json("/api/apply/me", """{"details":{"major":"Computer Science","degreeType":"Bachelor's","graduationSeason":"spring","firstName":"Ada","lastName":"Test","stillActive":false,"graduationYear":2024}}""", cookie, method = "PUT")
 		json("/api/apply/me/submit", "{}", cookie).andExpect { status { isOk() } }
 
 		val p = dsl.selectFrom(PERSON).where(PERSON.ID.eq(ada)).fetchSingle()
@@ -361,7 +367,7 @@ class RegistrationTests(
 			.andReturn().response.getCookie("h4i_applicant")!!
 		linkGitHub(cookie, 555, "grace-gh")
 		val question = body(mvc.get("/api/apply/chapters/umd")).path("questions")[0].path("id").asString()
-		json("/api/apply/me", """{"details":{"firstName":"Grace","lastName":"Hopper","graduationYear":2027},"answers":{"$question":"Roster"}}""", cookie, method = "PUT")
+		json("/api/apply/me", """{"details":{"major":"Computer Science","degreeType":"Bachelor's","graduationSeason":"spring","firstName":"Grace","lastName":"Hopper","graduationYear":2027},"answers":{"$question":"Roster"}}""", cookie, method = "PUT")
 		json("/api/apply/me/submit", "{}", cookie)
 		val reg = dsl.selectFrom(REGISTRATION).fetchSingle()
 		assertEquals("approved", reg.status)
@@ -405,7 +411,7 @@ class RegistrationTests(
 		val cookie = json("/api/apply/roster", """{"token":"$token"}""").andReturn().response.getCookie("h4i_applicant")!!
 		linkGitHub(cookie, 556, "mal-gh")
 		val question = body(mvc.get("/api/apply/chapters/umd")).path("questions")[0].path("id").asString()
-		json("/api/apply/me", """{"details":{"firstName":"Mal","lastName":"Lory","graduationYear":2027,"personalEmail":"ada@personal.test"},"answers":{"$question":"x"}}""", cookie, method = "PUT")
+		json("/api/apply/me", """{"details":{"major":"Computer Science","degreeType":"Bachelor's","graduationSeason":"spring","firstName":"Mal","lastName":"Lory","graduationYear":2027,"personalEmail":"ada@personal.test"},"answers":{"$question":"x"}}""", cookie, method = "PUT")
 		json("/api/apply/me/submit", "{}", cookie)
 		val reg = dsl.selectFrom(REGISTRATION).where(REGISTRATION.SCHOOL_EMAIL.eq("mal@umd.edu")).fetchSingle()
 		assertEquals("submitted", reg.status) // not approved on its own
@@ -419,7 +425,7 @@ class RegistrationTests(
 		val cookie = verified("ada@umd.edu")
 		linkGitHub(cookie, 777, "ada-gh")
 		val question = body(mvc.get("/api/apply/chapters/umd")).path("questions")[0].path("id").asString()
-		json("/api/apply/me", """{"details":{"firstName":"Ada","lastName":"Lovelace","graduationYear":2028},"answers":{"$question":"x"}}""", cookie, method = "PUT")
+		json("/api/apply/me", """{"details":{"major":"Computer Science","degreeType":"Bachelor's","graduationSeason":"spring","firstName":"Ada","lastName":"Lovelace","graduationYear":2028},"answers":{"$question":"x"}}""", cookie, method = "PUT")
 		json("/api/apply/me/submit", "{}", cookie)
 		val id = body(mvc.get("/api/chapters/umd/registrations") { with(signedIn("lena@hack4impact.org")) })[0].path("id").asString()
 		json("/api/chapters/umd/registrations/$id/approve", "{}", as_ = "lena@hack4impact.org").andExpect { status { isOk() } }
@@ -431,7 +437,7 @@ class RegistrationTests(
 		val started = verified("ada@umd.edu") // began before the switch
 		linkGitHub(started, 777, "ada-gh")
 		val question = body(mvc.get("/api/apply/chapters/umd")).path("questions")[0].path("id").asString()
-		json("/api/apply/me", """{"details":{"firstName":"Ada","lastName":"Lovelace","graduationYear":2028},"answers":{"$question":"x"}}""", started, method = "PUT")
+		json("/api/apply/me", """{"details":{"major":"Computer Science","degreeType":"Bachelor's","graduationSeason":"spring","firstName":"Ada","lastName":"Lovelace","graduationYear":2028},"answers":{"$question":"x"}}""", started, method = "PUT")
 
 		val closed = """{"questions":[{"label":"Why do you want to join?","kind":"long_text","required":true}],"applicationsOpen":false,"applicationUrl":"%s"}"""
 		json("/api/chapters/umd/registration-settings", closed.format("https://forms.gle/umd"), as_ = "vic@hack4impact.org", method = "PUT").andExpect { status { isForbidden() } }
@@ -455,7 +461,7 @@ class RegistrationTests(
 			jsonPath("$.chapter.questions.length()") { value(0) } // the chapter asked its own questions already
 		}.andReturn().response.getCookie("h4i_applicant")!!
 		linkGitHub(invited, 555, "grace-gh")
-		json("/api/apply/me", """{"details":{"firstName":"Grace","lastName":"Hopper","graduationYear":2027}}""", invited, method = "PUT")
+		json("/api/apply/me", """{"details":{"major":"Computer Science","degreeType":"Bachelor's","graduationSeason":"spring","firstName":"Grace","lastName":"Hopper","graduationYear":2027}}""", invited, method = "PUT")
 			.andExpect { jsonPath("$.missing.length()") { value(0) } }
 		assertEquals(1, dsl.fetchCount(CHAPTER_QUESTION)) // kept for if the chapter switches back
 	}

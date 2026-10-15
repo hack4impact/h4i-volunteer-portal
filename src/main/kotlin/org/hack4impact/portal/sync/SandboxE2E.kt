@@ -430,7 +430,7 @@ class SandboxE2E(
 		val registration = dsl.insertInto(reg).set(reg.CHAPTER_ID, chapterId).set(reg.KIND, "new").set(reg.SCHOOL_EMAIL, "e2e-$run@example.edu")
 			.set(reg.EMAIL_VERIFIED_AT, OffsetDateTime.now()).returningResult(reg.ID).fetchSingle().value1()!!
 		registrations.linkGitHub(registration, github) // what the OAuth callback does
-		registrations.save(registration, org.hack4impact.portal.registration.DetailsInput(org.hack4impact.portal.registration.Details("E2e$run", "Applicant", graduationYear = 2030)))
+		registrations.save(registration, org.hack4impact.portal.registration.DetailsInput(org.hack4impact.portal.registration.Details("E2e$run", "Applicant", graduationYear = 2030, graduationSeason = "spring", major = "Computer Science", degreeType = "Bachelor's")))
 		registrations.submit(registration)
 		val match = dsl.select(reg.MATCH_STATUS).from(reg).where(reg.ID.eq(registration)).fetchSingle().value1()
 		check(Tool.GOOGLE, "registration: matched as $match", match == "returning")

@@ -429,6 +429,43 @@ describe('App', () => {
     expect(await retry.clone().json()).toEqual([{ personId: 'p1', resourceId: 'r1' }])
   })
 
+  it('shows national the member database: waiting records with what would be written, drift, and the switches', async () => {
+    window.history.pushState({}, '', '/national')
+    const status = (over: object = {}) => ({
+      configured: true, writeSwitch: true, scheduledPull: true, dryRun: true, paused: false, pauseReason: null,
+      lastPullAt: '2026-10-14T12:00:00Z', lastPullStatus: 'unchanged', lastPullError: null,
+      waiting: [{ personId: 'p1', name: 'Ada Lovelace', requestedAt: '2026-10-14T11:00:00Z', attempts: 0, nextTryAt: null, lastError: null }],
+      failed: [],
+      drift: [{ personId: 'p2', name: 'Alan Turing', field: 'volunteers.first_name', portalValue: 'Alan', memberDbValue: 'Al', since: '2026-10-13T12:00:00Z' }],
+      ...over,
+    })
+    api({
+      '/api/me': [200, { ...me([umd]), nationalAdmin: true }],
+      // The rest of the National page, empty.
+      'GET /api/national/tools': [200, []], 'GET /api/national/dead-letters': [200, []],
+      'GET /api/national/queue': [200, []],
+      '/api/national/claims/preview': [200, { eligible: 0, alreadySent: 0, withoutEmail: 0 }],
+      'GET /api/national/member-db': [200, status()],
+      'PUT /api/national/member-db': [200, status({ dryRun: false })],
+      '/api/national/member-db/writes/p1/preview': [200, { newVolunteer: true, fields: { 'volunteers.email': 'ada@personal.test', 'academic_profiles.major': 'Computer Science' }, notes: ['No fall 2028 term at their school yet: graduation left out until it’s seeded'] }],
+    })
+    render(<App />)
+    const box = await screen.findByRole('region', { name: /Member database/ })
+    expect(within(box).getByText('Dry run')).toBeInTheDocument()
+    expect(within(box).getByText(/nothing new/)).toBeInTheDocument()
+    await userEvent.click(within(within(box).getByRole('list', { name: 'Waiting writes' })).getByRole('button', { name: 'What would be written' }))
+    expect(await within(box).findByText('ada@personal.test')).toBeInTheDocument()
+    expect(within(box).getByText('A new volunteer')).toBeInTheDocument()
+    expect(within(box).getByText(/graduation left out until it’s seeded/)).toBeInTheDocument()
+    const drift = within(box).getByRole('list', { name: 'Changed in the member database' })
+    expect(within(drift).getByText(/First name/)).toBeInTheDocument() // the column in words
+    await userEvent.click(within(box).getByRole('button', { name: 'Turn writes on' }))
+    const calls = () => vi.mocked(fetch).mock.calls.map(([r]) => r as Request)
+    const put = await waitFor(() => calls().find((r) => r.method === 'PUT' && r.url.endsWith('/api/national/member-db'))!)
+    expect(await put.clone().json()).toEqual({ dryRun: false, paused: false, reason: null })
+    expect(await within(box).findByText('Writing')).toBeInTheDocument()
+  })
+
   const applicant = (over: object = {}) => ({
     kind: 'new', status: 'started', schoolEmail: 'ada@umd.edu', emailVerified: true, githubLogin: null, githubConfigured: true,
     chapter: { code: 'umd', name: 'Hack4Impact UMD', emailDomains: ['umd.edu'], applicationsOpen: true, applicationUrl: null, questions: [{ id: 'q1', label: 'Why join?', kind: 'long_text', options: [], required: true }] },
@@ -455,10 +492,17 @@ describe('App', () => {
     expect(await screen.findByText(/Still needed: your GitHub account, your name/)).toBeInTheDocument() // the checklist, in words
     expect(screen.getByRole('button', { name: 'Sign in with GitHub' })).toBeInTheDocument()
     await userEvent.type(screen.getByRole('textbox', { name: /First name/ }), 'Ada')
+    // What the member database's school profile needs (Q48).
+    await userEvent.type(screen.getByRole('textbox', { name: /Major/ }), 'Computer Science')
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Degree' }), "Bachelor's")
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Graduating in' }), 'spring')
+    await userEvent.type(screen.getByRole('spinbutton', { name: /Year/ }), '2028')
     await userEvent.type(screen.getByRole('textbox', { name: /Why join\?/ }), 'To build')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     const put = vi.mocked(fetch).mock.calls.map(([r]) => r as Request).find((r) => r.method === 'PUT')!
-    expect(await put.clone().json()).toMatchObject({ details: { firstName: 'Ada' }, answers: { q1: 'To build' } })
+    expect(await put.clone().json()).toMatchObject({
+      details: { firstName: 'Ada', major: 'Computer Science', degreeType: "Bachelor's", graduationSeason: 'spring', graduationYear: 2028 }, answers: { q1: 'To build' },
+    })
     await userEvent.click(await screen.findByRole('button', { name: 'Send application' }))
     expect(await screen.findByRole('heading', { name: 'Application sent' })).toBeInTheDocument()
   })

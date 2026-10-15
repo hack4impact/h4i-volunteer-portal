@@ -6,6 +6,7 @@ import { Status, TOOL_NAME } from '../components/Status'
 import { ToolName } from '../components/ToolIcon'
 import { Mascot } from '../components/Mascot'
 import { TopBar } from '../components/TopBar'
+import { MemberDbBox } from './MemberDbBox'
 import { Automations } from './Automations'
 
 /**
@@ -134,6 +135,8 @@ export function National({ me }: { me: Me }) {
           <ClaimLinks me={me} />
 
           <AgreementTemplatesBox />
+
+          <MemberDbBox />
 
           <section className="box" aria-labelledby="dead-title">
             <div className="box-head" id="dead-title">

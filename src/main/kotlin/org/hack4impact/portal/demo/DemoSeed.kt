@@ -309,7 +309,8 @@ class DemoSeed(
 			fun application(first: String, last: String, school: String, github: String, year: Int, roleInterest: String, answer: String, match: String, matched: List<UUID>, daysAgo: Long) {
 				dsl.insertInto(REGISTRATION).set(REGISTRATION.CHAPTER_ID, demo).set(REGISTRATION.KIND, "new").set(REGISTRATION.STATUS, "submitted")
 					.set(REGISTRATION.SCHOOL_EMAIL, school).set(REGISTRATION.EMAIL_VERIFIED_AT, OffsetDateTime.now().minusDays(daysAgo))
-					.set(REGISTRATION.FIRST_NAME, first).set(REGISTRATION.LAST_NAME, last).set(REGISTRATION.GRADUATION_YEAR, year).set(REGISTRATION.ROLE_INTEREST, roleInterest)
+					.set(REGISTRATION.FIRST_NAME, first).set(REGISTRATION.LAST_NAME, last).set(REGISTRATION.GRADUATION_YEAR, year).set(REGISTRATION.GRADUATION_SEASON, "spring")
+					.set(REGISTRATION.MAJOR, "Computer Science").set(REGISTRATION.DEGREE_TYPE, "Bachelor's").set(REGISTRATION.ROLE_INTEREST, roleInterest)
 					.set(REGISTRATION.GITHUB_ID, "${80000 + daysAgo}").set(REGISTRATION.GITHUB_LOGIN, github).set(REGISTRATION.GITHUB_LINKED_AT, OffsetDateTime.now().minusDays(daysAgo))
 					.set(REGISTRATION.ANSWERS, JSONB.valueOf("""{"$why":"$answer","$start":"Fall 2026"}"""))
 					.set(REGISTRATION.MATCH_STATUS, match).set(REGISTRATION.MATCHED_PERSON_IDS, matched.toTypedArray())

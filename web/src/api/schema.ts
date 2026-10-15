@@ -637,7 +637,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["status"];
+        post: operations["status_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -955,7 +955,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["preview_2"];
+        get: operations["preview_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -997,6 +997,70 @@ export interface paths {
         trace?: never;
     };
     "/api/national/dead-letters/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["retry_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/member-db": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["status"];
+        put: operations["change"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/member-db/pull": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["pullNow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/member-db/writes/{personId}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["preview_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/national/member-db/writes/{personId}/retry": {
         parameters: {
             query?: never;
             header?: never;
@@ -1179,7 +1243,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["status_1"];
+        get: operations["status_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1447,10 +1511,13 @@ export interface components {
             reason: string;
         };
         Details: {
+            degreeType: string | null;
             firstName: string | null;
+            graduationSeason: string | null;
             /** Format: int32 */
             graduationYear: number | null;
             lastName: string | null;
+            major: string | null;
             personalEmail: string | null;
             preferredName: string | null;
             roleInterest: string | null;
@@ -1602,6 +1669,55 @@ export interface components {
             /** Format: date-time */
             signedAt: string | null;
             status: string;
+        };
+        MemberDbChange: {
+            dryRun: boolean;
+            paused: boolean;
+            reason: string | null;
+        };
+        MemberDbDriftRow: {
+            field: string;
+            memberDbValue: string | null;
+            name: string;
+            /** Format: uuid */
+            personId: string;
+            portalValue: string | null;
+            /** Format: date-time */
+            since: string;
+        };
+        MemberDbPreview: {
+            fields: {
+                [key: string]: string;
+            };
+            newVolunteer: boolean;
+            notes: string[];
+        };
+        MemberDbStatus: {
+            configured: boolean;
+            drift: components["schemas"]["MemberDbDriftRow"][];
+            dryRun: boolean;
+            failed: components["schemas"]["MemberDbWriteRow"][];
+            /** Format: date-time */
+            lastPullAt: string | null;
+            lastPullError: string | null;
+            lastPullStatus: string | null;
+            pauseReason: string | null;
+            paused: boolean;
+            scheduledPull: boolean;
+            waiting: components["schemas"]["MemberDbWriteRow"][];
+            writeSwitch: boolean;
+        };
+        MemberDbWriteRow: {
+            /** Format: int32 */
+            attempts: number;
+            lastError: string | null;
+            name: string;
+            /** Format: date-time */
+            nextTryAt: string | null;
+            /** Format: uuid */
+            personId: string;
+            /** Format: date-time */
+            requestedAt: string;
         };
         MemberHome: {
             access: components["schemas"]["MyAccess"][];
@@ -1854,6 +1970,15 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        PullResult: {
+            counts: {
+                [key: string]: number;
+            };
+            /** Format: int32 */
+            drift: number;
+            error: string | null;
+            status: string;
+        };
         QuestionInput: {
             kind: string;
             label: string;
@@ -1906,13 +2031,16 @@ export interface components {
             /** Format: date-time */
             decidedAt: string | null;
             declineReason: string | null;
+            degreeType: string | null;
             githubChanged: boolean;
             githubLogin: string | null;
+            graduationSeason: string | null;
             /** Format: int32 */
             graduationYear: number | null;
             /** Format: uuid */
             id: string;
             kind: string;
+            major: string | null;
             matchStatus: string | null;
             matches: components["schemas"]["MatchView"][];
             name: string;
@@ -3359,7 +3487,7 @@ export interface operations {
             };
         };
     };
-    status: {
+    status_1: {
         parameters: {
             query?: {
                 draft?: string;
@@ -3959,7 +4087,7 @@ export interface operations {
             };
         };
     };
-    preview_2: {
+    preview_3: {
         parameters: {
             query?: {
                 chapter?: string;
@@ -4025,7 +4153,7 @@ export interface operations {
             };
         };
     };
-    retry: {
+    retry_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -4045,6 +4173,114 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DeadLetter"][];
+                };
+            };
+        };
+    };
+    status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MemberDbStatus"];
+                };
+            };
+        };
+    };
+    change: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemberDbChange"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MemberDbStatus"];
+                };
+            };
+        };
+    };
+    pullNow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PullResult"];
+                };
+            };
+        };
+    };
+    preview_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MemberDbPreview"];
+                };
+            };
+        };
+    };
+    retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                personId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["MemberDbStatus"];
                 };
             };
         };
@@ -4321,7 +4557,7 @@ export interface operations {
             };
         };
     };
-    status_1: {
+    status_2: {
         parameters: {
             query?: never;
             header?: never;

@@ -30,6 +30,11 @@ data class Details(
 	val preferredName: String? = null,
 	val personalEmail: String? = null,
 	val graduationYear: Int? = null,
+	/** spring, summer, fall or winter: with [graduationYear], their graduation term. */
+	val graduationSeason: String? = null,
+	val major: String? = null,
+	/** e.g. Bachelor's, Master's (free text, as the member database keeps it). */
+	val degreeType: String? = null,
 	val roleInterest: String? = null,
 	/** Claims: still in the chapter (else they stay as an alumnus). */
 	val stillActive: Boolean? = null,
@@ -72,6 +77,9 @@ data class RegistrationSummary(
 	val schoolEmail: String?,
 	val githubLogin: String?,
 	val graduationYear: Int?,
+	val graduationSeason: String?,
+	val major: String?,
+	val degreeType: String?,
 	val roleInterest: String?,
 	/** new, returning, alumni (record found) or duplicate (possible duplicate). */
 	val matchStatus: String?,

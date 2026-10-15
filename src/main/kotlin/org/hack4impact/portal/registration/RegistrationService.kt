@@ -46,6 +46,14 @@ class RegistrationService(
 		val LINK_LIFETIME: Duration = Duration.ofDays(14) // claim links and roster invites (decision 39)
 		const val CODE_ATTEMPTS = 5
 		private val EMAIL = Regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
+		val SEASONS = setOf("spring", "summer", "fall", "winter")
+
+		/** "Ada Lovelace"; a preferred name that already ends with the last name isn't repeated ("Chase Fournier", not "… Fournier Fournier"). */
+		fun displayName(preferred: String?, first: String?, last: String?): String {
+			val given = preferred?.trim()?.takeIf { it.isNotEmpty() } ?: first?.trim().orEmpty()
+			val family = last?.trim().orEmpty()
+			return if (family.isNotEmpty() && given.lowercase().endsWith(" ${family.lowercase()}")) given else listOf(given, family).filter { it.isNotEmpty() }.joinToString(" ")
+		}
 
 		private fun bad(message: String): Nothing = throw ResponseStatusException(HttpStatus.BAD_REQUEST, message)
 		private fun tooMany(): Nothing = throw ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Too many tries. Wait a little and try again.")
@@ -184,9 +192,8 @@ class RegistrationService(
 		val signing = if (r.status == "started") agreements.applicantAgreements(registration) else emptyList()
 		return ApplicantView(
 			r.kind!!, r.status!!, chapter, r.schoolEmail, r.emailVerifiedAt != null, r.githubLogin, githubConfigured,
-			Details(r.firstName, r.lastName, r.preferredName, r.personalEmail, r.graduationYear, r.roleInterest, r.stillActive),
-			answers(r), missing(r), r.declineReason, account,
-			signing,
+			Details(r.firstName, r.lastName, r.preferredName, r.personalEmail, r.graduationYear, r.graduationSeason, r.major, r.degreeType, r.roleInterest, r.stillActive),
+			answers(r), missing(r), r.declineReason, account, signing,
 		)
 	}
 
@@ -197,12 +204,16 @@ class RegistrationService(
 		val d = input.details
 		d.personalEmail?.takeIf { it.isNotBlank() }?.let { if (!EMAIL.matches(it.trim())) bad("That personal email doesn't look right") }
 		d.graduationYear?.let { if (it !in 2000..2100) bad("Graduation year should look like 2028") }
+		d.graduationSeason?.takeIf { it.isNotBlank() }?.let { if (it !in SEASONS) bad("Graduation season is spring, summer, fall or winter") }
+		if ((d.major?.length ?: 0) > 150 || (d.degreeType?.length ?: 0) > 150) bad("Major and degree type are at most 150 characters")
 		val known = questions(r.chapterId!!).map { it.id.toString() }.toSet()
 		val answers = input.answers.filterKeys { it in known }.mapValues { it.value.take(4000) }
 		dsl.update(REGISTRATION)
 			.set(REGISTRATION.FIRST_NAME, d.firstName?.trim()).set(REGISTRATION.LAST_NAME, d.lastName?.trim())
 			.set(REGISTRATION.PREFERRED_NAME, d.preferredName?.trim()?.ifEmpty { null }).set(REGISTRATION.PERSONAL_EMAIL, d.personalEmail?.trim()?.lowercase()?.ifEmpty { null })
-			.set(REGISTRATION.GRADUATION_YEAR, d.graduationYear).set(REGISTRATION.ROLE_INTEREST, d.roleInterest?.trim()?.ifEmpty { null })
+			.set(REGISTRATION.GRADUATION_YEAR, d.graduationYear).set(REGISTRATION.GRADUATION_SEASON, d.graduationSeason?.trim()?.ifEmpty { null })
+			.set(REGISTRATION.MAJOR, d.major?.trim()?.ifEmpty { null }).set(REGISTRATION.DEGREE_TYPE, d.degreeType?.trim()?.ifEmpty { null })
+			.set(REGISTRATION.ROLE_INTEREST, d.roleInterest?.trim()?.ifEmpty { null })
 			.set(REGISTRATION.STILL_ACTIVE, d.stillActive).set(REGISTRATION.ANSWERS, JSONB.valueOf(json.writeValueAsString(answers)))
 			.set(REGISTRATION.UPDATED_AT, OffsetDateTime.now())
 			.where(REGISTRATION.ID.eq(registration)).execute()
@@ -249,10 +260,13 @@ class RegistrationService(
 		if (r.githubId == null) add("your GitHub account")
 		if (r.status == "started") addAll(agreements.missingFor(r.id!!))
 		if (r.firstName.isNullOrBlank() || r.lastName.isNullOrBlank()) add("your name")
+		// The member database's school profile needs these (Q48), claims included.
+		if (r.major.isNullOrBlank()) add("your major")
+		if (r.degreeType.isNullOrBlank()) add("your degree")
+		if (r.graduationYear == null || r.graduationSeason == null) add("when you graduate")
 		if (r.kind == "claim") {
 			if (r.stillActive == null) add("whether you're still in the chapter")
 		} else {
-			if (r.graduationYear == null) add("your graduation year")
 			val answers = answers(r)
 			asked(r.chapterId!!).filter { it.required && answers[it.id.toString()].isNullOrBlank() }.forEach { add("“${it.label}”") }
 		}
@@ -286,8 +300,8 @@ class RegistrationService(
 			.orderBy(REGISTRATION.STATUS.desc(), REGISTRATION.SUBMITTED_AT)
 			.fetch { r ->
 				RegistrationSummary(
-					r.id!!, r.kind!!, r.status!!, listOfNotNull(r.preferredName ?: r.firstName, r.lastName).joinToString(" "), r.schoolEmail, r.githubLogin,
-					r.graduationYear, r.roleInterest, r.matchStatus, matches(r), answers(r).mapKeys { labels[it.key] ?: "?" }, r.githubChanged!!,
+					r.id!!, r.kind!!, r.status!!, displayName(r.preferredName, r.firstName, r.lastName), r.schoolEmail, r.githubLogin,
+					r.graduationYear, r.graduationSeason, r.major, r.degreeType, r.roleInterest, r.matchStatus, matches(r), answers(r).mapKeys { labels[it.key] ?: "?" }, r.githubChanged!!,
 					r.submittedAt, r.decidedAt, r.declineReason,
 				)
 			}

@@ -599,7 +599,13 @@
       },
       "Details" : {
         "properties" : {
+          "degreeType" : {
+            "type" : [ "string", "null" ]
+          },
           "firstName" : {
+            "type" : [ "string", "null" ]
+          },
+          "graduationSeason" : {
             "type" : [ "string", "null" ]
           },
           "graduationYear" : {
@@ -607,6 +613,9 @@
             "type" : [ "integer", "null" ]
           },
           "lastName" : {
+            "type" : [ "string", "null" ]
+          },
+          "major" : {
             "type" : [ "string", "null" ]
           },
           "personalEmail" : {
@@ -1010,6 +1019,143 @@
             "type" : [ "string", "null" ]
           },
           "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "MemberDbChange" : {
+        "properties" : {
+          "dryRun" : {
+            "type" : "boolean"
+          },
+          "paused" : {
+            "type" : "boolean"
+          },
+          "reason" : {
+            "type" : [ "string", "null" ]
+          }
+        },
+        "type" : "object"
+      },
+      "MemberDbDriftRow" : {
+        "properties" : {
+          "field" : {
+            "type" : "string"
+          },
+          "memberDbValue" : {
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "personId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "portalValue" : {
+            "type" : [ "string", "null" ]
+          },
+          "since" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "MemberDbPreview" : {
+        "properties" : {
+          "fields" : {
+            "additionalProperties" : {
+              "type" : "string"
+            },
+            "type" : "object"
+          },
+          "newVolunteer" : {
+            "type" : "boolean"
+          },
+          "notes" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "MemberDbStatus" : {
+        "properties" : {
+          "configured" : {
+            "type" : "boolean"
+          },
+          "drift" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MemberDbDriftRow"
+            },
+            "type" : "array"
+          },
+          "dryRun" : {
+            "type" : "boolean"
+          },
+          "failed" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MemberDbWriteRow"
+            },
+            "type" : "array"
+          },
+          "lastPullAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "lastPullError" : {
+            "type" : [ "string", "null" ]
+          },
+          "lastPullStatus" : {
+            "type" : [ "string", "null" ]
+          },
+          "pauseReason" : {
+            "type" : [ "string", "null" ]
+          },
+          "paused" : {
+            "type" : "boolean"
+          },
+          "scheduledPull" : {
+            "type" : "boolean"
+          },
+          "waiting" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MemberDbWriteRow"
+            },
+            "type" : "array"
+          },
+          "writeSwitch" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "MemberDbWriteRow" : {
+        "properties" : {
+          "attempts" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "lastError" : {
+            "type" : [ "string", "null" ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "nextTryAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "personId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "requestedAt" : {
+            "format" : "date-time",
             "type" : "string"
           }
         },
@@ -1763,6 +1909,28 @@
         },
         "type" : "object"
       },
+      "PullResult" : {
+        "properties" : {
+          "counts" : {
+            "additionalProperties" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "type" : "object"
+          },
+          "drift" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "error" : {
+            "type" : [ "string", "null" ]
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "QuestionInput" : {
         "properties" : {
           "kind" : {
@@ -1910,10 +2078,16 @@
           "declineReason" : {
             "type" : [ "string", "null" ]
           },
+          "degreeType" : {
+            "type" : [ "string", "null" ]
+          },
           "githubChanged" : {
             "type" : "boolean"
           },
           "githubLogin" : {
+            "type" : [ "string", "null" ]
+          },
+          "graduationSeason" : {
             "type" : [ "string", "null" ]
           },
           "graduationYear" : {
@@ -1926,6 +2100,9 @@
           },
           "kind" : {
             "type" : "string"
+          },
+          "major" : {
+            "type" : [ "string", "null" ]
           },
           "matchStatus" : {
             "type" : [ "string", "null" ]
@@ -4443,7 +4620,7 @@
     },
     "/api/chapters/{code}/projects/{slug}/status" : {
       "post" : {
-        "operationId" : "status",
+        "operationId" : "status_1",
         "parameters" : [ {
           "in" : "path",
           "name" : "code",
@@ -5268,7 +5445,7 @@
     },
     "/api/national/claims/preview" : {
       "get" : {
-        "operationId" : "preview_2",
+        "operationId" : "preview_3",
         "parameters" : [ {
           "in" : "query",
           "name" : "chapter",
@@ -5343,7 +5520,7 @@
     },
     "/api/national/dead-letters/retry" : {
       "post" : {
-        "operationId" : "retry",
+        "operationId" : "retry_1",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -5372,6 +5549,122 @@
           }
         },
         "tags" : [ "national-controller" ]
+      }
+    },
+    "/api/national/member-db" : {
+      "get" : {
+        "operationId" : "status",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberDbStatus"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-db-controller" ]
+      },
+      "put" : {
+        "operationId" : "change",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/MemberDbChange"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberDbStatus"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-db-controller" ]
+      }
+    },
+    "/api/national/member-db/pull" : {
+      "post" : {
+        "operationId" : "pullNow",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PullResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-db-controller" ]
+      }
+    },
+    "/api/national/member-db/writes/{personId}/preview" : {
+      "get" : {
+        "operationId" : "preview_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "personId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberDbPreview"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-db-controller" ]
+      }
+    },
+    "/api/national/member-db/writes/{personId}/retry" : {
+      "post" : {
+        "operationId" : "retry",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "personId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MemberDbStatus"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "member-db-controller" ]
       }
     },
     "/api/national/queue" : {
@@ -5700,7 +5993,7 @@
     },
     "/api/status" : {
       "get" : {
-        "operationId" : "status_1",
+        "operationId" : "status_2",
         "responses" : {
           "200" : {
             "content" : {
