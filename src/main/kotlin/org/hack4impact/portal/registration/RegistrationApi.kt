@@ -67,7 +67,8 @@ data class AgreementStart(val url: String)
 
 // Lead side (/api/chapters/{code}/registrations).
 
-data class MatchView(val personId: UUID, val name: String, val status: String, val chapters: List<String>, val why: List<String>)
+/** [account]: their @hack4impact.org address, if they have one already (approving someone else would make them a second). */
+data class MatchView(val personId: UUID, val name: String, val status: String, val chapters: List<String>, val why: List<String>, val account: String? = null)
 
 data class RegistrationSummary(
 	val id: UUID,
@@ -93,7 +94,8 @@ data class RegistrationSummary(
 )
 
 /** Approve as a new person, or as [personId] (one of the matches). */
-data class ApproveInput(val personId: UUID? = null)
+/** [personId]: approve as that matched record, else as a new person. [secondAccount]: the lead confirmed a second H4I account. */
+data class ApproveInput(val personId: UUID? = null, val secondAccount: Boolean = false)
 
 data class DeclineInput(val reason: String)
 

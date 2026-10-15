@@ -609,7 +609,7 @@ describe('App', () => {
     window.history.pushState({}, '', '/chapters/umd/approvals')
     const reg = {
       id: 'r1', kind: 'new', status: 'submitted', name: 'Ada Lovelace', schoolEmail: 'ada@umd.edu', githubLogin: 'ada-gh', graduationYear: 2028, roleInterest: 'Developer',
-      matchStatus: 'duplicate', matches: [{ personId: 'p9', name: 'Ada Lovelace', status: 'alumni', chapters: ['Hack4Impact UMD'], why: ['same email'] }, { personId: 'p8', name: 'Ada L', status: 'active', chapters: [], why: ['same name in this chapter'] }],
+      matchStatus: 'duplicate', matches: [{ personId: 'p9', name: 'Ada Lovelace', status: 'alumni', chapters: ['Hack4Impact UMD'], why: ['same email'] }, { personId: 'p8', name: 'Ada L', status: 'active', chapters: [], why: ['same name in this chapter'], account: 'ada@umd.hack4impact.org' }],
       answers: { 'Why join?': 'To build' }, githubChanged: false, submittedAt: '2026-10-11T12:00:00Z', decidedAt: null, declineReason: null,
     }
     api({
@@ -631,9 +631,13 @@ describe('App', () => {
     expect(within(list).getAllByRole('button', { name: 'Decline' }).at(-1)).toBeDisabled() // a reason first
     await userEvent.click(within(list).getByRole('button', { name: 'Cancel' }))
 
-    await userEvent.click(within(list).getAllByRole('radio')[1]!) // the alumni record
+    await userEvent.click(within(list).getAllByRole('radio')[1]!) // the alumni record, but Ada L already has an H4I account
+    expect(within(list).getByText('This would give them a second H4I account')).toBeInTheDocument()
+    expect(within(list).getByRole('button', { name: 'Approve with a second account' })).toBeInTheDocument()
+    await userEvent.click(within(list).getAllByRole('radio')[2]!) // the record with the account
+    expect(within(list).queryByText('This would give them a second H4I account')).not.toBeInTheDocument()
     await userEvent.click(within(list).getByRole('button', { name: 'Approve as this record' }))
     const approve = vi.mocked(fetch).mock.calls.map(([r]) => r as Request).find((r) => r.url.endsWith('/approve'))!
-    expect(await approve.clone().json()).toEqual({ personId: 'p9' })
+    expect(await approve.clone().json()).toEqual({ personId: 'p8', secondAccount: false })
   })
 })

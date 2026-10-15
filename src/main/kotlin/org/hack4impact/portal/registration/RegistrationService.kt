@@ -314,7 +314,7 @@ class RegistrationService(
 		val chapters = dsl.select(CHAPTER_MEMBERSHIP.PERSON_ID, CHAPTER.NAME).from(CHAPTER_MEMBERSHIP).join(CHAPTER).on(CHAPTER.ID.eq(CHAPTER_MEMBERSHIP.CHAPTER_ID))
 			.where(CHAPTER_MEMBERSHIP.PERSON_ID.`in`(found.keys)).fetch().groupBy({ it.value1()!! }, { it.value2()!! })
 		return dsl.selectFrom(PERSON).where(PERSON.ID.`in`(found.keys)).fetch { p ->
-			MatchView(p.id!!, "${p.preferredName?.takeIf { it.isNotBlank() } ?: p.firstName} ${p.lastName}", p.status!!, chapters[p.id].orEmpty(), found.getValue(p.id!!))
+			MatchView(p.id!!, "${p.preferredName?.takeIf { it.isNotBlank() } ?: p.firstName} ${p.lastName}", p.status!!, chapters[p.id].orEmpty(), found.getValue(p.id!!), p.orgEmail)
 		}
 	}
 
@@ -323,6 +323,17 @@ class RegistrationService(
 		if (r.chapterId != chapterId) throw ResponseStatusException(HttpStatus.NOT_FOUND, "Not this chapter's")
 		if (r.status != "submitted") throw ResponseStatusException(HttpStatus.CONFLICT, "This application is ${r.status}")
 		input.personId?.let { if (it !in r.matchedPersonIds!!.filterNotNull()) bad("Approve as a new person or as one of the matches") }
+		// Someone they match already has an H4I account, and this approval isn't into that record: it would give the same
+		// person a second address (seen testing on 2026-10-13). Only on purpose.
+		if (!input.secondAccount) {
+			val target = input.personId?.let { dsl.select(PERSON.ORG_EMAIL).from(PERSON).where(PERSON.ID.eq(it)).fetchOne()?.value1() }
+			val holder = dsl.select(PERSON.FIRST_NAME, PERSON.LAST_NAME, PERSON.ORG_EMAIL).from(PERSON)
+				.where(PERSON.ID.`in`(r.matchedPersonIds!!.filterNotNull()), PERSON.ORG_EMAIL.isNotNull, PERSON.ID.ne(input.personId ?: UUID(0, 0))).limit(1).fetchOne()
+			if (target == null && holder != null) {
+				throw ResponseStatusException(HttpStatus.CONFLICT, "${holder.value1()} ${holder.value2()} already has an H4I account (${holder.value3()}). " +
+					"Approve as that record, or confirm that they should get a second account.")
+			}
+		}
 		provisioning.provision(registration, input.personId, decidedBy)
 	}
 

@@ -258,6 +258,39 @@ class RegistrationTests(
 	}
 
 	@Test
+	fun `approving someone whose match already has an H4I account into another record needs confirming (8080, 2026-10-13)`() {
+		val account = person("Ada", "active", school = "ada@umd.edu", org = "ada@umd.hack4impact.org")
+		val cookie = verified("ada@umd.edu")
+		linkGitHub(cookie, 777, "ada-gh")
+		val question = body(mvc.get("/api/apply/chapters/umd")).path("questions")[0].path("id").asString()
+		json("/api/apply/me", """{"details":{"major":"Computer Science","degreeType":"Bachelor's","graduationSeason":"spring","firstName":"Ada","lastName":"Test","graduationYear":2028},"answers":{"$question":"x"}}""", cookie, method = "PUT")
+		json("/api/apply/me/submit", "{}", cookie)
+		val reg = body(mvc.get("/api/chapters/umd/registrations") { with(signedIn("lena@hack4impact.org")) })[0]
+		assertEquals("ada@umd.hack4impact.org", reg.path("matches")[0].path("account").asString())
+		val approve = "/api/chapters/umd/registrations/${reg.path("id").asString()}/approve"
+		json(approve, "{}", as_ = "lena@hack4impact.org").andExpect {
+			status { isConflict() }
+			jsonPath("$.detail") { value(org.hamcrest.Matchers.containsString("already has an H4I account (ada@umd.hack4impact.org)")) }
+		}
+		assertEquals(1, dsl.fetchCount(PERSON, PERSON.FIRST_NAME.eq("Ada"))) // nothing made
+		json(approve, """{"personId":"$account"}""", as_ = "lena@hack4impact.org").andExpect { status { isOk() } } // into the record with the account: fine
+		assertEquals(1, dsl.fetchCount(PERSON, PERSON.FIRST_NAME.eq("Ada")))
+	}
+
+	@Test
+	fun `a lead may still give someone a second account on purpose`() {
+		person("Ada", "active", school = "ada@umd.edu", org = "ada@umd.hack4impact.org")
+		val cookie = verified("ada@umd.edu")
+		linkGitHub(cookie, 777, "ada-gh")
+		val question = body(mvc.get("/api/apply/chapters/umd")).path("questions")[0].path("id").asString()
+		json("/api/apply/me", """{"details":{"major":"Computer Science","degreeType":"Bachelor's","graduationSeason":"spring","firstName":"Ada","lastName":"Test","graduationYear":2028},"answers":{"$question":"x"}}""", cookie, method = "PUT")
+		json("/api/apply/me/submit", "{}", cookie)
+		val reg = body(mvc.get("/api/chapters/umd/registrations") { with(signedIn("lena@hack4impact.org")) })[0]
+		json("/api/chapters/umd/registrations/${reg.path("id").asString()}/approve", """{"secondAccount":true}""", as_ = "lena@hack4impact.org").andExpect { status { isOk() } }
+		assertEquals(2, dsl.fetchCount(PERSON, PERSON.FIRST_NAME.eq("Ada")))
+	}
+
+	@Test
 	fun `a decline needs a reason and emails it`() {
 		val cookie = verified("ada@umd.edu")
 		linkGitHub(cookie, 777, "ada-gh")

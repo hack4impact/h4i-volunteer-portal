@@ -1422,6 +1422,7 @@ export interface components {
         ApproveInput: {
             /** Format: uuid */
             personId: string | null;
+            secondAccount: boolean;
         };
         ChapterOverview: {
             code: string;
@@ -1641,6 +1642,7 @@ export interface components {
             status: string;
         };
         MatchView: {
+            account: string | null;
             chapters: string[];
             name: string;
             /** Format: uuid */

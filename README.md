@@ -26,7 +26,7 @@ Since 2026-10-14 the national member database is an integration (wiki: staged-ro
 
 - **Pull** (`PORTAL_MEMBERDB_PULL=true`, every 15 minutes, skipped when no table changed): the importer below, run on a schedule. A record its person confirmed is never overwritten.
 - **Write**: approving, claiming or finishing a roster invite queues the person (`member_db_write`); a worker writes their volunteer row, school profile and GitHub and Google accounts, one member-database transaction each, with retries. It never deletes. Writes start in dry run (national sees what would be written on the National page); leaving it needs `PORTAL_MEMBERDB_WRITE=true`.
-- **Drift**: a field the portal owns that someone changes in the member database is reported on the National page, not taken.
+- **Drift**: a field the portal owns that someone changes in the member database is reported on the National page, not taken. So is a volunteer the member database soft-deletes ("Record deleted there"): the portal keeps them until national decides.
 - **Join and Claim ask** major, degree type and graduation season and year (the member database requires them on a school profile). **National seeds `academic_terms`** before Join opens.
 - **Changes for Khoa**: `scripts/member-db-changes.sql`.
 - Settings: `MEMBER_DB_URL`, `MEMBER_DB_USERNAME`, `MEMBER_DB_PASSWORD`, `PORTAL_MEMBERDB_PULL`, `PORTAL_MEMBERDB_WRITE`.
@@ -47,6 +47,23 @@ MEMBER_DB_URL=jdbc:postgresql://<host>:5432/<db> MEMBER_DB_USERNAME=portal_impor
 If the member DB isn't reachable from your machine (it usually isn't), run `scripts/member-db-export.sql` in pgAdmin's Query Tool, save the result as CSV outside the repo, and load it with `scripts/load-member-db-export.sh <file.csv>`; then import with `MEMBER_DB_URL=jdbc:postgresql://localhost:5434/memberdb` (user and password `memberdb`).
 
 The report is written to `build/import-report.md`. It contains personal data, so don't commit or share it outside national. `scripts/anonymize-member-db.sql` anonymizes a copy of the member DB for rehearsals.
+
+## Preflight
+
+Before going live (and after changing settings), check the deployment with its real settings. It only reads: nothing is created, written or emailed. The tool adapters have their own check (`adapter-check` profile).
+
+```sh
+./gradlew bootRun --args='--spring.profiles.active=preflight'                               # every chapter taking applications
+./gradlew bootRun --args='--spring.profiles.active=preflight --portal.preflight.chapters=umd'  # just the pilot
+```
+
+It prints one line per check (OK, WARN or FAIL) and exits 1 if anything failed:
+
+- **Portal:** the public address, Google and GitHub sign-in set, email not in `log` mode, at least one national admin.
+- **Member database:** the connection, the change check, `SELECT` on the six tables it reads, `INSERT` and `UPDATE` on the three it writes, no `DELETE`, Khoa's changes (`scripts/member-db-changes.sql`: keys, unique accounts, `updated_at` triggers), and the switches.
+- **Google:** account creation's service account can look up the admin; a sandbox org-unit scope is flagged.
+- **Documenso:** each active template is a template with a signer; the webhook secret.
+- **Each chapter:** school email domains, Google domain and org unit, a current lead or co-lead, its questions, and academic terms after this year.
 
 ## Deploy
 

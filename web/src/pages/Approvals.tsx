@@ -46,7 +46,7 @@ export function Approvals({ code, canEdit }: { code: string; canEdit: boolean })
         <ul className="adopt-list" aria-label="Waiting for a decision">
           {pending.map((r) => (
             <Pending key={r.id} r={r} canEdit={canEdit}
-              onApprove={(personId) => act(api.POST('/api/chapters/{code}/registrations/{id}/approve', { params: { path: { code, id: r.id } }, body: { personId } }))}
+              onApprove={(personId, secondAccount) => act(api.POST('/api/chapters/{code}/registrations/{id}/approve', { params: { path: { code, id: r.id } }, body: { personId, secondAccount } }))}
               onDecline={(why) => act(api.POST('/api/chapters/{code}/registrations/{id}/decline', { params: { path: { code, id: r.id } }, body: { reason: why } }))} />
           ))}
         </ul>
@@ -70,12 +70,15 @@ export function Approvals({ code, canEdit }: { code: string; canEdit: boolean })
 }
 
 function Pending({ r, canEdit, onApprove, onDecline }: {
-  r: RegistrationSummary; canEdit: boolean; onApprove: (personId: string | null) => Promise<boolean>; onDecline: (why: string) => Promise<boolean>
+  r: RegistrationSummary; canEdit: boolean; onApprove: (personId: string | null, secondAccount: boolean) => Promise<boolean>; onDecline: (why: string) => Promise<boolean>
 }) {
   const [declining, setDeclining] = useState(false)
   const [why, setWhy] = useState('')
   const [as, setAs] = useState<string | null>(r.matches.length === 1 && r.matchStatus !== 'duplicate' ? r.matches[0]!.personId : null)
   const [label, variant] = MATCH[r.matchStatus ?? 'new'] ?? ['New', 'success']
+  // A match with an H4I account when the approval isn't into that record: a second address for one person.
+  const holder = r.matches.find((m) => m.account && m.personId !== as)
+  const secondAccount = Boolean(holder) && !r.matches.find((m) => m.personId === as)?.account
   return (
     <li>
       <div className="registration">
@@ -102,14 +105,20 @@ function Pending({ r, canEdit, onApprove, onDecline }: {
             {r.matches.map((m) => (
               <label className="check" key={m.personId}>
                 {canEdit && <input type="radio" name={`as-${r.id}`} checked={as === m.personId} onChange={() => setAs(m.personId)} />}
-                {m.name} <span className="muted">· {STATUS_LABEL[m.status] ?? m.status}{m.chapters.length ? ` · ${m.chapters.join(', ')}` : ''} · {m.why.join(', ')}</span>
+                {m.name} <span className="muted">· {STATUS_LABEL[m.status] ?? m.status}{m.chapters.length ? ` · ${m.chapters.join(', ')}` : ''}{m.account ? ` · has ${m.account}` : ''} · {m.why.join(', ')}</span>
               </label>
             ))}
           </fieldset>
         )}
+        {canEdit && !declining && secondAccount && holder && (
+          <Banner variant="warning" title="This would give them a second H4I account"
+            description={`${holder.name} already has ${holder.account}. If that's the same person, approve as that record instead.`} />
+        )}
         {canEdit && !declining && (
           <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="primary" onClick={() => void onApprove(as)}>{as ? 'Approve as this record' : 'Approve'}</Button>
+            <Button variant={secondAccount ? 'danger' : 'primary'} onClick={() => void onApprove(as, secondAccount)}>
+              {secondAccount ? 'Approve with a second account' : as ? 'Approve as this record' : 'Approve'}
+            </Button>
             <Button onClick={() => setDeclining(true)}>Decline</Button>
           </div>
         )}

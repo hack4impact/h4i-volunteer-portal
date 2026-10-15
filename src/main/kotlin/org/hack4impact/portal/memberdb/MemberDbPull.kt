@@ -3,6 +3,7 @@ package org.hack4impact.portal.memberdb
 import org.hack4impact.portal.db.tables.references.MEMBER_DB_DRIFT
 import org.hack4impact.portal.db.tables.references.MEMBER_DB_STATE
 import org.hack4impact.portal.db.tables.references.MEMBER_DB_WRITE
+import org.hack4impact.portal.db.tables.references.PERSON
 import org.hack4impact.portal.memberimport.MemberDbImporter
 import org.jooq.DSLContext
 import org.jooq.JSONB
@@ -72,7 +73,7 @@ class MemberDbPull(
 	}
 
 	/** Each table's row count and newest change (academic_terms has no updated_at: its newest row). */
-	private fun signature(): String = memberDb.jdbc.sql(
+	internal fun signature(): String = memberDb.jdbc.sql(
 		"""
 		SELECT string_agg(t || ':' || n || ':' || coalesce(m::text, ''), ',' ORDER BY t) FROM (
 		  SELECT 'volunteers' t, count(*) n, max(updated_at) m FROM volunteers UNION ALL
@@ -116,7 +117,29 @@ class MemberDbPull(
 			dsl.deleteFrom(MEMBER_DB_DRIFT).where(MEMBER_DB_DRIFT.PERSON_ID.eq(person), MEMBER_DB_DRIFT.FIELD.notIn(differing.map { it.first })).execute()
 			found += differing.size
 		}
-		return found
+		return found + deletedThere(now)
+	}
+
+	/**
+	 * People whose volunteer the member database soft-deleted (Q49, 2026-10-15): reported as [DELETED], not acted on. The
+	 * import skips deleted volunteers, so the portal keeps the person as they were; national decides (remove them here,
+	 * or have the member database restore the record). Cleared once it's restored or the person is removed.
+	 */
+	private fun deletedThere(now: OffsetDateTime): Int {
+		val deleted = memberDb.jdbc.sql("SELECT id, deleted_at::date::text FROM volunteers WHERE deleted_at IS NOT NULL")
+			.query { rs, _ -> rs.getObject(1, UUID::class.java) to rs.getString(2) }.list().toMap()
+		val people = if (deleted.isEmpty()) emptyList() else dsl.select(PERSON.ID, PERSON.SOURCE_ID, PERSON.STATUS).from(PERSON)
+			.where(PERSON.SOURCE_ID.`in`(deleted.keys), PERSON.STATUS.ne("removed")).fetch()
+		for ((person, volunteer, status) in people) {
+			val there = "deleted on ${deleted.getValue(volunteer!!)}"
+			dsl.insertInto(MEMBER_DB_DRIFT).set(MEMBER_DB_DRIFT.PERSON_ID, person).set(MEMBER_DB_DRIFT.FIELD, DELETED)
+				.set(MEMBER_DB_DRIFT.PORTAL_VALUE, status).set(MEMBER_DB_DRIFT.MEMBER_DB_VALUE, there)
+				.onConflict(MEMBER_DB_DRIFT.PERSON_ID, MEMBER_DB_DRIFT.FIELD).doUpdate()
+				.set(MEMBER_DB_DRIFT.PORTAL_VALUE, status).set(MEMBER_DB_DRIFT.MEMBER_DB_VALUE, there).set(MEMBER_DB_DRIFT.LAST_SEEN_AT, now)
+				.execute()
+		}
+		dsl.deleteFrom(MEMBER_DB_DRIFT).where(MEMBER_DB_DRIFT.FIELD.eq(DELETED), MEMBER_DB_DRIFT.PERSON_ID.notIn(people.map { it.value1() })).execute()
+		return people.size
 	}
 
 	/** Reads one volunteer's values: for an account key, whether the written account is still theirs. */
@@ -141,6 +164,10 @@ class MemberDbPull(
 				else -> null
 			}
 		}
+	}
+
+	companion object {
+		const val DELETED = "volunteers.deleted_at"
 	}
 
 	/** Spaces (char columns) and the case of addresses don't count as changes. */

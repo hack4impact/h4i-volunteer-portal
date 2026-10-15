@@ -9,7 +9,7 @@ const FIELD: Record<string, string> = {
   'volunteers.email': 'Email', 'volunteers.org_email': 'H4I address', 'volunteers.chapter_id': 'Chapter', 'volunteers.status': 'Status',
   'volunteers.type': 'Type', 'academic_profiles.email': 'School email', 'academic_profiles.major': 'Major',
   'academic_profiles.degree_type': 'Degree', 'academic_profiles.graduation_term_id': 'Graduation term',
-  'accounts.github': 'GitHub account', 'accounts.google': 'Google account',
+  'accounts.github': 'GitHub account', 'accounts.google': 'Google account', 'volunteers.deleted_at': 'Record deleted there',
 }
 const field = (key: string) => FIELD[key] ?? key
 

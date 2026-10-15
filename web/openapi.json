@@ -375,6 +375,9 @@
           "personId" : {
             "format" : "uuid",
             "type" : [ "string", "null" ]
+          },
+          "secondAccount" : {
+            "type" : "boolean"
           }
         },
         "type" : "object"
@@ -942,6 +945,9 @@
       },
       "MatchView" : {
         "properties" : {
+          "account" : {
+            "type" : [ "string", "null" ]
+          },
           "chapters" : {
             "items" : {
               "type" : "string"

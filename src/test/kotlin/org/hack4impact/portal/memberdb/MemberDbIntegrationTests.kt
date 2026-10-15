@@ -235,6 +235,28 @@ class MemberDbIntegrationTests(
 	}
 
 	@Test
+	fun `a volunteer soft-deleted in the member database is reported, and the portal keeps them until national decides`() {
+		val ada = imported(ADA)
+		memberDb.sql("UPDATE volunteers SET deleted_at = '2026-10-15T12:00:00Z' WHERE id = ?::uuid").param(ADA).update()
+		val pulled = pull.pull()
+		assertEquals(1, pulled.drift)
+		with(dsl.selectFrom(MEMBER_DB_DRIFT).fetchSingle()) {
+			assertEquals(ada, personId)
+			assertEquals(MemberDbPull.DELETED, field)
+			assertTrue(memberDbValue!!.startsWith("deleted on 2026-10-1"), memberDbValue)
+		}
+		assertTrue(dsl.fetchExists(PERSON, PERSON.ID.eq(ada), PERSON.STATUS.ne("removed"))) // reported, not acted on
+
+		memberDb.sql("UPDATE volunteers SET deleted_at = NULL WHERE id = ?::uuid").param(ADA).update() // restored there
+		assertEquals(0, pull.pull().drift)
+		assertEquals(0, dsl.fetchCount(MEMBER_DB_DRIFT))
+
+		memberDb.sql("UPDATE volunteers SET deleted_at = now() WHERE id = ?::uuid").param(ADA).update()
+		dsl.update(PERSON).set(PERSON.STATUS, "removed").where(PERSON.ID.eq(ada)).execute() // national removed them here too
+		assertEquals(0, pull.pull().drift)
+	}
+
+	@Test
 	fun `national pauses writes with a reason, only national reaches these controls`() {
 		val lena = dsl.insertInto(PERSON).set(PERSON.FIRST_NAME, "Lena").set(PERSON.LAST_NAME, "Lead").set(PERSON.STATUS, "active").set(PERSON.ORG_EMAIL, "lena@hack4impact.org")
 			.returningResult(PERSON.ID).fetchSingle().value1()!!
